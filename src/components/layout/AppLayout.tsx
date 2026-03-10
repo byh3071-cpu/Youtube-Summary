@@ -7,7 +7,7 @@ interface LayoutProps {
 
 export default function AppLayout({ children }: LayoutProps) {
     return (
-        <div className="flex h-screen overflow-hidden bg-[var(--notion-bg)] text-[var(--notion-fg)]">
+        <div className="flex h-screen overflow-hidden bg-(--notion-bg) text-(--notion-fg)">
             {/* Sidebar */}
             <Sidebar />
 

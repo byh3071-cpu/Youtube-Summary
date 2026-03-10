@@ -11,10 +11,10 @@ export default async function Home() {
 
   return (
     <AppLayout>
-      <div className="pb-8 border-b border-[var(--notion-border)] mb-6 flex items-end justify-between">
+      <div className="pb-8 border-b border-(--notion-border) mb-6 flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Focus Feed</h1>
-          <p className="text-[var(--notion-fg)]/60">
+          <p className="text-(--notion-fg)/60">
             알고리즘 없이 텍스트 중심의 정제된 정보를 큐레이션 합니다.
           </p>
         </div>

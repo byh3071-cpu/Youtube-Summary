@@ -14,7 +14,7 @@ export default function RefreshButton() {
             await fetch('/api/revalidate', { method: 'POST' });
             // Next.js 라우터 리프레시를 통해 서버 컴포넌트 데이터 다시 가져오기 트리거
             router.refresh();
-        } catch (error) {
+        } catch {
             console.error("Failed to revalidate UI");
         } finally {
             // 로딩 UI 시각적 피드백을 위해 약간의 딜레이
@@ -26,7 +26,7 @@ export default function RefreshButton() {
         <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-2 text-sm text-[var(--notion-fg)]/60 hover:text-[var(--notion-fg)] hover:bg-[var(--notion-hover)] px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 text-sm text-(--notion-fg)/60 hover:text-(--notion-fg) hover:bg-(--notion-hover) px-3 py-1.5 rounded transition-colors disabled:opacity-50"
         >
             <RefreshCcw size={14} className={isRefreshing ? "animate-spin" : ""} />
             <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
