@@ -13,7 +13,11 @@ export async function fetchRssFeed(url: string, sourceName: string): Promise<Fee
         // 기본적으로 적용되지 않을 수 있습니다. 
         // 이를 해결하기 위해 fetch로 먼저 가져온 뒤 파싱합니다.
         const response = await fetch(url, {
-            next: { revalidate: 7200 } // 2시간 캐시
+            next: { revalidate: 7200 }, // 2시간 캐시
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            }
         });
 
         if (!response.ok) {
