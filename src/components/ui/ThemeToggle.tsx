@@ -17,11 +17,11 @@ export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
         return (
             <button
                 className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-md transition-colors ${iconOnly ? 'p-2 justify-center' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
-                aria-label="Toggle theme"
+                aria-label="테마 전환"
             >
                 <div className="flex items-center gap-2">
                     <Moon size={iconOnly ? 20 : 16} />
-                    {!iconOnly && <span>Theme</span>}
+                    {!iconOnly && <span>테마</span>}
                 </div>
             </button>
         ); // fallback
@@ -33,11 +33,11 @@ export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
         <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
             className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-md transition-colors ${iconOnly ? 'p-2 justify-center' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
-            aria-label="Toggle theme"
+            aria-label="테마 전환"
         >
             <div className="flex items-center gap-2">
                 {isDark ? <Sun size={iconOnly ? 20 : 16} /> : <Moon size={iconOnly ? 20 : 16} />}
-                {!iconOnly && <span>{isDark ? "Light Mode" : "Dark Mode"}</span>}
+                {!iconOnly && <span>{isDark ? "라이트 모드" : "다크 모드"}</span>}
             </div>
         </button>
     );

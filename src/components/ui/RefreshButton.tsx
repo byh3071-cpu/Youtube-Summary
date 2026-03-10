@@ -38,13 +38,13 @@ export default function RefreshButton() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-(--notion-fg)/60 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) disabled:opacity-50"
+                className="flex items-center gap-2 rounded-full border border-(--notion-border) bg-(--notion-bg)/75 px-3 py-2 text-sm text-(--notion-fg)/70 shadow-sm transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) disabled:opacity-50"
             >
                 <RefreshCcw size={14} className={isRefreshing ? "animate-spin" : ""} />
                 <span>{isRefreshing ? '새로고침 중...' : '새로고침'}</span>
             </button>
 
-            <span aria-live="polite" className="text-xs text-(--notion-fg)/50">
+            <span aria-live="polite" className="max-w-56 text-xs leading-relaxed text-(--notion-fg)/50 sm:text-right">
                 {statusMessage || "최신 피드를 다시 가져올 수 있습니다."}
             </span>
         </div>

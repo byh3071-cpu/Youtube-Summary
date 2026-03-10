@@ -54,6 +54,7 @@ export async function fetchRssFeed(url: string, sourceName: string): Promise<Fee
                 link: item.link || url,
                 pubDate: toIsoDate(item.pubDate),
                 source: "RSS",
+                sourceId: url,
                 sourceName: sourceName,
                 summary: item.contentSnippet || item.content || "",
             } as FeedItem;

@@ -11,7 +11,13 @@ function normalizeKeyword(keyword: string): string {
     return keyword.trim().replace(/\s+/g, " ");
 }
 
-export default function FeedClientContainer({ initialItems }: { initialItems: FeedItem[] }) {
+export default function FeedClientContainer({
+    initialItems,
+    selectedSourceName,
+}: {
+    initialItems: FeedItem[];
+    selectedSourceName?: string;
+}) {
     // 클라이언트 마운트 시 저장소에서 키워드 바로 초기화 (useEffect 내 setState 방지)
     const [keywords, setKeywords] = useState<string[]>([]);
     const [isAdding, setIsAdding] = useState(false);
@@ -52,13 +58,25 @@ export default function FeedClientContainer({ initialItems }: { initialItems: Fe
 
     // 필터 적용
     const filteredItems = filterFeedByKeywords(initialItems, keywords);
+    const hasActiveFilters = keywords.length > 0;
 
     return (
         <>
-            <div className="mb-3 flex flex-col gap-3 sm:mb-4">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-(--notion-fg)/60">
-                    <span>표시 중인 항목 {filteredItems.length}개</span>
-                    {keywords.length > 0 && <span>· 활성 필터 {keywords.length}개</span>}
+            <section className="mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-4 sm:mb-5">
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <h2 className="mt-0 mb-1 text-base font-semibold">필터와 결과</h2>
+                        <p className="text-sm text-(--notion-fg)/55">
+                            {selectedSourceName
+                                ? `${selectedSourceName} 안에서 키워드로 다시 좁혀볼 수 있습니다.`
+                                : "키워드를 등록하면 제목, 요약, 출처 이름 기준으로 피드를 빠르게 좁혀볼 수 있습니다."}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-(--notion-fg)/60">
+                        <span>표시 중인 항목 {filteredItems.length}개</span>
+                        {hasActiveFilters && <span>· 활성 필터 {keywords.length}개</span>}
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -122,10 +140,29 @@ export default function FeedClientContainer({ initialItems }: { initialItems: Fe
                             <span>필터 추가</span>
                         </button>
                     )}
-                </div>
-            </div>
 
-            <FeedList items={filteredItems} hasActiveFilters={keywords.length > 0} />
+                    {hasActiveFilters && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                keywords.forEach((keyword) => storage.removeKeyword(keyword));
+                                setKeywords([]);
+                            }}
+                            className="rounded-full px-2 py-1 text-xs font-semibold text-(--notion-fg)/45 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                        >
+                            전체 해제
+                        </button>
+                    )}
+                </div>
+
+                {!hasActiveFilters && !isAdding && (
+                    <p className="mt-3 text-xs leading-relaxed text-(--notion-fg)/45">
+                        예시: `AI`, `생산성`, `개발`, `자동화`
+                    </p>
+                )}
+            </section>
+
+            <FeedList items={filteredItems} hasActiveFilters={hasActiveFilters} selectedSourceName={selectedSourceName} />
         </>
     );
 }

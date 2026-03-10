@@ -4,6 +4,7 @@ export interface FeedItem {
     link: string;        // 원본 링크
     pubDate: string;     // ISO 8601 날짜 문자열
     source: "YouTube" | "RSS";  // 출처 타입
+    sourceId: string;    // 채널 ID 또는 RSS URL
     sourceName: string;  // 채널명 또는 블로그명
     summary?: string;    // RSS 요약 (유튜브의 경우 생략 가능)
     thumbnail?: string;  // 썸네일 이미지 URL (선택사항)

@@ -9,6 +9,9 @@ export default function FeedItem({ item }: Props) {
     const publishedAt = new Date(item.pubDate);
     const hasValidDate = Number.isFinite(publishedAt.getTime());
     const cleanSummary = item.summary?.replace(/<[^>]*>?/gm, "").replace(/\s+/g, " ").trim();
+    const sourceToneClass = item.source === "YouTube"
+        ? "bg-red-500/10 text-red-600 dark:text-red-300"
+        : "bg-blue-500/10 text-blue-600 dark:text-blue-300";
 
     // 날짜 포맷팅 (예: 2026-03-11)
     const formattedDate = hasValidDate
@@ -26,17 +29,17 @@ export default function FeedItem({ item }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${item.sourceName}의 ${item.title} 열기`}
-            className="group -mx-2 block rounded-xl border-b border-(--notion-border) px-2 py-3 transition-colors hover:bg-(--notion-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 sm:-mx-4 sm:px-4"
+            className="group block border-b border-(--notion-border) px-4 py-4 transition-colors last:border-b-0 hover:bg-(--notion-hover)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 sm:px-5"
         >
             <div className="flex items-start gap-3 sm:gap-4">
                 {/* Source Icon Indicator (Minimal) */}
                 <div className="mt-1 shrink-0">
                     {item.source === 'YouTube' ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded bg-red-500/10 text-[10px] font-bold text-red-600">
+                        <div className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${sourceToneClass}`}>
                             YT
                         </div>
                     ) : (
-                        <div className="flex h-5 w-5 items-center justify-center rounded bg-blue-500/10 text-[10px] font-bold text-blue-600">
+                        <div className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${sourceToneClass}`}>
                             RSS
                         </div>
                     )}
@@ -44,14 +47,21 @@ export default function FeedItem({ item }: Props) {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-medium text-(--notion-fg)/50">
+                        <span className={`rounded-full px-2 py-0.5 ${sourceToneClass}`}>
+                            {item.source}
+                        </span>
+                        <span className="truncate">{item.sourceName}</span>
+                    </div>
+
                     <h3 className="mb-1 wrap-break-word text-base font-medium leading-tight text-(--notion-fg) decoration-(--notion-border) underline-offset-2 group-hover:underline">
                         {item.title}
                     </h3>
 
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--notion-fg)/60">
-                        <span className="font-medium">{item.sourceName}</span>
-                        <span>•</span>
                         <span>{formattedDate}</span>
+                        <span>·</span>
+                        <span className="text-(--notion-fg)/45">원문 보기</span>
                     </div>
 
                     {/* RSS인 경우 요약 텍스트 한 줄 추가 (Notion Description Style) */}
