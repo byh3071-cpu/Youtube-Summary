@@ -32,13 +32,12 @@ export async function getMergedFeed(sources: FeedSource[] = defaultSources): Pro
     try {
         const results = await Promise.allSettled(feedPromises);
 
-        let allItems: FeedItem[] = [];
-
-        results.forEach(result => {
+        const allItems: FeedItem[] = results.flatMap(result => {
             if (result.status === "fulfilled") {
-                allItems = [...allItems, ...result.value];
+                return result.value;
             } else {
                 console.error("Failed to fetch one of the sources:", result.reason);
+                return [];
             }
         });
 
