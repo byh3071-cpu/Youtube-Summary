@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import Sidebar from "@/components/layout/Sidebar";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface LayoutProps {
     children: ReactNode;
@@ -7,8 +8,19 @@ interface LayoutProps {
 
 export default function AppLayout({ children }: LayoutProps) {
     return (
-        <div className="flex min-h-screen bg-(--notion-bg) text-(--notion-fg)">
-            {/* Sidebar */}
+        <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg) md:flex-row">
+            {/* Mobile Header */}
+            <header className="flex h-14 items-center justify-between border-b border-(--notion-border) bg-(--notion-bg) px-4 md:hidden">
+                <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded bg-(--notion-fg) text-xs font-bold text-(--notion-bg)">
+                        F
+                    </div>
+                    <span className="font-semibold">Focus Feed</span>
+                </div>
+                <ThemeToggle iconOnly={true} />
+            </header>
+
+            {/* Sidebar (Desktop only) */}
             <Sidebar />
 
             {/* Main Content Area */}

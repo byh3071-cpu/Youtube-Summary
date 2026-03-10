@@ -44,7 +44,7 @@ export default function FeedItem({ item }: Props) {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="mb-1 break-words text-base font-medium leading-tight text-(--notion-fg) decoration-(--notion-border) underline-offset-2 group-hover:underline">
+                    <h3 className="mb-1 wrap-break-word text-base font-medium leading-tight text-(--notion-fg) decoration-(--notion-border) underline-offset-2 group-hover:underline">
                         {item.title}
                     </h3>
 
