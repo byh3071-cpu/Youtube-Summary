@@ -20,6 +20,26 @@ export const defaultSources: FeedSource[] = [
     { id: "https://openai.com/blog/rss.xml", name: "OpenAI Blog", type: "RSS" } // Note: OpenAI는 RSS 엔드포인트가 자주 바뀔 수 있음
 ];
 
+function getSortTimestamp(pubDate: string): number {
+    const timestamp = new Date(pubDate).getTime();
+    return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function dedupeItems(items: FeedItem[]): FeedItem[] {
+    const seen = new Set<string>();
+
+    return items.filter((item) => {
+        const key = `${item.source}:${item.id || item.link}`;
+
+        if (seen.has(key)) {
+            return false;
+        }
+
+        seen.add(key);
+        return true;
+    });
+}
+
 export async function getMergedFeed(sources: FeedSource[] = defaultSources): Promise<FeedItem[]> {
     const feedPromises = sources.map(source => {
         if (source.type === "YouTube") {
@@ -41,14 +61,14 @@ export async function getMergedFeed(sources: FeedSource[] = defaultSources): Pro
             }
         });
 
+        const uniqueItems = dedupeItems(allItems);
+
         // 시간순 (최신순) 정렬
-        allItems.sort((a, b) => {
-            const dateA = new Date(a.pubDate).getTime();
-            const dateB = new Date(b.pubDate).getTime();
-            return dateB - dateA;
+        uniqueItems.sort((a, b) => {
+            return getSortTimestamp(b.pubDate) - getSortTimestamp(a.pubDate);
         });
 
-        return allItems;
+        return uniqueItems;
     } catch (error) {
         console.error("Error merging feeds:", error);
         return [];
