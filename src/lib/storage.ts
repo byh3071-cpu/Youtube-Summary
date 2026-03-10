@@ -10,6 +10,10 @@ const defaultPreferences: UserPreferences = {
     hiddenSources: [],
 };
 
+function normalizeKeyword(keyword: string): string {
+    return keyword.trim().replace(/\s+/g, ' ');
+}
+
 // 클라이언트 사이드에서만 안전하게 실행되도록 체크
 const isBrowser = typeof window !== 'undefined';
 
@@ -38,15 +42,22 @@ export const storage = {
 
     addKeyword: (keyword: string): void => {
         const prefs = storage.getPreferences();
-        if (!prefs.keywords.includes(keyword) && keyword.trim() !== '') {
-            prefs.keywords.push(keyword.trim());
+
+        const normalizedKeyword = normalizeKeyword(keyword);
+        const hasDuplicate = prefs.keywords.some(
+            (existingKeyword) => existingKeyword.toLowerCase() === normalizedKeyword.toLowerCase()
+        );
+
+        if (!hasDuplicate && normalizedKeyword !== '') {
+            prefs.keywords.push(normalizedKeyword);
             storage.savePreferences(prefs);
         }
     },
 
     removeKeyword: (keyword: string): void => {
         const prefs = storage.getPreferences();
-        prefs.keywords = prefs.keywords.filter(k => k !== keyword);
+        const normalizedKeyword = normalizeKeyword(keyword).toLowerCase();
+        prefs.keywords = prefs.keywords.filter(k => k.toLowerCase() !== normalizedKeyword);
         storage.savePreferences(prefs);
     }
 };

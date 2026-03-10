@@ -16,34 +16,52 @@
   --notion-border: #e9e9e7;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --notion-bg: #191919;
-    --notion-fg: rgba(255, 255, 255, 0.81);
-    --notion-gray: #202020;
-    --notion-hover: #2c2c2c;
-    --notion-border: #2f2f2f;
-  }
+.dark {
+  --notion-bg: #191919;
+  --notion-fg: rgba(255, 255, 255, 0.81);
+  --notion-gray: #202020;
+  --notion-hover: #2c2c2c;
+  --notion-border: #2f2f2f;
 }
 
 body {
   background-color: var(--notion-bg);
   color: var(--notion-fg);
+  min-height: 100vh;
   /* Notion's standard font stack */
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
+button,
+input,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Base typography for Notion feel */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 600;
   color: inherit;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
-h1 { font-size: 2rem; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.25rem; }
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
 
 a {
   color: inherit;
