@@ -9,7 +9,7 @@ interface Props {
 export default function FeedList({ items }: Props) {
     if (!items || items.length === 0) {
         return (
-            <div className="py-12 flex flex-col items-center justify-center text-[var(--notion-fg)]/50">
+            <div className="py-12 flex flex-col items-center justify-center text-(--notion-fg)/50">
                 <Coffee className="mb-4 opacity-50" size={32} />
                 <p>새로운 피드가 없습니다. 필터를 조정해 보세요.</p>
             </div>
