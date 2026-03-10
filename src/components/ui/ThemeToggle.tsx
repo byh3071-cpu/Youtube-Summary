@@ -4,7 +4,7 @@ import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
-export function ThemeToggle() {
+export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = React.useState(false);
 
@@ -16,12 +16,12 @@ export function ThemeToggle() {
     if (!mounted) {
         return (
             <button
-                className="w-full flex items-center justify-between gap-2 text-sm text-(--notion-fg)/70 hover:bg-(--notion-hover) p-1.5 rounded-md transition-colors"
+                className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-md transition-colors ${iconOnly ? 'p-2 justify-center' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
                 aria-label="Toggle theme"
             >
                 <div className="flex items-center gap-2">
-                    <Moon size={16} />
-                    <span>Theme</span>
+                    <Moon size={iconOnly ? 20 : 16} />
+                    {!iconOnly && <span>Theme</span>}
                 </div>
             </button>
         ); // fallback
@@ -32,12 +32,12 @@ export function ThemeToggle() {
     return (
         <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className="w-full flex items-center justify-between gap-2 text-sm text-(--notion-fg)/70 hover:bg-(--notion-hover) p-1.5 rounded-md transition-colors"
+            className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-md transition-colors ${iconOnly ? 'p-2 justify-center' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
             aria-label="Toggle theme"
         >
             <div className="flex items-center gap-2">
-                {isDark ? <Sun size={16} /> : <Moon size={16} />}
-                <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+                {isDark ? <Sun size={iconOnly ? 20 : 16} /> : <Moon size={iconOnly ? 20 : 16} />}
+                {!iconOnly && <span>{isDark ? "Light Mode" : "Dark Mode"}</span>}
             </div>
         </button>
     );
