@@ -2,9 +2,25 @@ import Parser from 'rss-parser';
 import { FeedItem } from '../types/feed';
 
 type CustomFeed = { title: string };
-type CustomItem = { title: string; link: string; pubDate: string; contentSnippet?: string };
+type CustomItem = {
+    title?: string;
+    link?: string;
+    pubDate?: string;
+    contentSnippet?: string;
+    content?: string;
+};
 
 const parser = new Parser<CustomFeed, CustomItem>();
+const REVALIDATE_SECONDS = 7200;
+
+function getStableRssId(item: CustomItem, sourceName: string): string {
+    return item.link || `${sourceName}:${item.title || 'untitled'}`;
+}
+
+function toIsoDate(pubDate?: string): string {
+    const timestamp = pubDate ? new Date(pubDate).getTime() : Number.NaN;
+    return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : new Date(0).toISOString();
+}
 
 export async function fetchRssFeed(url: string, sourceName: string): Promise<FeedItem[]> {
     try {
@@ -13,7 +29,7 @@ export async function fetchRssFeed(url: string, sourceName: string): Promise<Fee
         // 기본적으로 적용되지 않을 수 있습니다. 
         // 이를 해결하기 위해 fetch로 먼저 가져온 뒤 파싱합니다.
         const response = await fetch(url, {
-            next: { revalidate: 7200 }, // 2시간 캐시
+            next: { revalidate: REVALIDATE_SECONDS }, // 2시간 캐시
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/rss+xml, application/xml, text/xml, */*',
@@ -33,10 +49,10 @@ export async function fetchRssFeed(url: string, sourceName: string): Promise<Fee
 
         return items.map((item) => {
             return {
-                id: item.link || item.title || Math.random().toString(36).substring(7),
+                id: getStableRssId(item, sourceName),
                 title: item.title || "No title",
                 link: item.link || url,
-                pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+                pubDate: toIsoDate(item.pubDate),
                 source: "RSS",
                 sourceName: sourceName,
                 summary: item.contentSnippet || item.content || "",
