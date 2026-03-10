@@ -4,8 +4,12 @@ import { useState, useEffect } from "react";
 import { FeedItem } from "@/types/feed";
 import { storage } from "@/lib/storage";
 import { filterFeedByKeywords } from "@/lib/filter";
-import FeedList from "./FeedList";
-import { Plus, X } from "lucide-react";
+import FeedList from "./FeedList"; // Force IDE TS-Server refresh
+import { Check, Plus, X } from "lucide-react";
+
+function normalizeKeyword(keyword: string): string {
+    return keyword.trim().replace(/\s+/g, " ");
+}
 
 export default function FeedClientContainer({ initialItems }: { initialItems: FeedItem[] }) {
     // 클라이언트 마운트 시 저장소에서 키워드 바로 초기화 (useEffect 내 setState 방지)
@@ -24,12 +28,16 @@ export default function FeedClientContainer({ initialItems }: { initialItems: Fe
 
     const handleAddKeyword = (e: React.FormEvent) => {
         e.preventDefault();
-        if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
-            storage.addKeyword(newKeyword);
-            setKeywords(storage.getPreferences().keywords);
-            setNewKeyword("");
-            setIsAdding(false);
+        const normalizedKeyword = normalizeKeyword(newKeyword);
+
+        if (!normalizedKeyword) {
+            return;
         }
+
+        storage.addKeyword(normalizedKeyword);
+        setKeywords(storage.getPreferences().keywords);
+        setNewKeyword("");
+        setIsAdding(false);
     };
 
     const handleRemoveKeyword = (keyword: string) => {
@@ -37,48 +45,87 @@ export default function FeedClientContainer({ initialItems }: { initialItems: Fe
         setKeywords(storage.getPreferences().keywords);
     };
 
+    const handleCancelAdd = () => {
+        setNewKeyword("");
+        setIsAdding(false);
+    };
+
     // 필터 적용
     const filteredItems = filterFeedByKeywords(initialItems, keywords);
 
     return (
         <>
-            <div className="mb-6 flex flex-wrap gap-2 items-center">
-                {keywords.map(keyword => (
-                    <div key={keyword} className="flex items-center gap-1 text-xs font-semibold bg-(--notion-hover) px-2.5 py-1 rounded">
-                        <span># {keyword}</span>
-                        <button
-                            onClick={() => handleRemoveKeyword(keyword)}
-                            className="text-(--notion-fg)/40 hover:text-(--notion-fg) rounded-full hover:bg-(--notion-gray) p-0.5"
-                        >
-                            <X size={12} />
-                        </button>
-                    </div>
-                ))}
+            <div className="mb-3 flex flex-col gap-3 sm:mb-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-(--notion-fg)/60">
+                    <span>표시 중인 항목 {filteredItems.length}개</span>
+                    {keywords.length > 0 && <span>· 활성 필터 {keywords.length}개</span>}
+                </div>
 
-                {isAdding ? (
-                    <form onSubmit={handleAddKeyword} className="flex items-center">
-                        <input
-                            type="text"
-                            autoFocus
-                            value={newKeyword}
-                            onChange={(e) => setNewKeyword(e.target.value)}
-                            onBlur={() => setTimeout(() => setIsAdding(false), 200)}
-                            placeholder="관심사 입력..."
-                            className="text-xs font-semibold px-2 py-1 rounded bg-(--notion-bg) border border-(--notion-border) focus:outline-none focus:border-(--notion-fg)/30 w-28"
-                        />
-                    </form>
-                ) : (
-                    <button
-                        onClick={() => setIsAdding(true)}
-                        className="flex items-center gap-1 text-xs font-semibold text-(--notion-fg)/50 border border-dashed border-(--notion-border) px-2.5 py-1 rounded cursor-pointer hover:bg-(--notion-hover) transition-colors"
-                    >
-                        <Plus size={12} />
-                        <span>Add Filter</span>
-                    </button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                    {keywords.map(keyword => (
+                        <div
+                            key={keyword}
+                            className="flex items-center gap-1 rounded-full bg-(--notion-hover) px-2.5 py-1 text-xs font-semibold"
+                        >
+                            <span># {keyword}</span>
+                            <button
+                                type="button"
+                                onClick={() => handleRemoveKeyword(keyword)}
+                                aria-label={`${keyword} 필터 제거`}
+                                className="rounded-full p-0.5 text-(--notion-fg)/40 hover:bg-(--notion-gray) hover:text-(--notion-fg)"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    ))}
+
+                    {isAdding ? (
+                        <form onSubmit={handleAddKeyword} className="flex flex-wrap items-center gap-2">
+                            <input
+                                type="text"
+                                autoFocus
+                                value={newKeyword}
+                                onChange={(e) => setNewKeyword(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Escape") {
+                                        handleCancelAdd();
+                                    }
+                                }}
+                                placeholder="관심 키워드를 입력하세요"
+                                aria-label="관심 키워드 입력"
+                                className="w-48 rounded-full border border-(--notion-border) bg-(--notion-bg) px-3 py-1.5 text-sm font-medium focus:border-(--notion-fg)/30 focus:outline-none"
+                            />
+
+                            <button
+                                type="submit"
+                                className="inline-flex items-center gap-1 rounded-full bg-(--notion-fg) px-3 py-1.5 text-xs font-semibold text-(--notion-bg) transition-opacity hover:opacity-90"
+                            >
+                                <Check size={12} />
+                                저장
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleCancelAdd}
+                                className="rounded-full border border-(--notion-border) px-3 py-1.5 text-xs font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
+                            >
+                                취소
+                            </button>
+                        </form>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setIsAdding(true)}
+                            className="flex cursor-pointer items-center gap-1 rounded-full border border-dashed border-(--notion-border) px-3 py-1.5 text-xs font-semibold text-(--notion-fg)/50 transition-colors hover:bg-(--notion-hover)"
+                        >
+                            <Plus size={12} />
+                            <span>필터 추가</span>
+                        </button>
+                    )}
+                </div>
             </div>
 
-            <FeedList items={filteredItems} />
+            <FeedList items={filteredItems} hasActiveFilters={keywords.length > 0} />
         </>
     );
 }

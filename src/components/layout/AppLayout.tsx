@@ -7,12 +7,12 @@ interface LayoutProps {
 
 export default function AppLayout({ children }: LayoutProps) {
     return (
-        <div className="flex h-screen overflow-hidden bg-(--notion-bg) text-(--notion-fg)">
+        <div className="flex min-h-screen bg-(--notion-bg) text-(--notion-fg)">
             {/* Sidebar */}
             <Sidebar />
 
             {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto px-10 py-12 md:px-24">
+            <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 md:px-10 lg:px-16">
                 <div className="mx-auto max-w-4xl">
                     {children}
                 </div>
