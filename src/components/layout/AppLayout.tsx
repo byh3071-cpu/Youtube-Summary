@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import Sidebar from "./Sidebar";
+import Sidebar from "./Sidebar"; // Force IDE TS-Server to re-parse component path
 
 interface LayoutProps {
     children: ReactNode;
