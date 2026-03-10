@@ -11,7 +11,7 @@ export interface FeedSource {
 // 화이트리스트 기본값
 export const defaultSources: FeedSource[] = [
     // User Requested YouTube Channels
-    { id: "UC2bcmOQv4Sxa4jI415oFhRQ", name: "일잘러 장피엠", type: "YouTube" }, // Note: 실제 ID로 필요시 교체
+    { id: "UCSkpTOEl_zW6b4Y7M_Prefg", name: "일잘러 장피엠", type: "YouTube" },
     { id: "UC-lHJZR3Gqxm24_Vd_AJ5Yw", name: "노마드 코더 (Nomad Coders)", type: "YouTube" },
     { id: "UCx5XG1OV2P6uZZ5FSM9Ttw", name: "테디노트 (TeddyNote)", type: "YouTube" }, // Example ID
     { id: "UCx5XG1OV2P6uZZ5FSM9Ttw", name: "드로우앤드류 (DrawAndrew)", type: "YouTube" }, // Example ID
