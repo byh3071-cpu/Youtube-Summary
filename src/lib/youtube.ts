@@ -6,6 +6,13 @@ let hasWarnedAboutMissingApiKey = false;
 let hasWarnedAboutInvalidApiKey = false;
 let hasWarnedAboutYouTubeFailure = false;
 
+export type YouTubeFetchStatus = "ready" | "missing_api_key" | "invalid_api_key" | "request_failed";
+
+export interface YouTubeFeedResult {
+  items: FeedItem[];
+  status: YouTubeFetchStatus;
+}
+
 interface YouTubePlaylistItem {
   id?: string;
   snippet?: {
@@ -71,10 +78,18 @@ export function getUploadsPlaylistId(channelId: string): string {
   return channelId;
 }
 
-export async function fetchYouTubeFeed(channelId: string, channelName: string): Promise<FeedItem[]> {
+export function getYouTubeConfigurationStatus(): YouTubeFetchStatus {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
+    return "missing_api_key";
+  }
+
+  return "ready";
+}
+
+export async function fetchYouTubeFeed(channelId: string, channelName: string): Promise<YouTubeFeedResult> {
   if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
     logMissingApiKeyWarning();
-    return [];
+    return { items: [], status: "missing_api_key" };
   }
 
   const playlistId = getUploadsPlaylistId(channelId);
@@ -98,21 +113,21 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
 
       if (response.status === 400 && errorText.includes("API key not valid")) {
         logInvalidApiKeyWarning();
-        return [];
+        return { items: [], status: "invalid_api_key" };
       }
 
       logGenericYouTubeWarning(channelName, response.status);
-      return [];
+      return { items: [], status: "request_failed" };
     }
 
     const data = (await response.json()) as YouTubePlaylistResponse;
     
     if (!data.items) {
-      return [];
+      return { items: [], status: "ready" };
     }
 
     // 결과를 공통 FeedItem 형식으로 매핑
-    return data.items.flatMap((item) => {
+    const items = data.items.flatMap((item) => {
       const snippet = item.snippet;
 
       if (!snippet?.title || !snippet.publishedAt) {
@@ -132,11 +147,14 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
         link: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`,
         pubDate: snippet.publishedAt,
         source: "YouTube",
+        sourceId: channelId,
         sourceName: channelName,
         // 필요 시 썸네일도 옵셔널하게 사용
         thumbnail: snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url
       } satisfies FeedItem];
     });
+
+    return { items, status: "ready" };
 
   } catch (error) {
     if (!hasWarnedAboutYouTubeFailure) {
@@ -144,6 +162,6 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
       console.warn(`Failed to fetch YouTube feed for ${channelName}.`, error);
     }
 
-    return [];
+    return { items: [], status: "request_failed" };
   }
 }

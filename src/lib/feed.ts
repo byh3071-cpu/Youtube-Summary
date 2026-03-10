@@ -1,7 +1,15 @@
 import { FeedItem } from "../types/feed";
 import { defaultSources, FeedSource } from "./sources";
-import { fetchYouTubeFeed } from "./youtube";
+import { fetchYouTubeFeed, getYouTubeConfigurationStatus, YouTubeFetchStatus } from "./youtube";
 import { fetchRssFeed } from "./rss";
+
+export interface MergedFeedResult {
+    items: FeedItem[];
+    sourceStatus: {
+        youtube: YouTubeFetchStatus;
+        rss: "ready";
+    };
+}
 
 function getSortTimestamp(pubDate: string): number {
     const timestamp = new Date(pubDate).getTime();
@@ -23,37 +31,88 @@ function dedupeItems(items: FeedItem[]): FeedItem[] {
     });
 }
 
-export async function getMergedFeed(sources: FeedSource[] = defaultSources): Promise<FeedItem[]> {
-    const feedPromises = sources.map(source => {
-        if (source.type === "YouTube") {
-            return fetchYouTubeFeed(source.id, source.name);
-        } else {
-            return fetchRssFeed(source.id, source.name);
-        }
-    });
+export async function getMergedFeed(sources: FeedSource[] = defaultSources): Promise<MergedFeedResult> {
+    const youtubeSources = sources.filter((source) => source.type === "YouTube");
+    const rssSources = sources.filter((source) => source.type === "RSS");
+
+    const youtubePromises = youtubeSources.map((source) => fetchYouTubeFeed(source.id, source.name));
+    const rssPromises = rssSources.map((source) => fetchRssFeed(source.id, source.name));
 
     try {
-        const results = await Promise.allSettled(feedPromises);
+        const [youtubeResults, rssResults] = await Promise.all([
+            Promise.allSettled(youtubePromises),
+            Promise.allSettled(rssPromises),
+        ]);
 
-        const allItems: FeedItem[] = results.flatMap(result => {
+        const youtubeItems: FeedItem[] = youtubeResults.flatMap((result) => {
             if (result.status === "fulfilled") {
-                return result.value;
-            } else {
-                console.error("Failed to fetch one of the sources:", result.reason);
-                return [];
+                return result.value.items;
             }
+
+            console.error("Failed to fetch one of the YouTube sources:", result.reason);
+            return [];
         });
 
-        const uniqueItems = dedupeItems(allItems);
+        const rssItems: FeedItem[] = rssResults.flatMap((result) => {
+            if (result.status === "fulfilled") {
+                return result.value;
+            }
+
+            console.error("Failed to fetch one of the RSS sources:", result.reason);
+            return [];
+        });
+
+        const uniqueItems = dedupeItems([...youtubeItems, ...rssItems]);
+
+        const youtubeStatus = youtubeResults.reduce<YouTubeFetchStatus>(
+            (currentStatus, result) => {
+                if (currentStatus === "invalid_api_key") {
+                    return currentStatus;
+                }
+
+                if (result.status === "rejected") {
+                    return currentStatus === "missing_api_key" ? currentStatus : "request_failed";
+                }
+
+                const nextStatus = result.value.status;
+
+                if (nextStatus === "invalid_api_key") {
+                    return nextStatus;
+                }
+
+                if (nextStatus === "missing_api_key") {
+                    return currentStatus === "request_failed" ? currentStatus : nextStatus;
+                }
+
+                if (nextStatus === "request_failed") {
+                    return currentStatus === "missing_api_key" ? currentStatus : nextStatus;
+                }
+
+                return currentStatus;
+            },
+            getYouTubeConfigurationStatus()
+        );
 
         // 시간순 (최신순) 정렬
         uniqueItems.sort((a, b) => {
             return getSortTimestamp(b.pubDate) - getSortTimestamp(a.pubDate);
         });
 
-        return uniqueItems;
+        return {
+            items: uniqueItems,
+            sourceStatus: {
+                youtube: youtubeStatus,
+                rss: "ready",
+            },
+        };
     } catch (error) {
         console.error("Error merging feeds:", error);
-        return [];
+        return {
+            items: [],
+            sourceStatus: {
+                youtube: getYouTubeConfigurationStatus(),
+                rss: "ready",
+            },
+        };
     }
 }
