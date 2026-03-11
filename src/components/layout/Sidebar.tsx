@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { Home, Rss, Youtube } from "lucide-react";
-import { defaultSources } from "@/lib/sources";
+import Image from "next/image";
+import { Home, Rss, Youtube, Tag } from "lucide-react";
+import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import AddChannelButton from "@/components/feed/AddChannelButton";
+import YouTubeSourceList from "@/components/layout/YouTubeSourceList";
 import type { MergedFeedResult } from "@/lib/feed";
+import type { FeedSource } from "@/lib/sources";
 
-const youtubeSources = defaultSources.filter((source) => source.type === "YouTube");
 const rssSources = defaultSources.filter((source) => source.type === "RSS");
 
 const youtubeStatusLabel = {
@@ -24,21 +27,34 @@ const youtubeStatusTone = {
 export default function Sidebar({
     sourceStatus,
     selectedSourceId,
+    selectedCategory,
+    youtubeSources: youtubeSourcesProp,
+    customYouTubeSourceIds = [],
+    latestVideoBySource,
 }: {
     sourceStatus: MergedFeedResult["sourceStatus"];
     selectedSourceId?: string;
+    selectedCategory?: string;
+    youtubeSources?: FeedSource[];
+    customYouTubeSourceIds?: string[];
+    latestVideoBySource?: Record<string, string>;
 }) {
+    const youtubeSources = youtubeSourcesProp ?? defaultSources.filter((s) => s.type === "YouTube");
     return (
         <aside className="hidden w-72 shrink-0 border-r border-(--notion-border) bg-(--notion-gray) md:flex md:flex-col">
             <div className="m-2 rounded-xl border border-(--notion-border) bg-(--notion-bg) p-4">
-                <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-(--notion-fg) text-xs font-bold text-(--notion-bg)">
-                        F
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="relative h-12 w-12 overflow-hidden rounded-xl">
+                        <Image
+                            src="/focus-feed-logo-v2.png"
+                            alt="Focus Feed 로고"
+                            fill
+                            sizes="48px"
+                            className="object-contain"
+                            priority
+                        />
                     </div>
-                    <div>
-                        <p className="text-sm font-semibold">Focus Feed</p>
-                        <p className="text-xs text-(--notion-fg)/55">텍스트 중심 피드 워크스페이스</p>
-                    </div>
+                    <ThemeToggle />
                 </div>
 
                 <Link
@@ -57,15 +73,37 @@ export default function Sidebar({
 
             <nav className="flex-1 space-y-6 px-3 py-2">
                 <SidebarSection
-                    title={`YouTube (${youtubeSources.length})`}
-                    items={youtubeSources}
-                    icon={<Youtube size={15} className="text-red-500" />}
-                    statusLabel={youtubeStatusLabel[sourceStatus.youtube]}
-                    statusTone={youtubeStatusTone[sourceStatus.youtube]}
-                    muted={sourceStatus.youtube !== "ready"}
-                    helperText={sourceStatus.youtube === "ready" ? "모든 YouTube 채널을 함께 표시합니다." : "현재 YouTube 소스는 일시적으로 피드에서 빠져 있습니다."}
-                    selectedSourceId={selectedSourceId}
+                    title="카테고리"
+                    items={[{ id: "", name: "전체" }, ...FEED_CATEGORIES.map((id) => ({ id, name: id }))]}
+                    icon={<Tag size={15} className="text-(--notion-fg)/60" />}
+                    statusLabel=""
+                    statusTone=""
+                    helperText="AI·자기계발·개발·뉴스 등으로 필터합니다."
+                    selectedSourceId={selectedCategory ?? ""}
+                    linkParam="category"
                 />
+
+                <section>
+                    <div className="mb-2 flex items-center justify-between gap-2 px-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
+                            <Youtube size={15} className="text-red-500" />
+                            <span>YouTube ({youtubeSources.length})</span>
+                        </div>
+                        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${youtubeStatusTone[sourceStatus.youtube]}`}>
+                            {youtubeStatusLabel[sourceStatus.youtube]}
+                        </span>
+                    </div>
+                    <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
+                        {sourceStatus.youtube === "ready" ? "모든 YouTube 채널을 함께 표시합니다." : "현재 YouTube 소스는 일시적으로 피드에서 빠져 있습니다."}
+                    </div>
+                    <YouTubeSourceList
+                        items={youtubeSources}
+                        selectedSourceId={selectedSourceId}
+                        customSourceIds={customYouTubeSourceIds}
+                        latestVideoBySource={latestVideoBySource}
+                    />
+                    <AddChannelButton />
+                </section>
 
                 <SidebarSection
                     title={`RSS (${rssSources.length})`}
@@ -78,8 +116,7 @@ export default function Sidebar({
                 />
             </nav>
 
-            <div className="flex flex-col gap-2 border-t border-(--notion-border) p-4">
-                <ThemeToggle />
+            <div className="flex flex-col gap-2 border-t border-(--notion-border) p-4 pb-28 md:pb-24">
                 <div className="text-xs leading-relaxed text-(--notion-fg)/55">
                     새 기능은 검증이 끝난 뒤 순차적으로 추가합니다. 현재는 읽기와 필터링 경험에 집중합니다.
                 </div>
@@ -97,16 +134,23 @@ function SidebarSection({
     helperText,
     muted = false,
     selectedSourceId,
+    linkParam = "source",
+    showAddChannel = false,
 }: {
     title: string;
-    items: typeof defaultSources;
+    items: Array<{ id: string; name: string }>;
     icon: React.ReactNode;
     statusLabel: string;
     statusTone: string;
     helperText: string;
     muted?: boolean;
     selectedSourceId?: string;
+    linkParam?: "source" | "category";
+    showAddChannel?: boolean;
 }) {
+    const query = linkParam === "category"
+        ? (id: string) => (id ? { category: id } : {})
+        : (id: string) => ({ source: id });
     return (
         <section>
             <div className="mb-2 flex items-center justify-between gap-2 px-2">
@@ -114,9 +158,11 @@ function SidebarSection({
                     {icon}
                     <span>{title}</span>
                 </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone}`}>
-                    {statusLabel}
-                </span>
+                {statusLabel ? (
+                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone}`}>
+                        {statusLabel}
+                    </span>
+                ) : null}
             </div>
 
             <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
@@ -126,19 +172,20 @@ function SidebarSection({
             <div className="space-y-1">
                 {items.map((item) => {
                     const isActive = selectedSourceId === item.id;
-
                     return (
-                    <Link
-                        key={item.id}
-                        href={{ pathname: "/", query: { source: item.id } }}
-                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isActive ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : muted ? "text-(--notion-fg)/45 hover:bg-(--notion-hover)/60" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-                    >
-                        <div className="flex w-4 justify-center">
-                            <div className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-(--notion-fg)/60" : muted ? "bg-(--notion-fg)/20" : "bg-(--notion-fg)/30"}`} />
-                        </div>
-                        <span className="truncate">{item.name}</span>
-                    </Link>
-                )})}
+                        <Link
+                            key={item.id}
+                            href={{ pathname: "/", query: query(item.id) }}
+                            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isActive ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : muted ? "text-(--notion-fg)/45 hover:bg-(--notion-hover)/60" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
+                        >
+                            <div className="flex w-4 justify-center">
+                                <div className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-(--notion-fg)/60" : muted ? "bg-(--notion-fg)/20" : "bg-(--notion-fg)/30"}`} />
+                            </div>
+                            <span className="truncate">{item.name}</span>
+                        </Link>
+                    );
+                })}
+                {showAddChannel ? <AddChannelButton /> : null}
             </div>
         </section>
     );

@@ -1,5 +1,7 @@
 import { FeedItem as FeedItemType } from "@/types/feed";
 import Image from "next/image";
+import SummarizeButton from "./SummarizeButton";
+import AddToRadioButton from "./AddToRadioButton";
 
 interface Props {
     item: FeedItemType;
@@ -29,7 +31,7 @@ export default function FeedItem({ item }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${item.sourceName}의 ${item.title} 열기`}
-            className="group block border-b border-(--notion-border) px-4 py-4 transition-colors last:border-b-0 hover:bg-(--notion-hover)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 sm:px-5"
+            className="group mb-3 block rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-transform transition-shadow hover:-translate-y-[1px] hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 last:mb-0 sm:px-5"
         >
             <div className="flex items-start gap-3 sm:gap-4">
                 {/* Source Icon Indicator (Minimal) */}
@@ -61,7 +63,7 @@ export default function FeedItem({ item }: Props) {
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--notion-fg)/60">
                         <span>{formattedDate}</span>
                         <span>·</span>
-                        <span className="text-(--notion-fg)/45">원문 보기</span>
+                        <span className="underline-offset-2 group-hover:underline text-(--notion-fg)/70 font-medium">원문 보기</span>
                     </div>
 
                     {/* RSS인 경우 요약 텍스트 한 줄 추가 (Notion Description Style) */}
@@ -69,6 +71,14 @@ export default function FeedItem({ item }: Props) {
                         <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-(--notion-fg)/70">
                             {cleanSummary}
                         </p>
+                    )}
+
+                    {/* YouTube인 경우 라디오 추가 + AI 요약 버튼 */}
+                    {item.source === 'YouTube' && item.id && (
+                        <div className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full bg-(--notion-gray)/70 px-2 py-1">
+                            <AddToRadioButton videoId={item.id} title={item.title} />
+                            <SummarizeButton videoId={item.id} />
+                        </div>
                     )}
                 </div>
 
