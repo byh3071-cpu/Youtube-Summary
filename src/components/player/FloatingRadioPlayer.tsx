@@ -9,6 +9,7 @@ import { X } from "lucide-react";
 import { RadioFooterControls } from "./RadioFooterControls";
 import { RadioPlaylistDrawer } from "./RadioPlaylistDrawer";
 import { RadioLyricsView } from "./RadioLyricsView";
+import { getWatchProgress, saveWatchProgress } from "@/lib/watch-history";
 
 declare global {
   interface Window {
@@ -56,6 +57,7 @@ export default function FloatingRadioPlayer() {
   const [videoExpanded, setVideoExpanded] = useState(false);
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -127,14 +129,31 @@ export default function FloatingRadioPlayer() {
       playerRef.current = null;
       setPlayerReady(false);
       setProgress(0);
+      setResumeSeconds(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radio?.queue.length]);
 
+  // 현재 큐 아이템 기준으로 저장된 마지막 시청 위치 불러오기 (완료한 영상은 제외)
+  useEffect(() => {
+    if (!radio?.currentItem) {
+      setResumeSeconds(null);
+      return;
+    }
+    const stored = getWatchProgress(radio.currentItem.videoId);
+    if (!stored || stored.completed || !Number.isFinite(stored.lastPositionSeconds) || stored.lastPositionSeconds <= 0) {
+      setResumeSeconds(null);
+      return;
+    }
+    setResumeSeconds(stored.lastPositionSeconds);
+  }, [radio?.currentItem?.videoId]);
+
   // 진행 바 상태 업데이트
   useEffect(() => {
-    if (!playerRef.current || !playerReady) return;
+    if (!playerRef.current || !playerReady || !radio?.currentItem) return;
     let frameId: number | null = null;
+    let lastSavedAt = 0;
+    let lastBroadcastAt = 0;
 
     const update = () => {
       try {
@@ -142,6 +161,25 @@ export default function FloatingRadioPlayer() {
         const duration = typeof playerRef.current?.getDuration === "function" ? playerRef.current.getDuration() : 0;
         if (duration > 0) {
           setProgress(Math.min(100, Math.max(0, (current / duration) * 100)));
+
+          // 수 초에 한 번씩만 진행도 저장 (불필요한 I/O 방지)
+          const now = Date.now();
+          if (now - lastSavedAt > 5000) {
+            saveWatchProgress(radio.currentItem.videoId, current, duration);
+            lastSavedAt = now;
+          }
+
+          // 1초에 한 번 정도만 전역 상태로 브로드캐스트
+          if (now - lastBroadcastAt > 1000 && typeof radio.updatePlayback === "function") {
+            const ratio = duration > 0 ? current / duration : 0;
+            radio.updatePlayback({
+              videoId: radio.currentItem.videoId,
+              positionSeconds: current,
+              durationSeconds: duration,
+              completed: ratio >= 0.9,
+            });
+            lastBroadcastAt = now;
+          }
         }
       } catch {
         // ignore
@@ -153,7 +191,7 @@ export default function FloatingRadioPlayer() {
     return () => {
       if (frameId !== null) cancelAnimationFrame(frameId);
     };
-  }, [playerReady, radio?.currentItem?.videoId]);
+  }, [playerReady, radio?.currentItem?.videoId, radio?.currentItem]);
 
   // 미니/전체 영상: YT가 1x1로 만든 iframe을 모드에 맞게 리사이즈
   const MINI_VIDEO_W = 320;
@@ -227,8 +265,8 @@ export default function FloatingRadioPlayer() {
           </div>
           <div className="text-sm">
             <p className="font-medium text-(--notion-fg)">아직 라디오에 담긴 영상이 없어요.</p>
-            <p className="text-(--notion-fg)/65">
-              피드에서 <span className="font-semibold text-[color:var(--focus-accent)]">라디오에 추가</span>를 눌러 플레이리스트를 채워보세요.
+                <p className="text-(--notion-fg)/65">
+              피드에서 <span className="font-semibold text-(--focus-accent)">라디오에 추가</span>를 눌러 플레이리스트를 채워보세요.
             </p>
           </div>
         </div>
@@ -276,6 +314,45 @@ export default function FloatingRadioPlayer() {
           aria-hidden={!videoVisible}
           onClick={fullPlayerOpen ? (e) => e.stopPropagation() : undefined}
         />
+
+        {fullPlayerOpen && radio.currentItem && resumeSeconds != null && (
+          <div className="pointer-events-none absolute inset-x-0 top-4 z-70 flex justify-center px-4">
+            <div className="flex max-w-4xl flex-1 items-center justify-between gap-3 rounded-full bg-black/60 px-4 py-2 text-[11px] text-white">
+              <span className="line-clamp-1 font-semibold">
+                {radio.currentItem.title}
+              </span>
+              <button
+                type="button"
+                className="pointer-events-auto rounded-full bg-(--focus-accent) px-3 py-1 text-[10px] font-semibold text-black hover:bg-(--focus-accent)/90"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  try {
+                    if (playerRef.current && typeof (playerRef.current as any).seekTo === "function") {
+                      (playerRef.current as any).seekTo(resumeSeconds, true);
+                    }
+                  } catch {
+                    // ignore
+                  } finally {
+                    // 한 번 이동 후에는 안내를 숨겨서 화면을 더 깔끔하게 유지
+                    setResumeSeconds(null);
+                  }
+                }}
+              >
+                마지막 시청{" "}
+                {(() => {
+                  const total = Math.max(0, Math.floor(resumeSeconds));
+                  const h = Math.floor(total / 3600);
+                  const m = Math.floor((total % 3600) / 60);
+                  const s = total % 60;
+                  if (h > 0) {
+                    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+                  }
+                  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+                })()}로 이동
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {fullPlayerOpen && (
         <button

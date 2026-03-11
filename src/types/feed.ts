@@ -13,6 +13,10 @@ export interface FeedItem {
     summary?: string;    // RSS 요약 (유튜브의 경우 생략 가능)
     thumbnail?: string;  // 썸네일 이미지 URL (선택사항)
     tags?: string[];     // 키워드 필터 등에서 활용할 태그 배열
+    /** YouTube 영상 길이(초 단위). RSS 항목은 비워둘 수 있음 */
+    durationSeconds?: number;
+    /** YouTube 채널 아바타 URL (있으면 사용) */
+    sourceAvatarUrl?: string;
 }
 
 export interface YouTubeChannel {

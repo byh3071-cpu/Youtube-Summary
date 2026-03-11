@@ -61,17 +61,21 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
     return (
         <section className="space-y-6">
             {showYoutube && (
-                <div className="overflow-hidden rounded-2xl border border-(--notion-border) bg-(--notion-bg)">
-                    <div className="flex items-center gap-2 border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-sm text-(--notion-fg)/60 sm:px-5">
-                        <Youtube className="h-4 w-4 text-red-500" />
-                        <span className="font-medium">유튜브 최신</span>
-                        <span className="text-(--notion-fg)/45">· 최신순</span>
+                <div>
+                    <div className="mb-2 flex items-center justify-between px-3 text-[13px] text-(--notion-fg)/70 sm:px-4">
+                        <div className="flex items-center gap-2">
+                            <Youtube className="h-4 w-4 text-red-500" />
+                            <span className="font-semibold">유튜브 최신</span>
+                        </div>
+                        <span className="pr-2 text-[12px] text-(--notion-fg)/55 sm:pr-3">
+                            최신순 정렬
+                        </span>
                     </div>
-                    <div className="p-3 sm:p-4">
+                    <div className="px-1 sm:px-2">
                         {youtubeItems.length === 0 ? (
                             <EmptyBlock message="이번 필터에 해당하는 유튜브 영상이 없습니다." />
                         ) : (
-                            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
                                 {youtubeItems.map((item) => (
                                     <li key={`${item.source}:${item.sourceId}:${item.id}`}>
                                         <YouTubeCard item={item} />

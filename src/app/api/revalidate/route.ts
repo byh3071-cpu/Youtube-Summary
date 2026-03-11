@@ -17,6 +17,16 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 export async function POST(request: NextRequest) {
+    // 개발 환경에서는 보안 토큰 없이도 항상 허용 (개발 편의를 위해)
+    if (process.env.NODE_ENV !== 'production') {
+        try {
+            revalidatePath('/');
+            return NextResponse.json({ revalidated: true, now: Date.now() });
+        } catch {
+            return NextResponse.json({ message: 'Error revalidating' }, { status: 500 });
+        }
+    }
+
     if (!isAuthorized(request)) {
         return NextResponse.json({ message: 'Unauthorized revalidation request' }, { status: 401 });
     }

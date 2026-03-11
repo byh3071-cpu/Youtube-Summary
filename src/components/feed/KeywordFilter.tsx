@@ -74,6 +74,7 @@ export default function KeywordFilter({
   const [isAdding, setIsAdding] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
   const hasActiveFilters = keywords.length > 0;
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,30 +89,47 @@ export default function KeywordFilter({
   };
 
   return (
-    <section className={compact ? "mb-4 rounded-xl border border-(--notion-border) bg-(--notion-bg) p-3 sm:p-4" : "mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-4 sm:mb-5"}>
-      <div className={compact ? "mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" : "mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"}>
-        <div className="flex flex-col gap-1">
+    <section className={compact ? "mb-4 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 py-1 sm:px-3.5 sm:py-1" : "mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-1 sm:mb-5"}>
+      <div className={compact ? "mb-0 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between" : "mb-0 flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between"}>
+        <div className="flex flex-col gap-0.5">
           <div className="flex items-center justify-between gap-2">
-            <h2 className={compact ? "mt-0 mb-0 text-sm font-semibold" : "mt-0 mb-1 text-base font-semibold"}>필터와 결과</h2>
+            <h2 className={compact ? "mt-0 mb-0 text-sm font-semibold" : "mt-0 mb-0 text-base font-semibold"}>필터</h2>
             {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
           </div>
           {!compact && (
-            <p className="text-sm text-(--notion-fg)/55">
-              {selectedSourceName
-                ? `${selectedSourceName} 안에서 키워드로 다시 좁혀볼 수 있습니다.`
-                : "키워드를 등록하면 제목, 요약, 출처 이름 기준으로 피드를 빠르게 좁혀볼 수 있습니다."}
-            </p>
+            <>
+              <p className="mt-0 text-[13px] text-(--notion-fg)/60">
+                {selectedSourceName
+                  ? `${selectedSourceName} 안에서 키워드로 다시 좁혀볼 수 있습니다.`
+                  : "키워드를 등록하면 제목, 요약, 출처 이름 기준으로 피드를 빠르게 좁혀볼 수 있습니다."}
+              </p>
+              <div className="mt-1 flex flex-col items-start gap-0.5 text-xs text-(--notion-fg)/60">
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(prev => !prev)}
+                  className="rounded-full border border-(--notion-border) px-2.5 py-1 font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
+                >
+                  {collapsed ? "열기" : "닫기"}
+                </button>
+              </div>
+            </>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-sm text-(--notion-fg)/60">
-          <span>표시 중인 항목 {filteredItemsCount}개</span>
-          {hasActiveFilters && <span>· 활성 필터 {keywords.length}개</span>}
-          {hasCategoryFilter && <span>· 카테고리 {selectedCategory}</span>}
-        </div>
+        {compact && (
+          <div className="flex flex-col items-end gap-1 text-xs text-(--notion-fg)/60">
+            <button
+              type="button"
+              onClick={() => setCollapsed(prev => !prev)}
+              className="rounded-full border border-(--notion-border) px-2.5 py-1 font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
+            >
+              {collapsed ? "열기" : "닫기"}
+            </button>
+          </div>
+        )}
       </div>
 
-      {onCategoryChange && (
+      {!collapsed && onCategoryChange && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-(--notion-fg)/55">카테고리</span>
             <button
@@ -134,6 +152,7 @@ export default function KeywordFilter({
         </div>
       )}
 
+      {!collapsed && (
       <div className="flex flex-wrap items-center gap-2">
         {keywords.map(keyword => (
           <div
@@ -206,13 +225,14 @@ export default function KeywordFilter({
           </button>
         )}
       </div>
+      )}
 
-      {!compact && !hasActiveFilters && !isAdding && (
+      {!collapsed && !compact && !hasActiveFilters && !isAdding && (
         <p className="mt-3 text-xs leading-relaxed text-(--notion-fg)/45">
           예시: `AI`, `생산성`, `개발`, `자동화`
         </p>
       )}
-      {!compact && (
+      {!collapsed && !compact && (
         <p className="mt-2 text-[11px] text-(--notion-fg)/40">
           키워드 필터는 이 기기·이 브라우저에만 저장됩니다.
         </p>
