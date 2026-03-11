@@ -32,6 +32,28 @@ interface YouTubePlaylistResponse {
   items?: YouTubePlaylistItem[];
 }
 
+interface YouTubeVideoDetailsResponse {
+  items?: Array<{
+    id?: string;
+    contentDetails?: {
+      duration?: string;
+    };
+  }>;
+}
+
+interface YouTubeChannelResponse {
+  items?: Array<{
+    id?: string;
+    snippet?: {
+      thumbnails?: {
+        default?: { url?: string };
+        medium?: { url?: string };
+        high?: { url?: string };
+      };
+    };
+  }>;
+}
+
 function hasUsableApiKey(apiKey: string | undefined): apiKey is string {
   if (!apiKey) {
     return false;
@@ -86,6 +108,77 @@ export function getYouTubeConfigurationStatus(): YouTubeFetchStatus {
   return "ready";
 }
 
+function parseIsoDurationToSeconds(iso?: string): number | undefined {
+  if (!iso) return undefined;
+  // 예: PT8H6M45S, PT15M3S, PT45S
+  const match = iso.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return undefined;
+  const hours = match[1] ? parseInt(match[1], 10) : 0;
+  const minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const seconds = match[3] ? parseInt(match[3], 10) : 0;
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+async function fetchVideoDurations(videoIds: string[]): Promise<Record<string, number>> {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
+    return {};
+  }
+  if (videoIds.length === 0) return {};
+
+  const params = new URLSearchParams({
+    part: "contentDetails",
+    id: videoIds.join(","),
+    key: YOUTUBE_API_KEY!,
+  });
+
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+    });
+    if (!res.ok) return {};
+    const data = (await res.json()) as YouTubeVideoDetailsResponse;
+    const map: Record<string, number> = {};
+    for (const item of data.items ?? []) {
+      const id = item.id;
+      const durIso = item.contentDetails?.duration;
+      const seconds = parseIsoDurationToSeconds(durIso);
+      if (id && typeof seconds === "number" && seconds > 0) {
+        map[id] = seconds;
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+async function fetchChannelAvatar(channelId: string): Promise<string | undefined> {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) return undefined;
+
+  const params = new URLSearchParams({
+    part: "snippet",
+    id: channelId,
+    key: YOUTUBE_API_KEY!,
+  });
+
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as YouTubeChannelResponse;
+    const channel = data.items?.[0];
+    const thumbs = channel?.snippet?.thumbnails;
+    return (
+      thumbs?.medium?.url ||
+      thumbs?.high?.url ||
+      thumbs?.default?.url
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 export async function fetchYouTubeFeed(channelId: string, channelName: string): Promise<YouTubeFeedResult> {
   if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
     logMissingApiKeyWarning();
@@ -126,6 +219,13 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
       return { items: [], status: "ready" };
     }
 
+    const videoIds = data.items
+      .map((item) => item.snippet?.resourceId?.videoId)
+      .filter((id): id is string => !!id);
+
+    const durationMap = await fetchVideoDurations(videoIds);
+    const avatarUrl = await fetchChannelAvatar(channelId);
+
     // 결과를 공통 FeedItem 형식으로 매핑
     const items = data.items.flatMap((item) => {
       const snippet = item.snippet;
@@ -134,7 +234,6 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
         return [];
       }
 
-      // snippet.resourceId.videoId 가 실제 비디오 ID
       const videoId = snippet.resourceId?.videoId;
 
       if (!videoId) {
@@ -149,8 +248,9 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
         source: "YouTube",
         sourceId: channelId,
         sourceName: channelName,
-        // 필요 시 썸네일도 옵셔널하게 사용
-        thumbnail: snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url
+        thumbnail: snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
+        durationSeconds: durationMap[videoId],
+        sourceAvatarUrl: avatarUrl,
       } satisfies FeedItem];
     });
 

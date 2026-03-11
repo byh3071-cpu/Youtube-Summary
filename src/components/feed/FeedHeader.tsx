@@ -75,31 +75,20 @@ export default function FeedHeader({
           )}
           <p className="max-w-2xl text-[13px] leading-relaxed text-(--notion-fg)/65 sm:text-[15px]">
             {selectedSource
-              ? `${selectedSource.type} 소스에서 가져온 항목만 모아 보고 있습니다.`
-              : "유튜브·RSS 최신글을 한곳에서 보고, 라디오처럼 들을 수 있어요."}
+              ? "이 소스에서 올라온 최신 항목만 모아 보고 있어요."
+              : "하루에 한 번, 보고 들을 가치가 있는 콘텐츠만 모아보세요."}
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-2 text-[11px] text-(--notion-fg)/60 sm:flex sm:flex-wrap">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-(--notion-fg)/60">
             <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-              총 {visibleItemsCount}개 항목
+              총 {visibleItemsCount}개
             </span>
             <span className={`rounded-2xl border px-3 py-1.5 ${youtubeStatusTone[sourceStatus.youtube]}`}>
               {youtubeStatusLabel[sourceStatus.youtube]}
             </span>
             <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-              YouTube {youtubeSourceCount}
+              2시간마다 새로고침
             </span>
-            <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-              RSS {rssSourceCount}
-            </span>
-            <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-              2시간 단위 갱신
-            </span>
-            {selectedSource && (
-              <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-                개별 소스 보기
-              </span>
-            )}
           </div>
         </div>
 

@@ -57,9 +57,30 @@ type Database = {
   };
 };
 
+/** Supabase URL/Key가 실제로 유효한지 검사하는 헬퍼 */
+function isValidSupabaseEnv(url: string | undefined, key: string | undefined): boolean {
+  if (!url || !key) return false;
+
+  // placeholder 값이면 무시
+  if (url === "your_supabase_project_url") return false;
+  if (key === "your_supabase_service_role_key") return false;
+
+  // URL 형식 검증 (http/https 필수)
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * 서버 전용 Supabase 클라이언트.
- * - env가 없으면 null 반환해서 기능을 끌 수 있게 함.
+ * - env가 없거나 placeholder면 null 반환해서 기능을 끌 수 있게 함.
  * - Service Role 키 사용 → 반드시 서버에서만 호출.
  */
 export function getServerSupabaseClient():
@@ -68,16 +89,21 @@ export function getServerSupabaseClient():
   const url = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !serviceKey) {
-    // 설정 안 돼 있으면 안전하게 null
+  if (!isValidSupabaseEnv(url, serviceKey)) {
+    // 설정 안 돼 있거나 placeholder면 안전하게 비활성화
     return null;
   }
 
-  return createClient<Database>(url, serviceKey, {
-    auth: {
-      persistSession: false, // 서버에서는 세션 저장 필요 없음
-    },
-  });
+  try {
+    return createClient<Database>(url, serviceKey, {
+      auth: {
+        persistSession: false, // 서버에서는 세션 저장 필요 없음
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create Supabase client. Disabling Supabase features.", error);
+    return null;
+  }
 }
 
 /**

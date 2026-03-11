@@ -17,6 +17,8 @@ export const defaultSources: FeedSource[] = [
     { id: "UCQ2DWm5Md16Dc3xRwwhVE7Q", name: "EO Korea", type: "YouTube", category: "스타트업·비즈니스" },
     { id: "https://news.hada.io/rss/news", name: "GeekNews", type: "RSS", category: "뉴스" },
     { id: "https://openai.com/blog/rss.xml", name: "OpenAI Blog", type: "RSS", category: "AI" },
+    { id: "http://feeds.feedburner.com/blogspot/gJZg", name: "Google AI Blog", type: "RSS", category: "AI" },
+    { id: "https://www.microsoft.com/en-us/ai/blog/feed/", name: "Microsoft AI Blog", type: "RSS", category: "AI" },
 ];
 
 export function getSourceById(sourceId?: string): FeedSource | undefined {

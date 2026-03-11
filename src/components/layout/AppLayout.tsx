@@ -35,8 +35,8 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
                 latestVideoBySource={latestVideoBySource}
             />
 
-            <main className="min-w-0 flex-1 px-4 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-32 md:px-10 lg:px-16">
-                <div className="mx-auto max-w-5xl">
+            <main className="min-w-0 flex-1 px-2 py-4 pb-28 sm:px-4 sm:py-6 sm:pb-32 md:px-6 lg:px-8">
+                <div className="mx-auto max-w-6xl lg:max-w-7xl">
                     {children}
                 </div>
             </main>

@@ -24,11 +24,19 @@ interface RadioQueueState {
   isPlaying: boolean;
 }
 
+export interface RadioPlaybackState {
+  videoId: string;
+  positionSeconds: number;
+  durationSeconds: number;
+  completed: boolean;
+}
+
 interface RadioQueueContextValue extends RadioQueueState {
   addToQueue: (item: RadioQueueItem) => void;
   removeFromQueue: (index: number) => void;
   setCurrentIndex: (index: number) => void;
   updateItemSummary: (videoId: string, summary: string) => void;
+  updatePlayback: (state: RadioPlaybackState) => void;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
@@ -36,6 +44,7 @@ interface RadioQueueContextValue extends RadioQueueState {
   prev: () => void;
   close: () => void;
   currentItem: RadioQueueItem | null;
+  playback: RadioPlaybackState | null;
 }
 
 const RadioQueueContext = createContext<RadioQueueContextValue | null>(null);
@@ -46,6 +55,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
     currentIndex: 0,
     isPlaying: false,
   });
+  const [playback, setPlayback] = useState<RadioPlaybackState | null>(null);
 
   const currentItem =
     state.queue.length > 0 && state.currentIndex >= 0 && state.currentIndex < state.queue.length
@@ -92,6 +102,19 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updatePlayback = useCallback((next: RadioPlaybackState) => {
+    setPlayback((prev) => {
+      // 같은 위치로의 미세 업데이트는 건너뛰어 렌더링 빈도 조절
+      if (prev && prev.videoId === next.videoId) {
+        const delta = Math.abs(prev.positionSeconds - next.positionSeconds);
+        if (delta < 1 && prev.completed === next.completed) {
+          return prev;
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const play = useCallback(() => setState((prev) => ({ ...prev, isPlaying: true })), []);
   const pause = useCallback(() => setState((prev) => ({ ...prev, isPlaying: false })), []);
   const togglePlay = useCallback(
@@ -133,6 +156,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       removeFromQueue,
       setCurrentIndex,
       updateItemSummary,
+      updatePlayback,
       play,
       pause,
       togglePlay,
@@ -140,8 +164,9 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       prev,
       close,
       currentItem,
+      playback,
     }),
-    [state, currentItem, addToQueue, removeFromQueue, setCurrentIndex, updateItemSummary, play, pause, togglePlay, next, prev, close]
+    [state, currentItem, playback, addToQueue, removeFromQueue, setCurrentIndex, updateItemSummary, updatePlayback, play, pause, togglePlay, next, prev, close]
   );
 
   return (
