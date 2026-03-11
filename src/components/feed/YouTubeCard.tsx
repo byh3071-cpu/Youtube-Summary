@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { CheckCircle2, RotateCcw, MoreHorizontal } from "lucide-react";
 import { FeedItem as FeedItemType } from "@/types/feed";
@@ -44,47 +44,37 @@ function formatSeconds(sec: number): string {
 
 export default function YouTubeCard({ item }: Props) {
   const timeAgo = formatTimeAgo(item.pubDate);
-  const [progressSeconds, setProgressSeconds] = useState<number | null>(null);
-  const [durationSeconds, setDurationSeconds] = useState<number | null>(
-    typeof item.durationSeconds === "number" ? item.durationSeconds : null,
-  );
-  const [completed, setCompleted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const radio = useRadioQueueOptional();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    if (!item.id) return;
+  const storedProgress =
+    typeof window !== "undefined" && item.id ? getWatchProgress(item.id) : null;
+  const playback = radio?.playback;
 
-    // 1순위: 라디오에서 재생 중인 영상이면 실시간 재생 정보 사용
-    if (radio?.playback && radio.playback.videoId === item.id) {
-      setProgressSeconds(radio.playback.positionSeconds);
-      setDurationSeconds(radio.playback.durationSeconds);
-      // 카드의 completed는 한 번 true가 되면 다시 false로 돌아가지 않도록,
-      // localStorage 값과 병합해서 계산한다.
-      const stored = getWatchProgress(item.id);
-      const storedCompleted = stored?.completed === true;
-      setCompleted(storedCompleted || radio.playback.completed);
-      return;
-    }
+  let baseDuration: number | null = null;
+  if (playback && playback.videoId === item.id && playback.durationSeconds > 0) {
+    baseDuration = playback.durationSeconds;
+  } else if (storedProgress?.durationSeconds && storedProgress.durationSeconds > 0) {
+    baseDuration = storedProgress.durationSeconds;
+  } else if (typeof item.durationSeconds === "number" && item.durationSeconds > 0) {
+    baseDuration = item.durationSeconds;
+  }
 
-    // 2순위: 저장된 진행 정보(localStorage)
-    const stored = getWatchProgress(item.id);
-    if (!stored) {
-      setProgressSeconds(null);
-      // durationSeconds는 props에서 받은 기본 길이를 유지
-      setDurationSeconds(typeof item.durationSeconds === "number" ? item.durationSeconds : null);
-      setCompleted(false);
-      return;
-    }
-    setProgressSeconds(stored.lastPositionSeconds);
-    setDurationSeconds(stored.durationSeconds);
-    setCompleted(stored.completed);
-  }, [item.id, item.durationSeconds, radio?.playback]);
+  let progressSeconds: number | null = null;
+  if (playback && playback.videoId === item.id && playback.positionSeconds > 0) {
+    progressSeconds = playback.positionSeconds;
+  } else if (storedProgress?.lastPositionSeconds && storedProgress.lastPositionSeconds > 0) {
+    progressSeconds = storedProgress.lastPositionSeconds;
+  }
+
+  const completed =
+    storedProgress?.completed === true ||
+    (playback?.videoId === item.id && playback?.completed === true);
 
   const progressRatio = useMemo(() => {
-    if (!progressSeconds || !durationSeconds || durationSeconds <= 0) return 0;
-    return Math.min(1, Math.max(0, progressSeconds / durationSeconds));
-  }, [progressSeconds, durationSeconds]);
+    if (!progressSeconds || !baseDuration || baseDuration <= 0) return 0;
+    return Math.min(1, Math.max(0, progressSeconds / baseDuration));
+  }, [progressSeconds, baseDuration]);
 
   const resumeHref = useMemo(() => {
     if (!item.link) return "#";
@@ -96,18 +86,16 @@ export default function YouTubeCard({ item }: Props) {
   }, [item.link, progressSeconds, completed]);
 
   const durationLabel = useMemo(() => {
-    const base = typeof item.durationSeconds === "number" ? item.durationSeconds : durationSeconds;
-    if (!base || base <= 0) return null;
-    return formatSeconds(base);
-  }, [item.durationSeconds, durationSeconds]);
+    if (!baseDuration || baseDuration <= 0) return null;
+    return formatSeconds(baseDuration);
+  }, [baseDuration]);
 
   const formLabel = useMemo(() => {
-    const base = typeof item.durationSeconds === "number" ? item.durationSeconds : durationSeconds;
-    if (!base || base <= 0) return null;
-    const total = base;
+    if (!baseDuration || baseDuration <= 0) return null;
+    const total = baseDuration;
     const isShort = total <= 90; // 1분 30초 이하면 숏폼 느낌으로 표시
     return isShort ? "숏폼" : "롱폼";
-  }, [item.durationSeconds, durationSeconds]);
+  }, [baseDuration]);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl bg-transparent px-3">
@@ -156,7 +144,7 @@ export default function YouTubeCard({ item }: Props) {
           )}
         </div>
         <div className="flex flex-1 flex-col px-0 pb-1.5 pt-0 -mt-1">
-          <div className="min-h-[2.5rem]">
+          <div className="min-h-10">
             <h3 className="line-clamp-2 text-[11px] font-medium leading-snug tracking-tight text-(--notion-fg) group-hover:text-(--notion-fg)/90">
               {item.title}
             </h3>

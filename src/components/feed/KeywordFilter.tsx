@@ -44,12 +44,10 @@ export function useKeywordFilter() {
 
 interface KeywordFilterProps {
   selectedSourceName?: string;
-  filteredItemsCount: number;
   keywords: string[];
   onAddKeyword: (kw: string) => void;
   onRemoveKeyword: (kw: string) => void;
   onClearKeywords: () => void;
-  hasCategoryFilter?: boolean;
   selectedCategory?: FeedCategory | null;
   onCategoryChange?: (category: FeedCategory | null) => void;
   /** 보기 전환(전체/유튜브/RSS)과 함께 표시할 때 설명·여백 축소 */
@@ -60,12 +58,10 @@ interface KeywordFilterProps {
 
 export default function KeywordFilter({
   selectedSourceName,
-  filteredItemsCount,
   keywords,
   onAddKeyword,
   onRemoveKeyword,
   onClearKeywords,
-  hasCategoryFilter,
   selectedCategory,
   onCategoryChange,
   compact = false,

@@ -107,7 +107,6 @@ export default function FeedClientContainer({
     const byKeywords = filterFeedByKeywords(byView, keywords);
     const filteredItems = filterFeedByCategory(byKeywords, selectedCategory);
     const hasActiveFilters = keywords.length > 0;
-    const hasCategoryFilter = selectedCategory !== null;
 
     const recommendations = useMemo(
         () => computeRecommendations(byView, goals),
@@ -343,12 +342,10 @@ export default function FeedClientContainer({
 
             <KeywordFilter
                 selectedSourceName={selectedSourceName}
-                filteredItemsCount={filteredItems.length}
                 keywords={keywords}
                 onAddKeyword={addKeyword}
                 onRemoveKeyword={removeKeyword}
                 onClearKeywords={clearKeywords}
-                hasCategoryFilter={hasCategoryFilter}
                 selectedCategory={selectedCategory}
                 onCategoryChange={handleCategoryChange}
                 compact={showViewSwitcher}
