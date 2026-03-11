@@ -1,0 +1,49 @@
+[0m[0m
+[0m[4mC:\Users\백요한\Desktop\Youtube-Summary\src\components\player\FloatingRadioPlayer.tsx[24m[0m
+[0m   [2m14:1[22m  [31merror[39m    ES2015 module syntax is preferred over namespaces                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  [2m@typescript-eslint/no-namespace[22m[0m
+[0m   [2m46:7[22m  [31merror[39m    Error: Calling setState synchronously within an effect can trigger cascading renders[0m
+[0m[0m
+[0mEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:[0m
+[0m* Update external systems with the latest state from React.[0m
+[0m* Subscribe for updates from some external system, calling setState in a callback function when external state changes.[0m
+[0m[0m
+[0mCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).[0m
+[0m[0m
+[0mC:\Users\백요한\Desktop\Youtube-Summary\src\components\player\FloatingRadioPlayer.tsx:46:7[0m
+[0m  44 |   useEffect(() => {[0m
+[0m  45 |     if (typeof window === "undefined" || window.YT?.Player) {[0m
+[0m> 46 |       setApiReady(true);[0m
+[0m     |       ^^^^^^^^^^^ Avoid calling setState() directly within an effect[0m
+[0m  47 |       return;[0m
+[0m  48 |     }[0m
+[0m  49 |     const tag = document.createElement("script");  [2mreact-hooks/set-state-in-effect[22m[0m
+[0m   [2m90:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'radio'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m96:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'radio'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m102:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'radio'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\백요한\Desktop\Youtube-Summary\src\contexts\RadioQueueContext.tsx[24m[0m
+[0m  [2m109:5[22m  [31merror[39m    Compilation Skipped: Existing memoization could not be preserved[0m
+[0m[0m
+[0mReact Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `state`, but the source dependencies were [state.queue, state.currentIndex, state.isPlaying, addToQueue, removeFromQueue, setCurrentIndex, play, pause, togglePlay, next, prev_7, close, currentItem]. Inferred less specific property than source.[0m
+[0m[0m
+[0mC:\Users\백요한\Desktop\Youtube-Summary\src\contexts\RadioQueueContext.tsx:109:5[0m
+[0m  107 |[0m
+[0m  108 |   const value = useMemo<RadioQueueContextValue>([0m
+[0m> 109 |     () => ({[0m
+[0m      |     ^^^^^^^^[0m
+[0m> 110 |       ...state,[0m
+[0m      | ^^^^^^^^^^^^^^^[0m
+[0m> 111 |       addToQueue,[0m
+[0m      …[0m
+[0m      | ^^^^^^^^^^^^^^^[0m
+[0m> 120 |       currentItem,[0m
+[0m      | ^^^^^^^^^^^^^^^[0m
+[0m> 121 |     }),[0m
+[0m      | ^^^^^^^ Could not preserve existing manual memoization[0m
+[0m  122 |     [[0m
+[0m  123 |       state.queue,[0m
+[0m  124 |       state.currentIndex,  [2mreact-hooks/preserve-manual-memoization[22m[0m
+[0m  [2m122:5[22m  [33mwarning[39m  React Hook useMemo has a missing dependency: 'state'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[31m[1m✖ 7 problems (3 errors, 4 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[0m

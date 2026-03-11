@@ -5,6 +5,10 @@
 ## 주요 기능
 
 - 유튜브 업로드 목록과 RSS 피드를 하나의 리스트로 병합
+- **소식통 레이아웃**: 유튜브 최신 / RSS·뉴스 최신을 블록별로 분리해 표시
+- **카테고리 필터**: AI·자기계발·개발·뉴스 등으로 분류해 보기 (URL `?category=AI` 지원)
+- **백그라운드 라디오**: 유튜브 항목을 큐에 넣고 하단 플로팅 플레이어로 오디오만 재생
+- **AI 3줄 요약**: 자막 또는 제목·설명으로 Gemini 요약 (선택)
 - 최신순 정렬과 중복 제거
 - 키워드 기반 개인 필터 저장
 - 수동 새로고침과 서버 캐시 재검증
@@ -32,10 +36,11 @@ npm install
 copy .env.example .env.local
 ```
 
-3. `.env.local`에 필요한 값을 채웁니다.
+3. `.env.local`에 필요한 값을 채웁니다. (`.env.example` 참고)
 
 ```env
 YOUTUBE_API_KEY=your_youtube_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 REVALIDATE_SECRET=replace_with_a_long_random_secret
 ```
 
@@ -49,15 +54,17 @@ npm run dev
 
 ## 환경 변수
 
-- `YOUTUBE_API_KEY`: 유튜브 채널 업로드 목록을 가져오기 위한 YouTube Data API 키
-- `REVALIDATE_SECRET`: 선택 사항이며, 서버 간 수동 재검증 호출 시 사용할 비밀값
+- `YOUTUBE_API_KEY`: 유튜브 피드·라디오·요약 폴백용 YouTube Data API v3 키 (필수)
+- `GEMINI_API_KEY`: AI 3줄 요약용 Gemini API 키 (요약 사용 시 필수)
+- `REVALIDATE_SECRET`: 선택. 서버 간 수동 재검증 호출 시 사용
 
 브라우저에서 누르는 기본 새로고침 버튼은 same-origin 요청만 허용하도록 보호되어 있습니다. 외부 자동화나 웹훅에서 재검증을 호출하려면 `x-revalidate-secret` 헤더에 `REVALIDATE_SECRET` 값을 넣어 호출하면 됩니다.
 
 ## 프로젝트 구조
 
-- `src/app`: 앱 라우터와 API 라우트
-- `src/components`: 레이아웃, 피드, UI 컴포넌트
+- `src/app`: 앱 라우터, API 라우트, 서버 액션(요약)
+- `src/components`: 레이아웃, 피드, 플로팅 라디오 플레이어, UI
+- `src/contexts`: 라디오 큐 전역 상태 (RadioQueueProvider)
 - `src/lib`: YouTube, RSS, 병합/필터링 로직
 - `src/types`: 공통 타입 정의
 
@@ -73,6 +80,9 @@ npm run build
 브라우저에서 함께 확인하면 좋은 항목:
 
 - 피드 목록이 정상적으로 렌더링되는지
+- **소식통**: 유튜브 블록 / RSS·뉴스 블록이 각각 최신순으로 표시되는지
+- **카테고리 필터**: 전체·AI·자기계발·개발·뉴스 전환 시 필터가 맞는지, 사이드바 카테고리 링크가 동작하는지
+- **라디오**: "라디오에 추가" → 하단 플레이어 재생/일시정지/다음/이전/닫기, 탭 전환 후에도 오디오 유지
 - 필터 추가/삭제가 기대대로 동작하는지
 - 새로고침 버튼 클릭 후 목록이 다시 로드되는지
 - 빈 상태 메시지가 자연스러운지

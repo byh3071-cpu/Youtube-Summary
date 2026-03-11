@@ -165,3 +165,89 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
     return { items: [], status: "request_failed" };
   }
 }
+
+/** 채널 ID 또는 @핸들로 채널 정보 조회 (채널 추가 시 사용) */
+export interface ResolvedChannel {
+  channelId: string;
+  channelName: string;
+  avatarUrl?: string;
+}
+
+export async function resolveYouTubeChannel(parsed: { type: "channelId"; channelId: string } | { type: "handle"; handle: string }): Promise<ResolvedChannel | null> {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    part: "snippet",
+    key: YOUTUBE_API_KEY,
+  });
+  if (parsed.type === "channelId") {
+    params.set("id", parsed.channelId);
+  } else {
+    params.set("forHandle", parsed.handle.startsWith("@") ? parsed.handle : `@${parsed.handle}`);
+  }
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      items?: Array<{
+        id?: string;
+        snippet?: {
+          title?: string;
+          thumbnails?: {
+            default?: { url?: string };
+            medium?: { url?: string };
+            high?: { url?: string };
+          };
+        };
+      }>;
+    };
+    const channel = data.items?.[0];
+    if (!channel?.id || !channel.snippet?.title) return null;
+    const thumb =
+      channel.snippet.thumbnails?.medium?.url ||
+      channel.snippet.thumbnails?.high?.url ||
+      channel.snippet.thumbnails?.default?.url;
+    return {
+      channelId: channel.id,
+      channelName: channel.snippet.title,
+      avatarUrl: thumb,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 단일 영상의 제목·설명 조회 (요약 폴백용). 자막이 없을 때 사용 */
+export interface VideoSnippet {
+  title: string;
+  description: string;
+}
+
+export async function getVideoSnippet(videoId: string): Promise<VideoSnippet | null> {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    part: "snippet",
+    id: videoId,
+    key: YOUTUBE_API_KEY,
+  });
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { items?: Array<{ snippet?: { title?: string; description?: string } }> };
+    const snippet = data.items?.[0]?.snippet;
+    if (!snippet?.title) return null;
+    return {
+      title: snippet.title,
+      description: snippet.description ?? "",
+    };
+  } catch {
+    return null;
+  }
+}

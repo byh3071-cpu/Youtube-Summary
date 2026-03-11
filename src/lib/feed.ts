@@ -1,7 +1,9 @@
+/** 유튜브 채널 + RSS 소스를 병합·최신순 정렬·중복 제거 후 반환. 각 아이템에 소스 기준 category 부여 */
 import { FeedItem } from "../types/feed";
 import { defaultSources, FeedSource } from "./sources";
 import { fetchYouTubeFeed, getYouTubeConfigurationStatus, YouTubeFetchStatus } from "./youtube";
 import { fetchRssFeed } from "./rss";
+import type { FeedCategory } from "../types/feed";
 
 export interface MergedFeedResult {
     items: FeedItem[];
@@ -63,6 +65,15 @@ export async function getMergedFeed(sources: FeedSource[] = defaultSources): Pro
         });
 
         const uniqueItems = dedupeItems([...youtubeItems, ...rssItems]);
+
+        // 소스별 카테고리 맵으로 각 아이템에 category 부여
+        const sourceIdToCategory = new Map<string, FeedCategory>(
+            sources.map((s) => [s.id, s.category])
+        );
+        uniqueItems.forEach((item) => {
+            const cat = sourceIdToCategory.get(item.sourceId);
+            if (cat) (item as FeedItem).category = cat;
+        });
 
         const youtubeStatus = youtubeResults.reduce<YouTubeFetchStatus>(
             (currentStatus, result) => {

@@ -1,45 +1,48 @@
 import { ReactNode } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import MobileHeaderWithNav from "@/components/layout/MobileHeaderWithNav";
+import FloatingRadioPlayer from "@/components/player/FloatingRadioPlayer";
+import ScrollToTop from "@/components/ui/ScrollToTop";
 import type { MergedFeedResult } from "@/lib/feed";
+import type { FeedSource } from "@/lib/sources";
 
 interface LayoutProps {
     children: ReactNode;
     sourceStatus: MergedFeedResult["sourceStatus"];
     selectedSourceId?: string;
+    selectedCategory?: string;
+    youtubeSources?: FeedSource[];
+    customYouTubeSourceIds?: string[];
+    latestVideoBySource?: Record<string, string>;
 }
 
-export default function AppLayout({ children, sourceStatus, selectedSourceId }: LayoutProps) {
+export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, customYouTubeSourceIds, latestVideoBySource }: LayoutProps) {
     return (
         <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg) md:flex-row">
-            {/* Mobile Header */}
-            <header className="sticky top-0 z-20 border-b border-(--notion-border) bg-(--notion-bg)/92 px-4 py-3 backdrop-blur md:hidden">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded bg-(--notion-fg) text-xs font-bold text-(--notion-bg)">
-                        F
-                        </div>
-                        <div className="min-w-0">
-                            <p className="font-semibold">Focus Feed</p>
-                            <p className="truncate text-xs text-(--notion-fg)/55">
-                                유튜브와 RSS를 한 곳에서 읽는 개인 피드
-                            </p>
-                        </div>
-                    </div>
+            <MobileHeaderWithNav
+                sourceStatus={sourceStatus}
+                selectedSourceId={selectedSourceId}
+                selectedCategory={selectedCategory}
+                youtubeSources={youtubeSources}
+            />
 
-                    <ThemeToggle iconOnly />
-                </div>
-            </header>
+            <Sidebar
+                sourceStatus={sourceStatus}
+                selectedSourceId={selectedSourceId}
+                selectedCategory={selectedCategory}
+                youtubeSources={youtubeSources}
+                customYouTubeSourceIds={customYouTubeSourceIds}
+                latestVideoBySource={latestVideoBySource}
+            />
 
-            {/* Sidebar (Desktop only) */}
-            <Sidebar sourceStatus={sourceStatus} selectedSourceId={selectedSourceId} />
-
-            {/* Main Content Area */}
-            <main className="min-w-0 flex-1 px-4 py-4 sm:px-6 sm:py-6 md:px-10 lg:px-16">
+            <main className="min-w-0 flex-1 px-4 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-32 md:px-10 lg:px-16">
                 <div className="mx-auto max-w-5xl">
                     {children}
                 </div>
             </main>
+
+            <FloatingRadioPlayer />
+            <ScrollToTop />
         </div>
     );
 }

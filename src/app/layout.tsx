@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { RadioQueueProvider } from "@/contexts/RadioQueueContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,6 +17,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Focus Feed",
   description: "유튜브와 RSS 소스를 한 곳에서 정리해 보는 텍스트 중심 피드 리더",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#111827",
 };
 
 export default function RootLayout({
@@ -34,7 +37,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <RadioQueueProvider>
+            {children}
+          </RadioQueueProvider>
         </ThemeProvider>
       </body>
     </html>
