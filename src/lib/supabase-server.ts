@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // 우리가 사용할 DB 타입(테이블들)을 최소한으로 정의해 두면 좋습니다.
-type Database = {
+export type Database = {
   public: {
     Tables: {
       summaries: {
@@ -39,6 +39,7 @@ type Database = {
       bookmarks: {
         Row: {
           id: string;
+          user_id: string;
           video_id: string;
           video_title: string;
           highlight: string;
@@ -46,12 +47,34 @@ type Database = {
         };
         Insert: {
           id?: string;
+          user_id: string;
           video_id: string;
           video_title: string;
           highlight: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["bookmarks"]["Row"]>;
+      };
+      custom_sources: {
+        Row: {
+          id: string;
+          user_id: string;
+          source_id: string;
+          name: string;
+          category: string;
+          avatar_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          source_id: string;
+          name: string;
+          category?: string;
+          avatar_url?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_sources"]["Row"]>;
       };
     };
   };
@@ -95,11 +118,11 @@ export function getServerSupabaseClient():
   }
 
   try {
-    return createClient<Database>(url, serviceKey, {
+    return createClient<Database>(url!, serviceKey!, {
       auth: {
         persistSession: false, // 서버에서는 세션 저장 필요 없음
       },
-    });
+    }) as SupabaseClient<Database>;
   } catch (error) {
     console.error("Failed to create Supabase client. Disabling Supabase features.", error);
     return null;

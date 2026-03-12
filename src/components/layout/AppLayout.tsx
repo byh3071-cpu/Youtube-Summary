@@ -3,6 +3,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import MobileHeaderWithNav from "@/components/layout/MobileHeaderWithNav";
 import FloatingRadioPlayer from "@/components/player/FloatingRadioPlayer";
 import ScrollToTop from "@/components/ui/ScrollToTop";
+import AuthErrorBanner from "@/components/ui/AuthErrorBanner";
+import AuthSuccessBanner from "@/components/ui/AuthSuccessBanner";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
@@ -14,11 +16,25 @@ interface LayoutProps {
     youtubeSources?: FeedSource[];
     customYouTubeSourceIds?: string[];
     latestVideoBySource?: Record<string, string>;
+    authError?: string;
+    authErrorHint?: string;
+    authSuccess?: boolean;
 }
 
-export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, customYouTubeSourceIds, latestVideoBySource }: LayoutProps) {
+export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, customYouTubeSourceIds, latestVideoBySource, authError, authErrorHint, authSuccess }: LayoutProps) {
     return (
-        <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg) md:flex-row">
+        <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg)">
+            <a
+                href="#main"
+                className="absolute left-4 top-4 z-[100] rounded-md bg-(--notion-fg) px-4 py-2 text-sm font-medium text-(--notion-bg) outline-none ring-2 ring-(--notion-fg) -translate-y-[200%] transition-transform focus:translate-y-0 focus:outline-none"
+            >
+                본문으로 건너뛰기
+            </a>
+            <div className="w-full shrink-0 space-y-1.5 px-2 py-1.5 sm:px-4 md:px-6">
+                <AuthSuccessBanner authSuccess={authSuccess ?? false} />
+                <AuthErrorBanner authError={authError} authErrorHint={authErrorHint} />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col md:flex-row">
             <MobileHeaderWithNav
                 sourceStatus={sourceStatus}
                 selectedSourceId={selectedSourceId}
@@ -35,7 +51,7 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
                 latestVideoBySource={latestVideoBySource}
             />
 
-            <main className="min-w-0 flex-1 px-2 py-4 pb-28 sm:px-4 sm:py-6 sm:pb-32 md:px-6 lg:px-8">
+            <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-2 pt-2 pb-28 sm:px-4 sm:pt-4 sm:pb-32 md:px-6 lg:px-8">
                 <div className="mx-auto max-w-6xl lg:max-w-7xl">
                     {children}
                 </div>
@@ -43,6 +59,7 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
 
             <FloatingRadioPlayer />
             <ScrollToTop />
+            </div>
         </div>
     );
 }

@@ -1,28 +1,19 @@
+ "use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { Home, Rss, Youtube, Tag } from "lucide-react";
+import { Home, Rss, Youtube, Tag, Bookmark, ListMusic } from "lucide-react";
+import { useTheme } from "next-themes";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LoginButton } from "@/components/auth/LoginButton";
 import AddChannelButton from "@/components/feed/AddChannelButton";
+import SourceExportImport from "@/components/feed/SourceExportImport";
 import YouTubeSourceList from "@/components/layout/YouTubeSourceList";
+import { YOUTUBE_STATUS_LABEL, YOUTUBE_STATUS_TONE } from "@/lib/youtube-status";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
 const rssSources = defaultSources.filter((source) => source.type === "RSS");
-
-const youtubeStatusLabel = {
-    ready: "정상 연결",
-    missing_api_key: "키 필요",
-    invalid_api_key: "키 오류",
-    request_failed: "일시 장애",
-} as const;
-
-const youtubeStatusTone = {
-    ready: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    missing_api_key: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-    invalid_api_key: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-    request_failed: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300",
-} as const;
 
 export default function Sidebar({
     sourceStatus,
@@ -40,21 +31,29 @@ export default function Sidebar({
     latestVideoBySource?: Record<string, string>;
 }) {
     const youtubeSources = youtubeSourcesProp ?? defaultSources.filter((s) => s.type === "YouTube");
+    const { theme, setTheme } = useTheme();
+    const isDark = theme === "dark";
     return (
         <aside className="hidden w-72 shrink-0 border-r border-(--notion-border) bg-(--notion-gray) md:flex md:flex-col">
             <div className="m-2 rounded-xl border border-(--notion-border) bg-(--notion-bg) p-4">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="relative h-12 w-12 overflow-hidden rounded-xl">
+                <div className="mb-4 flex flex-col items-center gap-4">
+                    <button
+                        type="button"
+                        onClick={() => setTheme(isDark ? "light" : "dark")}
+                        className="relative h-20 w-20 overflow-hidden rounded-3xl bg-transparent"
+                        aria-label="테마 전환"
+                    >
                         <Image
                             src="/focus-feed-logo-v2.png"
                             alt="Focus Feed 로고"
                             fill
-                            sizes="48px"
+                            sizes="80px"
                             className="object-contain"
-                            priority
                         />
+                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                        <LoginButton />
                     </div>
-                    <ThemeToggle />
                 </div>
 
                 <Link
@@ -89,8 +88,8 @@ export default function Sidebar({
                             <Youtube size={15} className="text-red-500" />
                             <span>YouTube ({youtubeSources.length})</span>
                         </div>
-                        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${youtubeStatusTone[sourceStatus.youtube]}`}>
-                            {youtubeStatusLabel[sourceStatus.youtube]}
+                        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${YOUTUBE_STATUS_TONE[sourceStatus.youtube]}`}>
+                            {YOUTUBE_STATUS_LABEL[sourceStatus.youtube]}
                         </span>
                     </div>
                     <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
@@ -103,6 +102,7 @@ export default function Sidebar({
                         latestVideoBySource={latestVideoBySource}
                     />
                     <AddChannelButton />
+                    <SourceExportImport />
                 </section>
 
                 <SidebarSection
@@ -114,6 +114,28 @@ export default function Sidebar({
                     helperText="RSS 소스는 현재 정상적으로 피드에 포함됩니다."
                     selectedSourceId={selectedSourceId}
                 />
+
+                <section className="pt-2">
+                    <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
+                        내 콘텐츠
+                    </div>
+                    <div className="space-y-0.5">
+                        <Link
+                            href="/playlists"
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                        >
+                            <ListMusic size={15} className="text-(--notion-fg)/60" />
+                            내 플레이리스트
+                        </Link>
+                        <Link
+                            href="/bookmarks"
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                        >
+                            <Bookmark size={15} className="text-(--notion-fg)/60" />
+                            북마크
+                        </Link>
+                    </div>
+                </section>
             </nav>
 
             <div className="flex flex-col gap-2 border-t border-(--notion-border) p-4 pb-28 md:pb-24">

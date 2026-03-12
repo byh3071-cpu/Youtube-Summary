@@ -2,7 +2,8 @@ import React from "react";
 import Image from "next/image";
 import RefreshButton from "@/components/ui/RefreshButton";
 import ConnectionStatusPopup from "@/components/feed/ConnectionStatusPopup";
-import { YouTubeFetchStatus } from "@/lib/youtube";
+import { YOUTUBE_STATUS_TONE } from "@/lib/youtube-status";
+import type { YouTubeFetchStatus } from "@/lib/youtube";
 
 interface FeedHeaderProps {
   selectedSource?: { id: string; name: string; type: "YouTube" | "RSS" };
@@ -12,18 +13,12 @@ interface FeedHeaderProps {
   rssSourceCount: number;
 }
 
-const youtubeStatusLabel: Record<YouTubeFetchStatus, string> = {
+/** FeedHeader 전용 라벨: Sidebar보다 더 구체적인 표현 사용 */
+const HEADER_STATUS_LABEL: Record<YouTubeFetchStatus, string> = {
   ready: "YouTube 연결됨",
   missing_api_key: "YouTube 키 필요",
   invalid_api_key: "YouTube 키 오류",
   request_failed: "YouTube 일시 장애",
-};
-
-const youtubeStatusTone: Record<YouTubeFetchStatus, string> = {
-  ready: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  missing_api_key: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  invalid_api_key: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  request_failed: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300",
 };
 
 const youtubeNoticeMessage: Record<YouTubeFetchStatus, (selected: FeedHeaderProps["selectedSource"]) => string> = {
@@ -46,13 +41,15 @@ export default function FeedHeader({
   youtubeSourceCount,
   rssSourceCount,
 }: FeedHeaderProps) {
+  void youtubeSourceCount;
+  void rssSourceCount;
   const showYoutubeNotice = sourceStatus.youtube !== "ready" && (!selectedSource || selectedSource.type === "YouTube");
 
   return (
-    <section className="mb-6 rounded-3xl border border-(--notion-border) bg-linear-to-b from-(--notion-bg) to-(--notion-gray) p-5 sm:mb-8 sm:p-7">
+    <section className="mb-4 rounded-3xl border border-(--notion-border) bg-linear-to-b from-(--notion-bg) to-(--notion-gray) p-5 sm:mb-5 sm:p-7">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <span className="inline-flex rounded-full border border-(--notion-border) bg-(--notion-bg) px-2.5 py-1 text-[11px] font-semibold tracking-wide text-(--notion-fg)/55 uppercase">
+          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase ${selectedSource ? "border-(--notion-border) bg-(--notion-bg) text-(--notion-fg)/70" : "border-(--notion-border) bg-(--notion-bg) text-(--notion-fg)/55"}`}>
             {selectedSource ? "소스 보기" : "전체 피드"}
           </span>
           {selectedSource ? (
@@ -60,7 +57,7 @@ export default function FeedHeader({
               <span className="truncate">{selectedSource.name}</span>
             </h1>
           ) : (
-            <div className="mb-3 mt-3">
+            <div className="mb-3 mt-3 -ml-4">
               <div className="relative h-9 w-[180px] sm:h-11 sm:w-[220px]">
                 <Image
                   src="/focus-feed-wordmark-v5.png"
@@ -73,21 +70,20 @@ export default function FeedHeader({
               </div>
             </div>
           )}
-          <p className="max-w-2xl text-[13px] leading-relaxed text-(--notion-fg)/65 sm:text-[15px]">
-            {selectedSource
-              ? "이 소스에서 올라온 최신 항목만 모아 보고 있어요."
-              : "하루에 한 번, 보고 들을 가치가 있는 콘텐츠만 모아보세요."}
-          </p>
+          {selectedSource && (
+            <p className="max-w-2xl text-[13px] leading-relaxed text-(--notion-fg)/65 sm:text-[14px]">
+              {selectedSource.type === "YouTube"
+                ? "이 채널에서 올라온 최신 항목만 모아 보고 있어요."
+                : "이 소스에서 올라온 최신 항목만 모아 보고 있어요."}
+            </p>
+          )}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-(--notion-fg)/60">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-(--notion-fg)/60">
             <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
               총 {visibleItemsCount}개
             </span>
-            <span className={`rounded-2xl border px-3 py-1.5 ${youtubeStatusTone[sourceStatus.youtube]}`}>
-              {youtubeStatusLabel[sourceStatus.youtube]}
-            </span>
-            <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-              2시간마다 새로고침
+            <span className={`rounded-2xl border px-3 py-1.5 ${YOUTUBE_STATUS_TONE[sourceStatus.youtube]}`}>
+              {HEADER_STATUS_LABEL[sourceStatus.youtube]}
             </span>
           </div>
         </div>

@@ -54,5 +54,8 @@ export const qaLog = {
     fullPlayerClose: () => {
       console.log(`${PREFIX} [Radio] 전체 화면 영상 닫힘`);
     },
+    playlistSaved: (queueLength: number) => {
+      console.log(`${PREFIX} [Radio] 플레이리스트 저장됨`, { queueLength });
+    },
   },
 };

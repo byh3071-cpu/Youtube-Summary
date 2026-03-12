@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, type ReactNode } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import { storage } from "@/lib/storage";
+import { AutoAnimateList } from "@/components/ui/AutoAnimateList";
 
 function normalizeKeyword(keyword: string): string {
   return keyword.trim().replace(/\s+/g, " ");
@@ -85,16 +86,32 @@ export default function KeywordFilter({
   };
 
   return (
-    <section className={compact ? "mb-4 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 py-1 sm:px-3.5 sm:py-1" : "mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-1 sm:mb-5"}>
-      <div className={compact ? "mb-0 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between" : "mb-0 flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between"}>
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className={compact ? "mt-0 mb-0 text-sm font-semibold" : "mt-0 mb-0 text-base font-semibold"}>필터</h2>
-            {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-          </div>
-          {!compact && (
+    <section className={compact ? "mb-4 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 pt-0 pb-1 sm:px-3.5" : "mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 pt-0 pb-1 sm:mb-5"}>
+      <div className={compact ? "mb-0 flex items-center justify-between gap-3" : "mb-0 flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between"}>
+        {compact ? (
+          <>
+            <div className="ml-2 flex items-center gap-3">
+             <h2 className="relative -translate-y-[8px] mb-0 text-sm font-semibold">필터</h2>
+              {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCollapsed(prev => !prev)}
+              aria-label={collapsed ? "필터 패널 열기" : "필터 패널 접기"}
+              className="flex items-center gap-1 rounded-full border border-(--notion-border) px-2.5 py-1 text-xs font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
+            >
+              {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+              {collapsed ? "열기" : "접기"}
+            </button>
+          </>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="relative -translate-y-[100px] mb-0 text-sm font-semibold">필터</h2>
+              {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+            </div>
             <>
-              <p className="mt-0 text-[13px] text-(--notion-fg)/60">
+              <p className="mt-0.5 text-[13px] leading-snug text-(--notion-fg)/60">
                 {selectedSourceName
                   ? `${selectedSourceName} 안에서 키워드로 다시 좁혀볼 수 있습니다.`
                   : "키워드를 등록하면 제목, 요약, 출처 이름 기준으로 피드를 빠르게 좁혀볼 수 있습니다."}
@@ -103,24 +120,15 @@ export default function KeywordFilter({
                 <button
                   type="button"
                   onClick={() => setCollapsed(prev => !prev)}
-                  className="rounded-full border border-(--notion-border) px-2.5 py-1 font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
+                  aria-label={collapsed ? "필터 패널 열기" : "필터 패널 접기"}
+                  title={collapsed ? "필터 패널 열기" : "필터 패널 접기"}
+                  className="flex items-center gap-1 rounded-full border border-(--notion-border) px-2.5 py-1 font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
                 >
-                  {collapsed ? "열기" : "닫기"}
+                  {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                  <span>{collapsed ? "열기" : "접기"}</span>
                 </button>
               </div>
             </>
-          )}
-        </div>
-
-        {compact && (
-          <div className="flex flex-col items-end gap-1 text-xs text-(--notion-fg)/60">
-            <button
-              type="button"
-              onClick={() => setCollapsed(prev => !prev)}
-              className="rounded-full border border-(--notion-border) px-2.5 py-1 font-semibold text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover)"
-            >
-              {collapsed ? "열기" : "닫기"}
-            </button>
           </div>
         )}
       </div>
@@ -143,13 +151,13 @@ export default function KeywordFilter({
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${selectedCategory === cat ? "border-(--notion-fg)/40 bg-(--notion-hover) text-(--notion-fg)" : "border-(--notion-border) text-(--notion-fg)/60 hover:bg-(--notion-hover)"}`}
                 >
                     {cat}
-                </button>
-            ))}
-        </div>
+          </button>
+        ))}
+      </div>
       )}
 
       {!collapsed && (
-      <div className="flex flex-wrap items-center gap-2">
+      <AutoAnimateList className="flex flex-wrap items-center gap-2">
         {keywords.map(keyword => (
           <div
             key={keyword}
@@ -169,7 +177,12 @@ export default function KeywordFilter({
 
         {isAdding ? (
           <form onSubmit={handleAddSubmit} className="flex flex-wrap items-center gap-2">
+            <label htmlFor="keyword-filter-input" className="sr-only">
+              관심 키워드 입력
+            </label>
             <input
+              id="keyword-filter-input"
+              name="keyword"
               type="text"
               autoFocus
               value={newKeyword}
@@ -220,7 +233,7 @@ export default function KeywordFilter({
             전체 해제
           </button>
         )}
-      </div>
+      </AutoAnimateList>
       )}
 
       {!collapsed && !compact && !hasActiveFilters && !isAdding && (

@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "Focus Feed",
   description: "유튜브와 RSS 소스를 한 곳에서 정리해 보는 텍스트 중심 피드 리더",
   manifest: "/manifest.webmanifest",
+};
+
+export const viewport = {
   themeColor: "#111827",
 };
 

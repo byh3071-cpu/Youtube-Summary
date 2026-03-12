@@ -146,6 +146,7 @@ export default function FloatingRadioPlayer() {
       return;
     }
     setResumeSeconds(stored.lastPositionSeconds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- videoId만 추적해 재실행, currentItem 객체 참조는 제외
   }, [radio?.currentItem?.videoId]);
 
   // 진행 바 상태 업데이트
@@ -157,6 +158,8 @@ export default function FloatingRadioPlayer() {
 
     const update = () => {
       try {
+        const item = radio?.currentItem;
+        if (!item) return;
         const current = typeof playerRef.current?.getCurrentTime === "function" ? playerRef.current.getCurrentTime() : 0;
         const duration = typeof playerRef.current?.getDuration === "function" ? playerRef.current.getDuration() : 0;
         if (duration > 0) {
@@ -165,15 +168,15 @@ export default function FloatingRadioPlayer() {
           // 수 초에 한 번씩만 진행도 저장 (불필요한 I/O 방지)
           const now = Date.now();
           if (now - lastSavedAt > 5000) {
-            saveWatchProgress(radio.currentItem.videoId, current, duration);
+            saveWatchProgress(item.videoId, current, duration);
             lastSavedAt = now;
           }
 
           // 1초에 한 번 정도만 전역 상태로 브로드캐스트
-          if (now - lastBroadcastAt > 1000 && typeof radio.updatePlayback === "function") {
+          if (now - lastBroadcastAt > 1000 && typeof radio?.updatePlayback === "function") {
             const ratio = duration > 0 ? current / duration : 0;
             radio.updatePlayback({
-              videoId: radio.currentItem.videoId,
+              videoId: item.videoId,
               positionSeconds: current,
               durationSeconds: duration,
               completed: ratio >= 0.9,
@@ -191,6 +194,7 @@ export default function FloatingRadioPlayer() {
     return () => {
       if (frameId !== null) cancelAnimationFrame(frameId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- playerReady + 현재 재생 videoId만 의존, radio 전체 제외로 불필요 재실행 방지
   }, [playerReady, radio?.currentItem?.videoId, radio?.currentItem]);
 
   // 미니/전체 영상: YT가 1x1로 만든 iframe을 모드에 맞게 리사이즈
@@ -249,18 +253,18 @@ export default function FloatingRadioPlayer() {
   if (radio.queue.length === 0) {
     return (
       <footer
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-(--notion-border) bg-(--notion-bg)/95 py-3 backdrop-blur supports-backdrop-filter:bg-(--notion-bg)/80"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-(--notion-border) bg-(--notion-bg)/95 py-2 backdrop-blur supports-backdrop-filter:bg-(--notion-bg)/80"
         role="region"
         aria-label="라디오 안내"
       >
-        <div className="mx-auto flex max-w-5xl items-center justify-center gap-3 px-4 md:px-6">
-          <div className="relative h-10 w-10 overflow-hidden rounded-lg">
+        <div className="mx-auto flex max-w-5xl items-center justify-center gap-2.5 px-4 md:px-6">
+          <div className="relative h-14 w-14 shrink-0 md:h-16 md:w-16">
             <Image
               src="/focus-feed-logo-v2.png"
               alt="Focus Feed 로고"
               fill
-              sizes="40px"
-              className="object-cover"
+              sizes="(max-width: 768px) 56px, 64px"
+              className="object-contain object-center"
             />
           </div>
           <div className="text-sm">
@@ -327,8 +331,9 @@ export default function FloatingRadioPlayer() {
                 onClick={(e) => {
                   e.stopPropagation();
                   try {
-                    if (playerRef.current && typeof (playerRef.current as any).seekTo === "function") {
-                      (playerRef.current as any).seekTo(resumeSeconds, true);
+                    const player = playerRef.current as { seekTo?: (sec: number, allow: boolean) => void } | null;
+                    if (player && typeof player.seekTo === "function") {
+                      player.seekTo(resumeSeconds, true);
                     }
                   } catch {
                     // ignore
