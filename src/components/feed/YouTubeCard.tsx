@@ -5,10 +5,13 @@ import Image from "next/image";
 import { CheckCircle2, RotateCcw, MoreHorizontal } from "lucide-react";
 import { FeedItem as FeedItemType } from "@/types/feed";
 import AddToRadioButton from "./AddToRadioButton";
+import BookmarkButton from "./BookmarkButton";
 import SummarizeButton from "./SummarizeButton";
 import InsightButton from "./InsightButton";
+import type { BookmarkEntry } from "./FeedClientContainer";
 import { getWatchProgress } from "@/lib/watch-history";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 function formatTimeAgo(pubDate: string): string {
   const date = new Date(pubDate);
@@ -29,6 +32,8 @@ function formatTimeAgo(pubDate: string): string {
 
 interface Props {
   item: FeedItemType;
+  bookmark?: BookmarkEntry | null;
+  onBookmarkChange?: () => void;
 }
 
 function formatSeconds(sec: number): string {
@@ -42,13 +47,13 @@ function formatSeconds(sec: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function YouTubeCard({ item }: Props) {
+export default function YouTubeCard({ item, bookmark, onBookmarkChange }: Props) {
   const timeAgo = formatTimeAgo(item.pubDate);
   const radio = useRadioQueueOptional();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isHydrated = useIsHydrated();
 
-  const storedProgress =
-    typeof window !== "undefined" && item.id ? getWatchProgress(item.id) : null;
+  const storedProgress = isHydrated && item.id ? getWatchProgress(item.id) : null;
   const playback = radio?.playback;
 
   let baseDuration: number | null = null;
@@ -150,31 +155,28 @@ export default function YouTubeCard({ item }: Props) {
             </h3>
           </div>
 
-          <div className="mt-0.5 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
+          <div className="mt-0.5 flex items-center gap-2">
+            <div className="flex min-w-0 shrink items-center gap-2">
               {item.sourceAvatarUrl ? (
-                <div className="relative h-7 w-7 overflow-hidden rounded-full bg-(--notion-gray)">
+                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-(--notion-gray)">
                   <Image
                     src={item.sourceAvatarUrl}
                     alt={item.sourceName}
                     fill
-                    sizes="28px"
+                    sizes="32px"
                     className="object-cover"
                   />
                 </div>
               ) : (
-                <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-(--notion-gray)">
-                  <span className="text-[10px] font-semibold text-(--notion-fg)/80">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-(--notion-gray)">
+                  <span className="text-[11px] font-semibold text-(--notion-fg)/80">
                     {item.sourceName.charAt(0)}
                   </span>
                 </div>
               )}
-              <p className="line-clamp-1 text-[11px] font-medium text-(--notion-fg)/75">
+              <p className="min-w-0 truncate text-[11px] font-medium text-(--notion-fg)/75">
                 {item.sourceName}
               </p>
-            </div>
-            <div className="shrink-0">
-              {item.id && <AddToRadioButton videoId={item.id} title={item.title} />}
             </div>
           </div>
 
@@ -183,6 +185,20 @@ export default function YouTubeCard({ item }: Props) {
           </p>
         </div>
       </a>
+      {item.id && (
+        <div className="flex shrink-0 items-center justify-end gap-0.5 px-0 pb-1 pt-0.5">
+          {onBookmarkChange && (
+            <BookmarkButton
+              videoId={item.id}
+              videoTitle={item.title}
+              isBookmarked={!!bookmark}
+              bookmarkId={bookmark?.id ?? null}
+              onBookmarkChange={onBookmarkChange}
+            />
+          )}
+          <AddToRadioButton videoId={item.id} title={item.title} />
+        </div>
+      )}
       {item.id && (
         <div
           className="px-0 pb-1.5 pt-0.5"

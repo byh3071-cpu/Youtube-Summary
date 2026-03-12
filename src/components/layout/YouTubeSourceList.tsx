@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -38,6 +39,7 @@ export default function YouTubeSourceList({
 }: Props) {
   const router = useRouter();
   const customSet = new Set(customSourceIds);
+  const [now] = useState(() => Date.now());
 
   const handleRemove = (e: React.MouseEvent, sourceId: string) => {
     e.preventDefault();
@@ -45,7 +47,12 @@ export default function YouTubeSourceList({
     const raw = getCookie(CUSTOM_SOURCES_COOKIE_NAME);
     const list = getCustomSourcesFromCookie(raw);
     const next = list.filter((s) => s.id !== sourceId);
+    // 이벤트 핸들러 내부에서의 의도적 side effect (렌더 중이 아님)
+    // eslint-disable-next-line react-hooks/immutability -- event handler
     document.cookie = buildCustomSourcesCookie(next);
+    fetch(`/api/custom-sources?sourceId=${encodeURIComponent(sourceId)}`, { method: "DELETE" }).catch(
+      () => {}
+    );
     router.refresh();
   };
 
@@ -57,7 +64,7 @@ export default function YouTubeSourceList({
         const latest = latestVideoBySource?.[item.id];
         const isRecent =
           latest && Number.isFinite(new Date(latest).getTime())
-            ? Date.now() - new Date(latest).getTime() < 24 * 60 * 60 * 1000
+            ? now - new Date(latest).getTime() < 24 * 60 * 60 * 1000
             : false;
         return (
           <div

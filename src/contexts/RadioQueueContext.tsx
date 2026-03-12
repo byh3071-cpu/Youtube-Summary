@@ -33,6 +33,7 @@ export interface RadioPlaybackState {
 
 interface RadioQueueContextValue extends RadioQueueState {
   addToQueue: (item: RadioQueueItem) => void;
+  replaceQueue: (items: RadioQueueItem[]) => void;
   removeFromQueue: (index: number) => void;
   setCurrentIndex: (index: number) => void;
   updateItemSummary: (videoId: string, summary: string) => void;
@@ -70,6 +71,19 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       const queue = [...prev.queue, item];
       const currentIndex = prev.queue.length === 0 ? 0 : prev.currentIndex;
       return { ...prev, queue, currentIndex, isPlaying: prev.queue.length === 0 ? true : prev.isPlaying };
+    });
+  }, []);
+
+  const replaceQueue = useCallback((items: RadioQueueItem[]) => {
+    if (!items || items.length === 0) {
+      setState({ queue: [], currentIndex: 0, isPlaying: false });
+      return;
+    }
+    items.forEach((item) => qaLog.radio.queueAdded(item.videoId, item.title, !!item.summary));
+    setState({
+      queue: items,
+      currentIndex: 0,
+      isPlaying: true,
     });
   }, []);
 
@@ -153,6 +167,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       addToQueue,
+      replaceQueue,
       removeFromQueue,
       setCurrentIndex,
       updateItemSummary,
@@ -166,7 +181,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       currentItem,
       playback,
     }),
-    [state, currentItem, playback, addToQueue, removeFromQueue, setCurrentIndex, updateItemSummary, updatePlayback, play, pause, togglePlay, next, prev, close]
+    [state, currentItem, playback, addToQueue, replaceQueue, removeFromQueue, setCurrentIndex, updateItemSummary, updatePlayback, play, pause, togglePlay, next, prev, close]
   );
 
   return (

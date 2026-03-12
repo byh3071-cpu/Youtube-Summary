@@ -35,20 +35,20 @@ export function RadioFooterControls({
       role="region"
       aria-label="라디오 플레이어"
     >
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5 md:px-6">
+      <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2 md:px-6">
         <button
           type="button"
           onClick={togglePlay}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-(--focus-accent) bg-(--notion-bg) text-(--focus-accent) shadow-sm transition-all hover:scale-105 hover:bg-(--focus-accent) hover:text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-(--focus-accent) bg-(--notion-bg) text-(--focus-accent) shadow-sm transition-all hover:scale-105 hover:bg-(--focus-accent) hover:text-white min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label={radio.isPlaying ? "일시정지" : "재생"}
           title={radio.isPlaying ? "일시정지" : "재생"}
         >
-          {radio.isPlaying ? <Pause size={20} /> : <Play size={20} />}
+          {radio.isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
         <button
           type="button"
           onClick={() => radio.prev()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label="이전 곡"
           title="이전 곡"
         >
@@ -57,7 +57,7 @@ export function RadioFooterControls({
         <button
           type="button"
           onClick={() => radio.next()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label="다음 곡"
           title="다음 곡"
         >
@@ -68,11 +68,13 @@ export function RadioFooterControls({
             {radio.currentItem?.title ?? "재생 중"}
           </p>
           <div className="mt-1 flex items-center gap-2">
-            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-(--notion-gray)">
-              <div
-                className={`h-full rounded-full bg-(--focus-accent) transition-[width] duration-200 ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
-                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-              />
+            <div className="relative flex-1 overflow-visible py-1">
+              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-(--notion-gray)">
+                <div
+                  className={`h-full rounded-full bg-(--focus-accent) transition-[width] duration-200 ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
+                  style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                />
+              </div>
               {radio.isPlaying && progress > 0 && progress < 100 && (
                 <div
                   className="pointer-events-none absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_4px_rgba(15,23,42,0.4)]"
@@ -93,7 +95,7 @@ export function RadioFooterControls({
             if (next) qaLog.radio.playlistDrawerOpen(radio.queue.length);
             else qaLog.radio.playlistDrawerClose();
           }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label="재생 목록"
           title="재생 목록"
         >
@@ -107,7 +109,7 @@ export function RadioFooterControls({
             if (next) qaLog.radio.lyricsViewOpen(!!radio.currentItem?.summary);
             else qaLog.radio.lyricsViewClose();
           }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label="AI 요약(가사) 보기"
           title="AI 요약(가사) 보기"
         >
@@ -123,7 +125,7 @@ export function RadioFooterControls({
               return next;
             });
           }}
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-(--notion-hover) ${videoExpanded ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/70 hover:text-(--notion-fg)"}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-(--notion-hover) min-h-[44px] min-w-[44px] touch-manipulation ${videoExpanded ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/70 hover:text-(--notion-fg)"}`}
           aria-label={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"}
           title={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"}
         >
@@ -135,7 +137,7 @@ export function RadioFooterControls({
             setFullPlayerOpen(true);
             qaLog.radio.fullPlayerOpen();
           }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label="전체 화면 영상"
           title="전체 화면 영상"
         >
@@ -144,7 +146,7 @@ export function RadioFooterControls({
         <button
           type="button"
           onClick={() => radio.close()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/50 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/50 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
           aria-label="플레이어 닫기"
           title="플레이어 닫기"
         >

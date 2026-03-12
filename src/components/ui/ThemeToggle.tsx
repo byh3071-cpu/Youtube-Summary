@@ -16,7 +16,7 @@ export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
     if (!mounted) {
         return (
             <button
-                className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-md transition-colors ${iconOnly ? 'p-2 justify-center' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
+                className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-lg transition-colors ${iconOnly ? 'p-2 justify-center min-h-[44px] min-w-[44px]' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
                 aria-label="테마 전환"
             >
                 <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
     return (
         <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-md transition-colors ${iconOnly ? 'p-2 justify-center' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
+            className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-lg transition-colors ${iconOnly ? 'p-2 justify-center min-h-[44px] min-w-[44px] touch-manipulation' : 'w-full justify-between gap-2 text-sm p-1.5'}`}
             aria-label="테마 전환"
         >
             <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 /** 카테고리: 소식통/필터에서 AI·자기계발·개발·뉴스 등 분류용 */
-export type FeedCategory = "AI" | "자기계발" | "개발" | "뉴스" | "기타";
+export type FeedCategory = "AI" | "자기계발" | "개발" | "뉴스" | "스타트업·비즈니스" | "기타";
 
 export interface FeedItem {
     id: string;          // 고유 식별자 (Video ID 또는 URL)

@@ -1,11 +1,33 @@
 "use server";
 
 import { GoogleGenAI } from "@google/genai";
-import { YoutubeTranscript } from "youtube-transcript";
-import { getVideoSnippet } from "@/lib/youtube";
-import { getSupabaseForSummaries } from "@/lib/supabase-server";
+import { getVideoContext } from "@/lib/video-context";
+import { getSupabaseForSummaries, type Database } from "@/lib/supabase-server";
 import { getMergedFeed } from "@/lib/feed";
 import type { FeedItem } from "@/types/feed";
+
+/** 자막 기반 3줄 요약 프롬프트 */
+const SUMMARY_PROMPT_CAPTION = (text: string) =>
+  `다음은 유튜브 영상의 자막입니다. 영상을 직접 보지 않고 라디오처럼 듣기만 하는 직장인을 위해, 불필요한 서론을 빼고 핵심 정보(팩트 단위) 3가지를 명확하게 요약해주세요.\n\n자막 내용:\n${text.slice(0, 15000)}`;
+
+/** 제목·설명 기반 3줄 요약 프롬프트 */
+const SUMMARY_PROMPT_SNIPPET = (text: string) =>
+  `다음은 유튜브 영상의 제목과 설명입니다. 핵심 내용을 3줄 이내로 요약해주세요.\n\n내용:\n${text.slice(0, 15000)}`;
+
+/** 인사이트 정리 프롬프트 */
+const INSIGHT_PROMPT = (text: string) =>
+  `다음은 유튜브 영상의 내용입니다. 이 영상을 끝까지 본 시청자가
+- 오늘 무엇을 배웠는지,
+- 앞으로 일/공부/삶에 어떻게 적용하면 좋을지
+정리할 수 있도록 도와주세요.
+
+요구사항:
+1) 영상에서 건질 만한 핵심 인사이트 3가지를, 한 줄씩 bullet로 정리
+2) 한국 직장인/개발자/지식 노동자가 1주일 안에 실제로 시도해볼 수 있는 구체적인 액션 2가지를 bullet로 제안
+3) 말투는 부담스럽지 않은 동료 느낌으로, 존댓말 한국어 사용
+
+영상 내용:
+${text.slice(0, 15000)}`;
 
 async function summarizeWithGemini(prompt: string): Promise<string | null> {
   if (!process.env.GEMINI_API_KEY) {
@@ -32,54 +54,6 @@ type RankingResult = {
   items: RankedItemPayload[];
 };
 
-async function getVideoContext(videoId: string): Promise<
-  | { text: string; source: "자막" | "제목·설명" }
-  | { error: string }
-> {
-  let text: string | null = null;
-  let source: "자막" | "제목·설명" = "자막";
-
-  try {
-    // 1. 자막 시도
-    try {
-      const transcriptTextList = await YoutubeTranscript.fetchTranscript(videoId);
-      text = transcriptTextList.map((t) => t.text).join(" ").trim() || null;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("Transcript is disabled") || msg.includes("transcript")) {
-        text = null;
-      } else {
-        throw e;
-      }
-    }
-
-    // 2. 자막이 없으면 제목·설명으로 폴백
-    if (!text) {
-      const fetched = await getVideoSnippet(videoId);
-      if (fetched && (fetched.title || fetched.description)) {
-        const snippetText = [fetched.title, fetched.description].filter(Boolean).join("\n\n").trim().slice(0, 8000);
-        if (snippetText.length > 0) {
-          text = snippetText;
-          source = "제목·설명";
-        }
-      }
-    }
-
-    if (!text || text.length < 10) {
-      return {
-        error:
-          "이 영상은 자막이 없고, 제목·설명으로도 요약하기 어렵습니다. 자막이 켜진 다른 영상을 선택해 주세요.",
-      };
-    }
-
-    return { text, source };
-  } catch (error) {
-    console.error("getVideoContext Error:", error);
-    return {
-      error: "영상 내용을 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-    };
-  }
-}
 
 export async function summarizeVideoAction(videoId: string) {
   if (!process.env.GEMINI_API_KEY) {
@@ -90,14 +64,14 @@ export async function summarizeVideoAction(videoId: string) {
 
   // 0. Supabase 캐시 조회
   if (supabase) {
-    const { data, error } = await supabase
+    const { data, error } = (await supabase
       .from("summaries")
       .select("summary")
       .eq("video_id", videoId)
-      .maybeSingle();
+      .maybeSingle()) as { data: { summary: string } | null; error: unknown };
 
     if (!error && data?.summary) {
-      return { summary: data.summary as string };
+      return { summary: data.summary };
     }
   }
 
@@ -111,8 +85,8 @@ export async function summarizeVideoAction(videoId: string) {
 
     const prompt =
       source === "자막"
-        ? `다음은 유튜브 영상의 자막입니다. 영상을 직접 보지 않고 라디오처럼 듣기만 하는 직장인을 위해, 불필요한 서론을 빼고 핵심 정보(팩트 단위) 3가지를 명확하게 요약해주세요.\n\n자막 내용:\n${text.slice(0, 15000)}`
-        : `다음은 유튜브 영상의 제목과 설명입니다. 핵심 내용을 3줄 이내로 요약해주세요.\n\n내용:\n${text.slice(0, 15000)}`;
+        ? SUMMARY_PROMPT_CAPTION(text)
+        : SUMMARY_PROMPT_SNIPPET(text);
 
     const summary = await summarizeWithGemini(prompt);
     if (summary) {
@@ -120,16 +94,13 @@ export async function summarizeVideoAction(videoId: string) {
 
       // 3. Supabase에 캐시 저장 (best-effort)
       if (supabase) {
-        await supabase
-          .from("summaries")
-          .upsert(
-            {
-              video_id: videoId,
-              summary: final,
-              source,
-            },
-            { onConflict: "video_id" },
-          );
+        const row: Database["public"]["Tables"]["summaries"]["Insert"] = {
+          video_id: videoId,
+          summary: final,
+          source,
+        };
+        // Supabase 클라이언트 제네릭이 테이블별로 추론되지 않을 때 타입 단언 (빌드 호환)
+        await (supabase.from("summaries") as unknown as { upsert: (v: typeof row, o: { onConflict: string }) => Promise<unknown> }).upsert(row, { onConflict: "video_id" });
       }
 
       return { summary: final };
@@ -154,18 +125,7 @@ export async function summarizeInsightAction(videoId: string) {
 
     const { text } = ctx;
 
-    const prompt = `다음은 유튜브 영상의 내용입니다. 이 영상을 끝까지 본 시청자가
-- 오늘 무엇을 배웠는지,
-- 앞으로 일/공부/삶에 어떻게 적용하면 좋을지
-정리할 수 있도록 도와주세요.
-
-요구사항:
-1) 영상에서 건질 만한 핵심 인사이트 3가지를, 한 줄씩 bullet로 정리
-2) 한국 직장인/개발자/지식 노동자가 1주일 안에 실제로 시도해볼 수 있는 구체적인 액션 2가지를 bullet로 제안
-3) 말투는 부담스럽지 않은 동료 느낌으로, 존댓말 한국어 사용
-
-영상 내용:
-${text.slice(0, 15000)}`;
+    const prompt = INSIGHT_PROMPT(text);
 
     const insight = await summarizeWithGemini(prompt);
     if (!insight) {
@@ -241,10 +201,10 @@ export async function rankFeedByGoalsAction(goals: string, limit: number = 20) {
       .filter((it) => it.source === "YouTube" && it.id)
       .map((it) => it.id as string);
     if (videoIds.length > 0) {
-      const { data } = await supabase
+      const { data } = (await supabase
         .from("summaries")
         .select("video_id, summary")
-        .in("video_id", videoIds);
+        .in("video_id", videoIds)) as { data: { video_id: string; summary: string }[] | null };
       if (data) {
         summariesMap = new Map(data.map((row) => [row.video_id, row.summary]));
       }

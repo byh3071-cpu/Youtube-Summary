@@ -1,3 +1,5 @@
+import { isBrowser } from "./env";
+
 export interface WatchProgress {
   videoId: string;
   lastPositionSeconds: number;
@@ -10,9 +12,6 @@ const STORAGE_KEY = "focus_feed_watch_history_v1";
 const COMPLETED_THRESHOLD = 0.9;
 const MAX_ENTRIES = 200;
 
-function isBrowser() {
-  return typeof window !== "undefined" && typeof localStorage !== "undefined";
-}
 
 function loadAll(): Record<string, WatchProgress> {
   if (!isBrowser()) return {};

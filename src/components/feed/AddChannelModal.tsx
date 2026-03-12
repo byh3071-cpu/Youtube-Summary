@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, Loader2, Plus } from "lucide-react";
+import { ModalTransition } from "@/components/ui/ModalTransition";
 import {
   CUSTOM_SOURCES_COOKIE_NAME,
   getCustomSourcesFromCookie,
@@ -73,6 +74,16 @@ export default function AddChannelModal({
       };
       const updated = [...existing, newSource];
       document.cookie = buildCustomSourcesCookie(updated);
+      fetch("/api/custom-sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceId: channelId,
+          name: channelName,
+          category,
+          avatarUrl: avatarUrl ?? undefined,
+        }),
+      }).catch(() => {});
       onAdded?.();
       onClose();
       setInput("");
@@ -84,20 +95,19 @@ export default function AddChannelModal({
     }
   }, [input, category, onClose, onAdded, router]);
 
-  if (!open) return null;
-
   return (
-    <>
-      <div
-        className="fixed inset-0 z-[100] bg-(--notion-fg)/30"
-        aria-hidden
-        onClick={onClose}
-      />
+    <ModalTransition
+      open={open}
+      onClose={onClose}
+      overlayZ={100}
+      panelZ={101}
+      panelClassName="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-channel-title"
-        className="fixed left-1/2 top-1/2 z-[101] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+        className="outline-none"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 id="add-channel-title" className="text-lg font-semibold text-(--notion-fg)">
@@ -133,7 +143,12 @@ export default function AddChannelModal({
           </select>
         </div>
         <div className="mb-3">
+          <label htmlFor="add-channel-input" className="mb-1.5 block text-xs font-medium text-(--notion-fg)/60">
+            채널 주소 또는 @핸들
+          </label>
           <input
+            id="add-channel-input"
+            name="channelUrl"
             type="text"
             value={input}
             onChange={(e) => {
@@ -181,6 +196,6 @@ export default function AddChannelModal({
           </button>
         </div>
       </div>
-    </>
+    </ModalTransition>
   );
 }

@@ -21,13 +21,14 @@ export default function ViewSwitcher({ currentView }: { currentView: ViewMode })
     if (view === "all") params.delete("view");
     else params.set("view", view);
     const q = params.toString();
-    router.push(q ? `${pathname}?${q}` : pathname);
+    const newUrl = q ? `${pathname}?${q}` : pathname;
+    const currentUrl = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
+    if (newUrl !== currentUrl) router.push(newUrl);
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-medium text-(--notion-fg)/55">보기</span>
-      <div className="flex rounded-lg border border-(--notion-border) p-0.5">
+    <div className="flex flex-wrap items-center">
+      <div className="ml-5 flex translate-y-[1.8px] rounded-lg border border-(--notion-border) p-0.5">
         {VIEWS.map(({ id, label, icon }) => (
           <button
             key={id}

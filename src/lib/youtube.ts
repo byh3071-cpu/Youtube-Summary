@@ -2,9 +2,15 @@ import { FeedItem } from "../types/feed";
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const REVALIDATE_SECONDS = 7200;
-let hasWarnedAboutMissingApiKey = false;
-let hasWarnedAboutInvalidApiKey = false;
-let hasWarnedAboutYouTubeFailure = false;
+
+/** 동일 경고를 중복 출력하지 않기 위한 Set */
+const warnedKeys = new Set<string>();
+
+function warnOnce(key: string, message: string) {
+  if (warnedKeys.has(key)) return;
+  warnedKeys.add(key);
+  console.warn(message);
+}
 
 export type YouTubeFetchStatus = "ready" | "missing_api_key" | "invalid_api_key" | "request_failed";
 
@@ -45,13 +51,20 @@ interface YouTubeChannelResponse {
   items?: Array<{
     id?: string;
     snippet?: {
-      thumbnails?: {
-        default?: { url?: string };
-        medium?: { url?: string };
-        high?: { url?: string };
-      };
+      thumbnails?: YouTubeThumbnails;
     };
   }>;
+}
+
+interface YouTubeThumbnails {
+  default?: { url?: string };
+  medium?: { url?: string };
+  high?: { url?: string };
+}
+
+/** 썸네일 목록에서 가장 큰 해상도를 우선 선택합니다 */
+function pickBestThumbnail(thumbs?: YouTubeThumbnails): string | undefined {
+  return thumbs?.medium?.url || thumbs?.high?.url || thumbs?.default?.url;
 }
 
 function hasUsableApiKey(apiKey: string | undefined): apiKey is string {
@@ -65,30 +78,15 @@ function hasUsableApiKey(apiKey: string | undefined): apiKey is string {
 }
 
 function logMissingApiKeyWarning() {
-  if (hasWarnedAboutMissingApiKey) {
-    return;
-  }
-
-  hasWarnedAboutMissingApiKey = true;
-  console.warn("YOUTUBE_API_KEY is missing or using the example placeholder. Skipping YouTube fetch.");
+  warnOnce("missing_api_key", "YOUTUBE_API_KEY is missing or using the example placeholder. Skipping YouTube fetch.");
 }
 
 function logInvalidApiKeyWarning() {
-  if (hasWarnedAboutInvalidApiKey) {
-    return;
-  }
-
-  hasWarnedAboutInvalidApiKey = true;
-  console.warn("YOUTUBE_API_KEY is invalid. Skipping YouTube sources until a valid key is configured.");
+  warnOnce("invalid_api_key", "YOUTUBE_API_KEY is invalid. Skipping YouTube sources until a valid key is configured.");
 }
 
 function logGenericYouTubeWarning(channelName: string, status: number) {
-  if (hasWarnedAboutYouTubeFailure) {
-    return;
-  }
-
-  hasWarnedAboutYouTubeFailure = true;
-  console.warn(`YouTube feed request failed for ${channelName} with status ${status}.`);
+  warnOnce(`request_failed:${channelName}`, `YouTube feed request failed for ${channelName} with status ${status}.`);
 }
 
 // 주어진 Channel ID (UC...)를 Uploads Playlist ID (UU...)로 변환
@@ -167,13 +165,7 @@ async function fetchChannelAvatar(channelId: string): Promise<string | undefined
     });
     if (!res.ok) return undefined;
     const data = (await res.json()) as YouTubeChannelResponse;
-    const channel = data.items?.[0];
-    const thumbs = channel?.snippet?.thumbnails;
-    return (
-      thumbs?.medium?.url ||
-      thumbs?.high?.url ||
-      thumbs?.default?.url
-    );
+    return pickBestThumbnail(data.items?.[0]?.snippet?.thumbnails);
   } catch {
     return undefined;
   }
@@ -257,10 +249,8 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
     return { items, status: "ready" };
 
   } catch (error) {
-    if (!hasWarnedAboutYouTubeFailure) {
-      hasWarnedAboutYouTubeFailure = true;
-      console.warn(`Failed to fetch YouTube feed for ${channelName}.`, error);
-    }
+    warnOnce(`fetch_failed:${channelName}`, `Failed to fetch YouTube feed for ${channelName}.`);
+    if (error) console.warn(error);
 
     return { items: [], status: "request_failed" };
   }
@@ -306,10 +296,7 @@ export async function resolveYouTubeChannel(parsed: { type: "channelId"; channel
     };
     const channel = data.items?.[0];
     if (!channel?.id || !channel.snippet?.title) return null;
-    const thumb =
-      channel.snippet.thumbnails?.medium?.url ||
-      channel.snippet.thumbnails?.high?.url ||
-      channel.snippet.thumbnails?.default?.url;
+    const thumb = pickBestThumbnail(channel.snippet.thumbnails);
     return {
       channelId: channel.id,
       channelName: channel.snippet.title,

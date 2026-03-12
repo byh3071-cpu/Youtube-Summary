@@ -1,3 +1,5 @@
+import { isBrowser } from "./env";
+
 export interface UserPreferences {
     keywords: string[];
     hiddenSources: string[]; // 숨긴 채널 또는 RSS 피드 ID 목록 (향후 확장용)
@@ -14,12 +16,10 @@ function normalizeKeyword(keyword: string): string {
     return keyword.trim().replace(/\s+/g, ' ');
 }
 
-// 클라이언트 사이드에서만 안전하게 실행되도록 체크
-const isBrowser = typeof window !== 'undefined';
 
 export const storage = {
     getPreferences: (): UserPreferences => {
-        if (!isBrowser) return defaultPreferences;
+        if (!isBrowser()) return defaultPreferences;
 
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -31,7 +31,7 @@ export const storage = {
     },
 
     savePreferences: (prefs: UserPreferences): void => {
-        if (!isBrowser) return;
+        if (!isBrowser()) return;
 
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));

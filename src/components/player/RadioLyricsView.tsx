@@ -1,8 +1,11 @@
+"use client";
+
 import { useState, useCallback } from "react";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { summarizeVideoAction } from "@/app/actions/summarize";
 import { qaLog } from "@/lib/qa-log";
 import { X, Loader2 } from "lucide-react";
+import { ModalTransition } from "@/components/ui/ModalTransition";
 
 interface RadioLyricsViewProps {
   lyricsOpen: boolean;
@@ -34,20 +37,19 @@ export function RadioLyricsView({ lyricsOpen, setLyricsOpen }: RadioLyricsViewPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radio?.currentItem?.videoId, radio?.updateItemSummary]);
 
-  if (!lyricsOpen || !radio) return null;
+  if (!radio) return null;
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-55 bg-(--notion-fg)/20"
-        aria-hidden
-        onClick={() => setLyricsOpen(false)}
-      />
-      <div
-        className="fixed bottom-16 left-4 right-4 z-56 max-h-[50vh] overflow-auto rounded-t-2xl border border-b-0 border-(--notion-border) bg-(--notion-bg) p-4 shadow-2xl md:left-1/2 md:right-auto md:w-full md:max-w-md md:-translate-x-1/2"
-        role="dialog"
-        aria-label="AI 요약"
-      >
+    <ModalTransition
+      open={lyricsOpen}
+      onClose={() => setLyricsOpen(false)}
+      overlayClassName="fixed inset-0 z-55 bg-(--notion-fg)/20"
+      overlayZ={55}
+      panelZ={56}
+      variant="bottom"
+      panelClassName="fixed bottom-16 left-4 right-4 max-h-[50vh] overflow-auto rounded-t-2xl border border-b-0 border-(--notion-border) bg-(--notion-bg) p-4 shadow-2xl md:left-1/2 md:right-auto md:w-full md:max-w-md md:-translate-x-1/2"
+    >
+      <div className="outline-none" role="dialog" aria-label="AI 요약">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-(--notion-fg)">AI 핵심 요약</h3>
           <button
@@ -78,6 +80,6 @@ export function RadioLyricsView({ lyricsOpen, setLyricsOpen }: RadioLyricsViewPr
           )}
         </div>
       </div>
-    </>
+    </ModalTransition>
   );
 }

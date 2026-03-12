@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Settings2, X } from "lucide-react";
+import { CheckCircle2, AlertCircle, AlertTriangle, X } from "lucide-react";
+import { ModalTransition } from "@/components/ui/ModalTransition";
+import type { LucideIcon } from "lucide-react";
 import { YouTubeFetchStatus } from "@/lib/youtube";
 
 interface ConnectionStatusPopupProps {
@@ -23,10 +25,27 @@ const youtubeStatusTone: Record<YouTubeFetchStatus, string> = {
   request_failed: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300",
 };
 
+const youtubeStatusIcon: Record<YouTubeFetchStatus, LucideIcon> = {
+  ready: CheckCircle2,
+  missing_api_key: AlertTriangle,
+  invalid_api_key: AlertCircle,
+  request_failed: AlertCircle,
+};
+
+const youtubeStatusIconColor: Record<YouTubeFetchStatus, string> = {
+  ready: "text-emerald-600 dark:text-emerald-400",
+  missing_api_key: "text-amber-600 dark:text-amber-400",
+  invalid_api_key: "text-rose-600 dark:text-rose-400",
+  request_failed: "text-orange-600 dark:text-orange-400",
+};
+
 export default function ConnectionStatusPopup({
   selectedSource,
   sourceStatus,
 }: ConnectionStatusPopupProps) {
+  // 연결 상태 표시 UI는 숨기고, 추후 다시 사용할 수 있도록 컴포넌트는 유지합니다.
+  return null;
+
   const [open, setOpen] = useState(false);
 
   const visibleSourceSummary = selectedSource
@@ -35,31 +54,35 @@ export default function ConnectionStatusPopup({
       ? "현재 RSS 소스만 피드에 반영되고 있습니다."
       : "현재 YouTube와 RSS 소스가 모두 피드에 반영되고 있습니다.";
 
+  const StatusIcon = youtubeStatusIcon[sourceStatus.youtube];
+  const iconColor = youtubeStatusIconColor[sourceStatus.youtube];
+
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-full px-2 py-1.5 text-xs text-(--notion-fg)/45 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)/70"
-        aria-label="연결 상태 보기"
-        title="연결 상태"
+        className={`flex items-center gap-2 rounded-full border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-2 text-xs transition-colors hover:bg-(--notion-hover) ${iconColor}`}
+        aria-label={`연결 상태: ${youtubeStatusLabel[sourceStatus.youtube]}`}
+        title={`연결 상태: ${youtubeStatusLabel[sourceStatus.youtube]}`}
       >
-        <Settings2 size={14} />
-        <span className="hidden sm:inline">연결 상태</span>
+        <StatusIcon size={16} aria-hidden />
+        <span className="hidden font-medium sm:inline">연결 상태</span>
       </button>
 
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-[90] bg-(--notion-fg)/20"
-            aria-hidden
-            onClick={() => setOpen(false)}
-          />
+      <ModalTransition
+        open={open}
+        onClose={() => setOpen(false)}
+        overlayClassName="fixed inset-0 z-[90] bg-(--notion-fg)/20"
+        overlayZ={90}
+        panelZ={91}
+        panelClassName="fixed left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+      >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="connection-status-title"
-            className="fixed left-1/2 top-1/2 z-[91] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+            className="outline-none"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 id="connection-status-title" className="text-sm font-semibold uppercase tracking-wide text-(--notion-fg)/70">
@@ -86,8 +109,7 @@ export default function ConnectionStatusPopup({
               </span>
             </div>
           </div>
-        </>
-      )}
+      </ModalTransition>
     </>
   );
 }

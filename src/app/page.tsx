@@ -1,10 +1,16 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import AppLayout from "@/components/layout/AppLayout";
 import FeedClientContainer from "@/components/feed/FeedClientContainer";
 import FeedHeader from "@/components/feed/FeedHeader";
 import { getMergedFeed } from "@/lib/feed";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
-import { getCustomSourcesFromCookie, CUSTOM_SOURCES_COOKIE_NAME } from "@/lib/custom-sources-cookie";
+import {
+  getCustomSourcesFromCookie,
+  mergeCustomSources,
+  CUSTOM_SOURCES_COOKIE_NAME,
+} from "@/lib/custom-sources-cookie";
+import { getCustomSourcesFromDb } from "@/lib/supabase-server-cookies";
 import { resolveYouTubeChannel } from "@/lib/youtube";
 import type { FeedCategory } from "@/types/feed";
 import type { FeedSource } from "@/lib/sources";
@@ -16,6 +22,11 @@ interface HomeProps {
     source?: string;
     category?: string;
     view?: string;
+    auth_error?: string;
+    auth_success?: string;
+    auth_error_hint?: string;
+    error?: string;
+    error_description?: string;
   }>;
 }
 
@@ -40,7 +51,9 @@ export default async function Home({ searchParams }: HomeProps) {
   const selectedSourceId = resolvedSearchParams?.source;
   const initialView = parseView(resolvedSearchParams?.view);
   const cookieStore = await cookies();
-  const customSources = getCustomSourcesFromCookie(cookieStore.get(CUSTOM_SOURCES_COOKIE_NAME)?.value);
+  const customFromCookie = getCustomSourcesFromCookie(cookieStore.get(CUSTOM_SOURCES_COOKIE_NAME)?.value);
+  const customFromDb = await getCustomSourcesFromDb(cookieStore);
+  const customSources = mergeCustomSources(customFromCookie, customFromDb);
   const mergedSources = mergeSources(defaultSources, customSources);
 
   // YouTube 채널 프로필 이미지(avatarUrl) 하이드레이션
@@ -92,6 +105,12 @@ export default async function Home({ searchParams }: HomeProps) {
       youtubeSources={youtubeSources}
       customYouTubeSourceIds={customYouTubeSourceIds}
       latestVideoBySource={latestVideoBySource}
+      authError={
+        resolvedSearchParams?.auth_error ??
+        (resolvedSearchParams?.error_description ? "no_code" : undefined)
+      }
+      authErrorHint={resolvedSearchParams?.auth_error_hint ?? resolvedSearchParams?.error_description}
+      authSuccess={resolvedSearchParams?.auth_success === "1"}
     >
       <FeedHeader
         selectedSource={selectedSource}
@@ -101,13 +120,15 @@ export default async function Home({ searchParams }: HomeProps) {
         rssSourceCount={rssSourceCount}
       />
 
-      <FeedClientContainer
-        initialItems={visibleItems}
-        selectedSourceName={selectedSource?.name}
-        initialCategory={initialCategory}
-        initialView={initialView}
-        showViewSwitcher={showViewSwitcher}
-      />
+      <Suspense fallback={<div className="py-8 text-center text-sm text-(--notion-fg)/60">피드 불러오는 중…</div>}>
+        <FeedClientContainer
+          initialItems={visibleItems}
+          selectedSourceName={selectedSource?.name}
+          initialCategory={initialCategory}
+          initialView={initialView}
+          showViewSwitcher={showViewSwitcher}
+        />
+      </Suspense>
     </AppLayout>
   );
 }

@@ -1,0 +1,76 @@
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import type { Database } from "@/lib/supabase-server";
+
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get("code");
+  const next = requestUrl.searchParams.get("next") ?? "/";
+  const origin = requestUrl.origin;
+  const errorFromSupabase = requestUrl.searchParams.get("error");
+  const errorDescription = requestUrl.searchParams.get("error_description");
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[auth/callback]", {
+      hasCode: !!code,
+      error: errorFromSupabase ?? null,
+      errorDescription: errorDescription ?? null,
+      origin,
+    });
+  }
+
+  if (!code) {
+    if (errorFromSupabase) {
+      console.error("[auth/callback] Supabase → 앱 리다이렉트 (code 없음):", errorFromSupabase, errorDescription ?? "");
+    }
+    const hint = errorDescription || errorFromSupabase || "";
+    return NextResponse.redirect(
+      `${origin}/?auth_error=no_code${hint ? `&auth_error_hint=${encodeURIComponent(hint)}` : ""}`
+    );
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    console.error("Auth callback: NEXT_PUBLIC_SUPABASE_URL or ANON_KEY missing");
+    return NextResponse.redirect(`${origin}/?auth_error=config`);
+  }
+
+  const cookieStore = await cookies();
+  const targetPath = next.startsWith("/") ? next : `/${next}`;
+  const successUrl = `${origin}${targetPath}${targetPath.includes("?") ? "&" : "?"}auth_success=1`;
+  const response = NextResponse.redirect(successUrl);
+
+  const supabase = createServerClient<Database>(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          const opts = (options ?? {}) as Record<string, unknown>;
+          response.cookies.set(name, value, opts);
+        });
+      },
+    },
+  });
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    console.error("Auth callback exchangeCodeForSession:", error.message);
+    const useClientFallback =
+      error.message.includes("Unable to exchange external code") ||
+      error.message.includes("code_verifier");
+
+    if (useClientFallback) {
+      const clientCallbackUrl = `${origin}/auth/callback/client?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`;
+      return NextResponse.redirect(clientCallbackUrl);
+    }
+    return NextResponse.redirect(`${origin}/?auth_error=exchange`);
+  }
+
+  // 쿠키가 브라우저에 확실히 설정될 시간을 더 줌 (최소 800ms 권장)
+  await new Promise((r) => setTimeout(r, 800));
+  return response;
+}

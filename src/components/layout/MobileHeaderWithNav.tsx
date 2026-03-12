@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Menu } from "lucide-react";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useTheme } from "next-themes";
+import { LoginButton } from "@/components/auth/LoginButton";
 import MobileNavDrawer from "./MobileNavDrawer";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
@@ -20,6 +21,8 @@ export default function MobileHeaderWithNav({
   youtubeSources?: FeedSource[];
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
     <>
@@ -34,17 +37,22 @@ export default function MobileHeaderWithNav({
             <Menu size={20} />
           </button>
           <div className="flex min-w-0 flex-1 justify-center">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-(--notion-gray)">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-transparent"
+                aria-label="테마 전환"
+              >
                 <Image
                   src="/focus-feed-logo-v2.png"
                   alt="Focus Feed 로고"
                   fill
-                  sizes="32px"
+                  sizes="40px"
                   className="object-contain"
                   priority
                 />
-              </div>
+              </button>
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-tight">Focus Feed</p>
                 <p className="truncate text-[11px] text-(--notion-fg)/55">
@@ -53,7 +61,9 @@ export default function MobileHeaderWithNav({
               </div>
             </div>
           </div>
-          <ThemeToggle iconOnly />
+          <div className="flex items-center gap-2">
+            <LoginButton />
+          </div>
         </div>
       </header>
       <MobileNavDrawer
