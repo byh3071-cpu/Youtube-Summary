@@ -12,6 +12,8 @@ type CustomItem = {
 
 const parser = new Parser<CustomFeed, CustomItem>();
 const REVALIDATE_SECONDS = 7200;
+/** 피드당 가져올 최대 항목 수 (유튜브 채널 50개와 비슷하게) */
+const RSS_ITEMS_LIMIT = 50;
 
 function getStableRssId(item: CustomItem, sourceName: string): string {
     return item.link || `${sourceName}:${item.title || 'untitled'}`;
@@ -44,8 +46,7 @@ export async function fetchRssFeed(url: string, sourceName: string): Promise<Fee
         const xml = await response.text();
         const feed = await parser.parseString(xml);
 
-        // 최근 10개 글만 가져오기
-        const items = feed.items.slice(0, 10);
+        const items = feed.items.slice(0, RSS_ITEMS_LIMIT);
 
         return items.map((item) => {
             return {

@@ -178,7 +178,7 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
   }
 
   const playlistId = getUploadsPlaylistId(channelId);
-  const maxResults = 10; // 최근 10개 영상
+  const maxResults = 50; // 채널당 최대 50개 (API 상한), 이전 영상까지 더 많이 표시
   const searchParams = new URLSearchParams({
     part: "snippet",
     playlistId,

@@ -55,6 +55,21 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["bookmarks"]["Row"]>;
       };
+      trend_cache: {
+        Row: {
+          id: string;
+          bucket: string;
+          trends: unknown;
+          generated_at: string;
+        };
+        Insert: {
+          id?: string;
+          bucket: string;
+          trends: unknown;
+          generated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trend_cache"]["Row"]>;
+      };
       custom_sources: {
         Row: {
           id: string;
@@ -118,11 +133,12 @@ export function getServerSupabaseClient():
   }
 
   try {
-    return createClient<Database>(url!, serviceKey!, {
+    const client = createClient<Database>(url!, serviceKey!, {
       auth: {
-        persistSession: false, // 서버에서는 세션 저장 필요 없음
+        persistSession: false,
       },
-    }) as SupabaseClient<Database>;
+    });
+    return client;
   } catch (error) {
     console.error("Failed to create Supabase client. Disabling Supabase features.", error);
     return null;
@@ -130,12 +146,20 @@ export function getServerSupabaseClient():
 }
 
 /**
- * 요약(summaries) 기능 전용 Supabase 클라이언트 헬퍼.
- * 현재는 서버용 클라이언트를 그대로 재사용하지만,
- * 나중에 권한/스키마가 분리되면 이 함수만 수정하면 됩니다.
+ * 특정 테이블에 대한 타입을 강제하는 헬퍼 함수.
+ * Supabase 클라이언트의 제네릭 추론 한계를 보완합니다.
  */
-export function getSupabaseForSummaries():
-  | SupabaseClient<Database>
-  | null {
-  return getServerSupabaseClient();
+export function getTypedTable<T extends keyof Database["public"]["Tables"]>(
+  tableName: T
+) {
+  const supabase = getServerSupabaseClient();
+  if (!supabase) return null;
+  return supabase.from(tableName);
+}
+
+/**
+ * 요약(summaries) 기능 전용 Supabase 클라이언트 헬퍼.
+ */
+export function getSupabaseForSummaries() {
+  return getTypedTable("summaries");
 }

@@ -2,11 +2,11 @@
 
 > 이 문서는 Antigravity가 코드 전체를 점검한 결과를 기반으로, Cursor가 **Supabase 관련 기능**을 구현할 때 따를 기획·우선순위·체크리스트입니다.
 
-**Phase 6 완료 (2026-03-12)**  
-채널 목록 Supabase 동기화 구현 완료. 상세 로그·체크리스트·테스트 방법은 **`docs/CURSOR_PHASE6_COMPLETION_LOG.md`** 참고.
+**Phase 6~7 완료 (2026-03-12)**  
+채널 동기화 및 북마크 구현 완료.
 
-**Phase 7 완료 (2026-03-12)**  
-북마크 & 하이라이트 구현 완료. **`docs/CURSOR_PHASE7_COMPLETION_LOG.md`** 참고.
+**코드 리팩토링 완료 (2026-03-13)**  
+AI 프롬프트 중앙 관리(`src/lib/prompts.ts`), Supabase 타입 안정성 강화(`getTypedTable`), 모델명 수정(`gemini-1.5-flash`) 완료. 향후 모든 작업은 **`cursor_implementation_guide.md`**를 최우선으로 따를 것.
 
 ---
 
@@ -200,10 +200,10 @@ Phase 9 (RLS 보안)        ← 마지막 마무리
 
 ## Cursor 참고 사항
 
-- **기존 파일 건드리지 말 것**: `RadioQueueContext.tsx`, `FloatingRadioPlayer.tsx`, `RadioFooterControls.tsx` 등 라디오 플레이어 관련 파일은 최근 안정화 완료됨 — 수정 금지
-- **타입 단언**: Supabase 제네릭이 `.from("table")` 결과를 제대로 추론하지 못할 때, `summarize.ts`의 패턴(`as { data: ... }`)을 참고
-- **DB 호출 실패 시 조용히 넘기기**: Supabase가 설정 안 된 환경에서도 앱이 동작해야 함 (`getServerSupabaseClient()` null 체크 패턴 활용)
-- **테스트**: `npm run build` 성공 + `npm run lint` 에러 0건이 완료 기준
+- **AI 구현 수칙**: 모든 AI 프롬프트는 `src/lib/prompts.ts`에서 가져올 것. 직접 문자열로 하드코딩 금지.
+- **Supabase 호출**: `supabase.from("table")` 대신 `src/lib/supabase-server.ts`의 `getTypedTable("table")`을 사용하여 타입 안정성 확보할 것.
+- **기존 파일 보존**: `RadioQueueContext.tsx`, `FloatingRadioPlayer.tsx` 등 핵심 플레이어 로직 안정화됨 - 수정 금지.
+- **검증**: 작업 후 `npm run lint` 및 `npm run build` 확인 필수.
 
 > [!NOTE]
 > Phase 6 완료 후 브라우저에서 로그인 → 채널 추가 → 다른 브라우저에서 로그인해서 채널이 동기화되는지 확인하고, 결과를 안티그래비티에게 알려주세요!

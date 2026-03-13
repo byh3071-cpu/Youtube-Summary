@@ -2,12 +2,18 @@ import { FeedItem as FeedItemType } from "@/types/feed";
 import Image from "next/image";
 import SummarizeButton from "./SummarizeButton";
 import AddToRadioButton from "./AddToRadioButton";
+import BookmarkButton from "./BookmarkButton";
+import type { BookmarkEntry } from "./FeedClientContainer";
 
 interface Props {
     item: FeedItemType;
+    bookmark?: BookmarkEntry | null;
+    onBookmarkChange?: () => void;
 }
 
-export default function FeedItem({ item }: Props) {
+const RSS_BOOKMARK_PREFIX = "rss:";
+
+export default function FeedItem({ item, bookmark, onBookmarkChange }: Props) {
     const publishedAt = new Date(item.pubDate);
     const hasValidDate = Number.isFinite(publishedAt.getTime());
     const cleanSummary = item.summary?.replace(/<[^>]*>?/gm, "").replace(/\s+/g, " ").trim();
@@ -54,6 +60,22 @@ export default function FeedItem({ item }: Props) {
                             {item.source}
                         </span>
                         <span className="truncate">{item.sourceName}</span>
+                        {item.source === "RSS" && onBookmarkChange && (
+                            <span
+                                className="ml-auto shrink-0"
+                                onClick={(e) => e.preventDefault()}
+                                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                            >
+                                <BookmarkButton
+                                    videoId={`${RSS_BOOKMARK_PREFIX}${item.link}`}
+                                    videoTitle={item.title}
+                                    highlight={item.summary ?? item.title}
+                                    isBookmarked={!!bookmark}
+                                    bookmarkId={bookmark?.id ?? null}
+                                    onBookmarkChange={onBookmarkChange}
+                                />
+                            </span>
+                        )}
                     </div>
 
                     <h3 className="mb-1 wrap-break-word text-base font-medium leading-tight text-(--notion-fg) decoration-(--notion-border) underline-offset-2 group-hover:underline">

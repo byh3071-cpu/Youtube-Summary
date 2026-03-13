@@ -110,9 +110,18 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                         {rssItems.length === 0 ? (
                             <EmptyBlock message="이번 필터에 해당하는 RSS·뉴스가 없습니다." />
                         ) : (
-                            rssItems.map((item) => (
-                                <FeedItemComponent key={`${item.source}:${item.sourceId}:${item.id}`} item={item} />
-                            ))
+                            rssItems.map((item) => {
+                                const rssBookmarkId = "rss:" + item.link;
+                                const b = bookmarks.find((x) => x.video_id === rssBookmarkId) ?? null;
+                                return (
+                                    <FeedItemComponent
+                                        key={`${item.source}:${item.sourceId}:${item.id}`}
+                                        item={item}
+                                        bookmark={b}
+                                        onBookmarkChange={onBookmarkChange}
+                                    />
+                                );
+                            })
                         )}
                     </AutoAnimateList>
                 </div>

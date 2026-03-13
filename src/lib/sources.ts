@@ -19,6 +19,7 @@ export const defaultSources: FeedSource[] = [
     { id: "https://openai.com/blog/rss.xml", name: "OpenAI Blog", type: "RSS", category: "AI" },
     { id: "http://feeds.feedburner.com/blogspot/gJZg", name: "Google AI Blog", type: "RSS", category: "AI" },
     { id: "https://www.microsoft.com/en-us/ai/blog/feed/", name: "Microsoft AI Blog", type: "RSS", category: "AI" },
+    { id: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml", name: "Anthropic News", type: "RSS", category: "AI" },
 ];
 
 export function getSourceById(sourceId?: string): FeedSource | undefined {
