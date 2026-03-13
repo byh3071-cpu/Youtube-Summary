@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { qaLog } from "@/lib/qa-log";
 import { ChevronLeft, ChevronRight, X, Play, Pause, ListMusic, FileText, Video, Maximize2 } from "lucide-react";
@@ -12,6 +15,8 @@ interface RadioFooterControlsProps {
   setFullPlayerOpen: (v: boolean) => void;
   togglePlay: () => void;
   progress: number;
+  /** 진행 바 클릭·동그라미 드래그로 구간 이동(시킹). 없으면 비활성 */
+  onSeek?: (percent: number) => void;
 }
 
 export function RadioFooterControls({
@@ -24,8 +29,60 @@ export function RadioFooterControls({
   setFullPlayerOpen,
   togglePlay,
   progress = 0,
+  onSeek,
 }: RadioFooterControlsProps) {
   const radio = useRadioQueueOptional();
+  const barRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const clampedProgress = Math.max(0, Math.min(100, progress));
+
+  const percentFromEvent = useCallback(
+    (e: { clientX: number }) => {
+      const el = barRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      return Math.max(0, Math.min(100, (x / rect.width) * 100));
+    },
+    []
+  );
+
+  const handleBarClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onSeek) return;
+      if ((e.target as HTMLElement).closest?.("[data-seek-thumb]")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onSeek(percentFromEvent(e));
+    },
+    [onSeek, percentFromEvent]
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!onSeek) return;
+      e.preventDefault();
+      e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      setIsDragging(true);
+      onSeek(percentFromEvent(e));
+    },
+    [onSeek, percentFromEvent]
+  );
+
+  useEffect(() => {
+    if (!isDragging || !onSeek) return;
+    const onMove = (e: PointerEvent) => onSeek(percentFromEvent(e));
+    const onUp = () => setIsDragging(false);
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
+  }, [isDragging, onSeek, percentFromEvent]);
 
   if (!radio) return null;
 
@@ -67,22 +124,41 @@ export function RadioFooterControls({
           <p className="line-clamp-1 text-sm font-semibold text-(--notion-fg)">
             {radio.currentItem?.title ?? "재생 중"}
           </p>
-          <div className="mt-1 flex items-center gap-2">
-            <div className="relative flex-1 overflow-visible py-1">
-              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-(--notion-gray)">
+          <div className="mt-0.5 flex items-center gap-2">
+            <div
+              ref={barRef}
+              role={onSeek ? "slider" : undefined}
+              aria-label={onSeek ? "재생 위치" : undefined}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(clampedProgress)}
+              tabIndex={onSeek ? 0 : undefined}
+              onClick={onSeek ? handleBarClick : undefined}
+              className={`relative flex-1 overflow-visible py-1 ${onSeek ? "cursor-pointer touch-none" : ""}`}
+            >
+              {/* 트랙: 초록 바가 흰 동그라미까지 이어지도록 progress% + 동그라미 반경만큼 연장 */}
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-(--notion-gray)">
                 <div
-                  className={`h-full rounded-full bg-(--focus-accent) transition-[width] duration-200 ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
-                  style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                  className={`h-full min-w-0 rounded-full bg-(--focus-accent) ${
+                    isDragging ? "transition-none" : "transition-[width] duration-150"
+                  } ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
+                  style={{
+                    width: `calc(${clampedProgress}% + ${clampedProgress > 0 && clampedProgress < 100 ? 8 : 0}px)`,
+                  }}
                 />
               </div>
-              {radio.isPlaying && progress > 0 && progress < 100 && (
+              {/* 포인터: 클릭·드래그로 시킹 가능 (onSeek 있을 때) */}
+              {clampedProgress > 0 && clampedProgress < 100 && (
                 <div
-                  className="pointer-events-none absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_4px_rgba(15,23,42,0.4)]"
-                  style={{ left: `${Math.max(0, Math.min(100, progress))}%`, transform: "translate(-50%, -50%)" }}
+                  data-seek-thumb
+                  className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_6px_rgba(15,23,42,0.4)] ring-2 ring-(--notion-bg) ${onSeek ? "cursor-grab touch-none active:cursor-grabbing pointer-events-auto" : "pointer-events-none"}`}
+                  style={{ left: `${clampedProgress}%` }}
+                  onPointerDown={onSeek ? handlePointerDown : undefined}
+                  aria-hidden
                 />
               )}
             </div>
-            <p className="text-[11px] text-(--notion-fg)/55">
+            <p className="-mt-0.5 shrink-0 text-[11px] leading-none text-(--notion-fg)/55">
               {radio.currentIndex + 1}/{radio.queue.length}
             </p>
           </div>

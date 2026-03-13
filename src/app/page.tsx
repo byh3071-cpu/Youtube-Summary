@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import AppLayout from "@/components/layout/AppLayout";
 import FeedClientContainer from "@/components/feed/FeedClientContainer";
 import FeedHeader from "@/components/feed/FeedHeader";
+import TrendRadarBar from "@/components/trend/TrendRadarBar";
 import { getMergedFeed } from "@/lib/feed";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
 import {
@@ -16,6 +17,7 @@ import type { FeedCategory } from "@/types/feed";
 import type { FeedSource } from "@/lib/sources";
 
 export const revalidate = 7200; // 2 hours
+const MAX_YOUTUBE_AVATAR_RESOLVE = 24;
 
 interface HomeProps {
   searchParams?: Promise<{
@@ -58,8 +60,10 @@ export default async function Home({ searchParams }: HomeProps) {
 
   // YouTube 채널 프로필 이미지(avatarUrl) 하이드레이션
   const hydratedSources: FeedSource[] = await Promise.all(
-    mergedSources.map(async (source) => {
+    mergedSources.map(async (source, index) => {
       if (source.type !== "YouTube" || source.avatarUrl) return source;
+      // 너무 많은 채널에 대해 한 번에 아바타 요청하지 않도록 상한선을 둠
+      if (index >= MAX_YOUTUBE_AVATAR_RESOLVE) return source;
       // 채널 ID 형식(UC...)만 프로필 조회
       if (!source.id.startsWith("UC")) return source;
       const resolved = await resolveYouTubeChannel({ type: "channelId", channelId: source.id });
@@ -119,6 +123,11 @@ export default async function Home({ searchParams }: HomeProps) {
         youtubeSourceCount={youtubeSources.length}
         rssSourceCount={rssSourceCount}
       />
+
+      <Suspense fallback={null}>
+        {/* 지능형 트렌드 레이더 바 */}
+        <TrendRadarBar />
+      </Suspense>
 
       <Suspense fallback={<div className="py-8 text-center text-sm text-(--notion-fg)/60">피드 불러오는 중…</div>}>
         <FeedClientContainer

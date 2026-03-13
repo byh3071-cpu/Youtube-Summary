@@ -5,41 +5,40 @@ import { getVideoContext } from "@/lib/video-context";
 import { getSupabaseForSummaries, type Database } from "@/lib/supabase-server";
 import { getMergedFeed } from "@/lib/feed";
 import type { FeedItem } from "@/types/feed";
+import { 
+  SUMMARY_PROMPT_CAPTION, 
+  SUMMARY_PROMPT_SNIPPET, 
+  INSIGHT_PROMPT, 
+  getSystemGoalPrompt, 
+  getRankingPrompt 
+} from "@/lib/prompts";
 
-/** 자막 기반 3줄 요약 프롬프트 */
-const SUMMARY_PROMPT_CAPTION = (text: string) =>
-  `다음은 유튜브 영상의 자막입니다. 영상을 직접 보지 않고 라디오처럼 듣기만 하는 직장인을 위해, 불필요한 서론을 빼고 핵심 정보(팩트 단위) 3가지를 명확하게 요약해주세요.\n\n자막 내용:\n${text.slice(0, 15000)}`;
-
-/** 제목·설명 기반 3줄 요약 프롬프트 */
-const SUMMARY_PROMPT_SNIPPET = (text: string) =>
-  `다음은 유튜브 영상의 제목과 설명입니다. 핵심 내용을 3줄 이내로 요약해주세요.\n\n내용:\n${text.slice(0, 15000)}`;
-
-/** 인사이트 정리 프롬프트 */
-const INSIGHT_PROMPT = (text: string) =>
-  `다음은 유튜브 영상의 내용입니다. 이 영상을 끝까지 본 시청자가
-- 오늘 무엇을 배웠는지,
-- 앞으로 일/공부/삶에 어떻게 적용하면 좋을지
-정리할 수 있도록 도와주세요.
-
-요구사항:
-1) 영상에서 건질 만한 핵심 인사이트 3가지를, 한 줄씩 bullet로 정리
-2) 한국 직장인/개발자/지식 노동자가 1주일 안에 실제로 시도해볼 수 있는 구체적인 액션 2가지를 bullet로 제안
-3) 말투는 부담스럽지 않은 동료 느낌으로, 존댓말 한국어 사용
-
-영상 내용:
-${text.slice(0, 15000)}`;
+// Removed local INSIGHT_PROMPT as it's now in @/lib/prompts
 
 async function summarizeWithGemini(prompt: string): Promise<string | null> {
   if (!process.env.GEMINI_API_KEY) {
     return null;
   }
 
+  // 새 키는 v1beta API를 쓰도록 기본값 사용 (apiVersion 생략)
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-  });
-  return response.text ?? null;
+  try {
+    const response = await ai.models.generateContent({
+      // 최신 모델 ID
+      model: "models/gemini-pro-latest",
+      contents: prompt,
+    });
+    // SDK의 .text 속성을 통해 텍스트 추출
+    return response.text || null;
+  } catch (e: unknown) {
+    const err = e as { error?: { code?: number | string }; code?: number | string; status?: number | string };
+    const code = err.error?.code ?? err.code ?? err.status;
+    // 모델 이름 이슈(404) 등으로 실패하는 경우, 조용히 null 반환해서 상위 로직이 에러 메시지만 보여주도록 함
+    if (code !== 404 && code !== "NOT_FOUND") {
+      console.error("[Summarize] Gemini generateContent failed", e);
+    }
+    return null;
+  }
 }
 
 type RankedItemPayload = {
@@ -60,12 +59,10 @@ export async function summarizeVideoAction(videoId: string) {
     return { error: ".env.local 파일에 GEMINI_API_KEY 설정이 필요합니다." };
   }
 
-  const supabase = getSupabaseForSummaries();
-
   // 0. Supabase 캐시 조회
-  if (supabase) {
-    const { data, error } = (await supabase
-      .from("summaries")
+  const summariesTable = getSupabaseForSummaries();
+  if (summariesTable) {
+    const { data, error } = (await summariesTable
       .select("summary")
       .eq("video_id", videoId)
       .maybeSingle()) as { data: { summary: string } | null; error: unknown };
@@ -93,14 +90,14 @@ export async function summarizeVideoAction(videoId: string) {
       const final = source === "제목·설명" ? `(제목·설명 기반)\n\n${summary}` : summary;
 
       // 3. Supabase에 캐시 저장 (best-effort)
-      if (supabase) {
+      if (summariesTable) {
         const row: Database["public"]["Tables"]["summaries"]["Insert"] = {
           video_id: videoId,
           summary: final,
           source,
         };
         // Supabase 클라이언트 제네릭이 테이블별로 추론되지 않을 때 타입 단언 (빌드 호환)
-        await (supabase.from("summaries") as unknown as { upsert: (v: typeof row, o: { onConflict: string }) => Promise<unknown> }).upsert(row, { onConflict: "video_id" });
+        await (summariesTable as unknown as { upsert: (v: typeof row, o: { onConflict: string }) => Promise<unknown> }).upsert(row, { onConflict: "video_id" });
       }
 
       return { summary: final };
@@ -186,7 +183,7 @@ export async function rankFeedByGoalsAction(goals: string, limit: number = 20) {
     return { error: "먼저 상단의 My Focus 영역에 목표/관심사를 입력해 주세요." };
   }
 
-  const supabase = getSupabaseForSummaries();
+  const summariesTable = getSupabaseForSummaries();
 
   const { items } = await getMergedFeed();
   if (!items || items.length === 0) {
@@ -196,13 +193,12 @@ export async function rankFeedByGoalsAction(goals: string, limit: number = 20) {
   const candidates = items.slice(0, limit);
 
   let summariesMap = new Map<string, string>();
-  if (supabase) {
+  if (summariesTable) {
     const videoIds = candidates
       .filter((it) => it.source === "YouTube" && it.id)
       .map((it) => it.id as string);
     if (videoIds.length > 0) {
-      const { data } = (await supabase
-        .from("summaries")
+      const { data } = (await summariesTable
         .select("video_id, summary")
         .in("video_id", videoIds)) as { data: { video_id: string; summary: string }[] | null };
       if (data) {
@@ -215,38 +211,8 @@ export async function rankFeedByGoalsAction(goals: string, limit: number = 20) {
     buildItemPayload(item, item.id ? summariesMap.get(item.id) ?? null : null),
   );
 
-  const systemGoal = `사용자의 목표/관심사:\n${goalText}\n\n이 사람은 1인 기업/프리랜서 시각에서, 오늘 당장 도움이 될 영상/글 위주로 우선순위를 정해줘야 합니다.`;
-
-  const prompt = `
-${systemGoal}
-
-아래는 오늘 후보가 될 수 있는 콘텐츠 목록입니다. 각 JSON은 하나의 콘텐츠를 나타냅니다.
-
-후보 목록:
-${itemsPayload.join("\n")}
-
-요구사항:
-1) 사용자의 목표/관심사에 얼마나 직접적으로 도움이 되는지 기준으로 우선순위를 매기세요.
-2) 가장 중요한 것부터 정렬해서 최대 ${Math.min(10, limit)}개만 선택하세요.
-3) 각 항목에 대해:
-   - priority: 1부터 시작하는 순위 (1이 가장 중요)
-   - score: 1~100 사이 숫자로 중요도/적합도 점수
-   - why: 이 사람이 이 콘텐츠를 지금 봐야 하는 이유 (한국어, 1~2문장)
-   - action: 이 콘텐츠를 본 뒤 1주일 안에 실행해볼 수 있는 구체적인 액션 (한국어, 1문장)
-
-반드시 아래 형식의 JSON만, 다른 자연어 설명이나 마크다운 없이 반환하세요:
-{
-  "items": [
-    {
-      "id": "<위 JSON 중 하나의 id>",
-      "priority": 1,
-      "score": 95,
-      "why": "...",
-      "action": "..."
-    }
-  ]
-}
-`;
+  const systemGoal = getSystemGoalPrompt(goalText);
+  const prompt = getRankingPrompt(systemGoal, itemsPayload, limit);
 
   try {
     const raw = await summarizeWithGemini(prompt);

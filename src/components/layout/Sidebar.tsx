@@ -13,7 +13,7 @@ import { YOUTUBE_STATUS_LABEL, YOUTUBE_STATUS_TONE } from "@/lib/youtube-status"
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
-const rssSources = defaultSources.filter((source) => source.type === "RSS");
+// rssSources moved inside Sidebar or taken from sources.ts directly
 
 export default function Sidebar({
     sourceStatus,
@@ -106,8 +106,8 @@ export default function Sidebar({
                 </section>
 
                 <SidebarSection
-                    title={`RSS (${rssSources.length})`}
-                    items={rssSources}
+                    title={`RSS (${defaultSources.filter((s) => s.type === "RSS").length})`}
+                    items={defaultSources.filter((s) => s.type === "RSS")}
                     icon={<Rss size={15} className="text-blue-500" />}
                     statusLabel="표시 중"
                     statusTone="border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300"

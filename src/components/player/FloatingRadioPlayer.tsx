@@ -58,6 +58,18 @@ export default function FloatingRadioPlayer() {
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
+  /** 시크 직후 rAF가 이전 재생 위치로 덮어쓰지 않도록 목표 % 유지 */
+  const seekTargetRef = useRef<number | null>(null);
+  const seekTargetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (seekTargetTimeoutRef.current) {
+        clearTimeout(seekTargetTimeoutRef.current);
+        seekTargetTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -134,6 +146,12 @@ export default function FloatingRadioPlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radio?.queue.length]);
 
+  // 재생 중인 영상이 바뀌면 진행 바를 즉시 0으로 리셋 (이전 영상 진행도가 남아 점점 사라지는 현상 방지)
+  useEffect(() => {
+    if (!radio?.currentItem) return;
+    setProgress(0);
+  }, [radio?.currentItem?.videoId]);
+
   // 현재 큐 아이템 기준으로 저장된 마지막 시청 위치 불러오기 (완료한 영상은 제외)
   useEffect(() => {
     if (!radio?.currentItem) {
@@ -149,32 +167,79 @@ export default function FloatingRadioPlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- videoId만 추적해 재실행, currentItem 객체 참조는 제외
   }, [radio?.currentItem?.videoId]);
 
-  // 진행 바 상태 업데이트
+  // 진행 바 상태 업데이트 (재생 중일 때만 활성화해 불필요한 rAF 최소화)
   useEffect(() => {
-    if (!playerRef.current || !playerReady || !radio?.currentItem) return;
+    if (!playerRef.current || !playerReady || !radio?.currentItem || !radio.isPlaying) return;
     let frameId: number | null = null;
     let lastSavedAt = 0;
     let lastBroadcastAt = 0;
+    /** seekTarget 유지 프레임 수; 너무 오래 유지되면 강제 해제해 바가 멈추는 버그 방지 */
+    let seekHoldFrames = 0;
+    const SEEK_HOLD_MAX_FRAMES = 90; // ~1.5초
+
+    /** 탭 포커스 복귀 시 재생바를 즉시 플레이어 시간과 동기화 (백그라운드에서 rAF가 멈춰 지연되는 현상 방지) */
+    const syncProgressFromPlayer = () => {
+      try {
+        const p = playerRef.current as { getCurrentTime?: () => number; getDuration?: () => number } | null;
+        if (!p?.getCurrentTime || !p?.getDuration) return;
+        const current = p.getCurrentTime();
+        const duration = p.getDuration();
+        if (duration > 0 && Number.isFinite(current)) {
+          const percent = Math.max(0, Math.min(100, (current / duration) * 100));
+          seekTargetRef.current = null;
+          setProgress(percent);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
+      syncProgressFromPlayer();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     const update = () => {
       try {
         const item = radio?.currentItem;
         if (!item) return;
-        const current = typeof playerRef.current?.getCurrentTime === "function" ? playerRef.current.getCurrentTime() : 0;
-        const duration = typeof playerRef.current?.getDuration === "function" ? playerRef.current.getDuration() : 0;
-        if (duration > 0) {
-          setProgress(Math.min(100, Math.max(0, (current / duration) * 100)));
+        let current = 0;
+        let duration = 0;
+        try {
+          current = typeof playerRef.current?.getCurrentTime === "function" ? playerRef.current.getCurrentTime() : 0;
+          duration = typeof playerRef.current?.getDuration === "function" ? playerRef.current.getDuration() : 0;
+        } catch {
+          seekTargetRef.current = null;
+          frameId = requestAnimationFrame(update);
+          return;
+        }
+        if (duration > 0 && Number.isFinite(current)) {
+          const ratio = Math.max(0, Math.min(1, current / duration));
+          const percent = ratio * 100;
+          const target = seekTargetRef.current;
+          if (target != null) {
+            seekHoldFrames += 1;
+            if (percent >= target - 1 || seekHoldFrames >= SEEK_HOLD_MAX_FRAMES) {
+              seekTargetRef.current = null;
+              seekHoldFrames = 0;
+            } else {
+              setProgress(target);
+              frameId = requestAnimationFrame(update);
+              return;
+            }
+          } else {
+            seekHoldFrames = 0;
+          }
+          setProgress(percent);
 
-          // 수 초에 한 번씩만 진행도 저장 (불필요한 I/O 방지)
           const now = Date.now();
           if (now - lastSavedAt > 5000) {
             saveWatchProgress(item.videoId, current, duration);
             lastSavedAt = now;
           }
-
-          // 1초에 한 번 정도만 전역 상태로 브로드캐스트
           if (now - lastBroadcastAt > 1000 && typeof radio?.updatePlayback === "function") {
-            const ratio = duration > 0 ? current / duration : 0;
             radio.updatePlayback({
               videoId: item.videoId,
               positionSeconds: current,
@@ -185,17 +250,18 @@ export default function FloatingRadioPlayer() {
           }
         }
       } catch {
-        // ignore
+        seekTargetRef.current = null;
       }
       frameId = requestAnimationFrame(update);
     };
 
     frameId = requestAnimationFrame(update);
     return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (frameId !== null) cancelAnimationFrame(frameId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- playerReady + 현재 재생 videoId만 의존, radio 전체 제외로 불필요 재실행 방지
-  }, [playerReady, radio?.currentItem?.videoId, radio?.currentItem]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- playerReady + 현재 재생 videoId + isPlaying만 의존, radio 전체 제외로 불필요 재실행 방지
+  }, [playerReady, radio?.currentItem?.videoId, radio?.currentItem, radio?.isPlaying]);
 
   // 미니/전체 영상: YT가 1x1로 만든 iframe을 모드에 맞게 리사이즈
   const MINI_VIDEO_W = 320;
@@ -247,6 +313,25 @@ export default function FloatingRadioPlayer() {
   const togglePlay = useCallback(() => {
     radio?.togglePlay();
   }, [radio]);
+
+  const handleSeek = useCallback((percent: number) => {
+    const p = playerRef.current as { getDuration?: () => number; seekTo?: (sec: number, allow: boolean) => void } | null;
+    if (!p || typeof p.getDuration !== "function" || typeof p.seekTo !== "function") return;
+    const duration = p.getDuration();
+    if (!(duration > 0)) return;
+    if (seekTargetTimeoutRef.current) {
+      clearTimeout(seekTargetTimeoutRef.current);
+      seekTargetTimeoutRef.current = null;
+    }
+    const sec = Math.max(0, Math.min(duration, (percent / 100) * duration));
+    seekTargetRef.current = percent;
+    setProgress(percent);
+    p.seekTo(sec, true);
+    seekTargetTimeoutRef.current = setTimeout(() => {
+      seekTargetRef.current = null;
+      seekTargetTimeoutRef.current = null;
+    }, 1500);
+  }, []);
 
   if (!radio) return null;
 
@@ -383,6 +468,7 @@ export default function FloatingRadioPlayer() {
         setFullPlayerOpen={setFullPlayerOpen}
         togglePlay={togglePlay}
         progress={progress}
+        onSeek={handleSeek}
       />
       
       <RadioPlaylistDrawer

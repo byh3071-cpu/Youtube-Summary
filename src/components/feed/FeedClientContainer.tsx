@@ -31,12 +31,24 @@ export default function FeedClientContainer({
     initialCategory = null,
     initialView = "all",
     showViewSwitcher = false,
+    filterLabelTranslateYCompact,
+    filterLabelTranslateYSource,
+    tooltipMarginTop,
+    openButtonMarginTop,
 }: {
     initialItems: FeedItem[];
     selectedSourceName?: string;
     initialCategory?: FeedCategory | null;
     initialView?: ViewMode;
     showViewSwitcher?: boolean;
+    /** 전체 피드일 때 필터 라벨 세로 위치(px). KeywordFilter 기본값 쓰려면 생략 */
+    filterLabelTranslateYCompact?: number;
+    /** 소스 선택 시(채널/RSS) 필터 라벨 세로 위치(px). KeywordFilter 기본값 쓰려면 생략 */
+    filterLabelTranslateYSource?: number;
+    /** 소스 선택 시 툴팁 위쪽 여백(px). KeywordFilter 기본값 쓰려면 생략 */
+    tooltipMarginTop?: number;
+    /** 소스 선택 시 "열기" 버튼 위쪽 여백(px). KeywordFilter 기본값 쓰려면 생략 */
+    openButtonMarginTop?: number;
 }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -96,6 +108,10 @@ export default function FeedClientContainer({
                 headerRight={
                     showViewSwitcher ? <ViewSwitcher currentView={view} /> : undefined
                 }
+                filterLabelTranslateYCompact={filterLabelTranslateYCompact}
+                filterLabelTranslateYSource={filterLabelTranslateYSource}
+                tooltipMarginTop={tooltipMarginTop}
+                openButtonMarginTop={openButtonMarginTop}
             />
             <FeedList
                 items={filteredItems}
