@@ -87,11 +87,16 @@ Empty state illustration for a filter or search result. A funnel or filter icon 
 
 ---
 
-## 사용 팁
+## 사용 팁 (실제 적용 경로)
 
-- **OG 이미지(A):** 생성 후 `public/og-image.png` 등으로 저장하고, `layout.tsx` 또는 메타 태그에서 `og:image` 경로 지정.
-- **히어로(B):** `public/hero-illustration.png`, 상단 섹션 `background-image` 또는 `<Image>` 로 사용.
-- **Empty(C-1, C-2):** `public/empty-bookmarks.png`, `public/empty-filter.png` 등으로 저장 후 각 빈 상태 컴포넌트에서 참조.
-- **아이콘(D):** PNG 512×512로 생성 후 필요 시 SVG로 트레이스하거나, 아이콘 컴포넌트에서 `img`로 사용.
+- **OG 이미지(A):** `public/images/og/og-image.png` → `layout.tsx`의 `openGraph.images`에서 참조 중.
+- **히어로(B):** `public/images/hero/hero-illustration3.png`, `hero-illustration_dark4.png` → `FeedHeader`에서 라이트/다크 전환.
+- **Empty(C-1, C-2):**  
+  - 북마크: `public/images/empty/Empty-bookmarks.png`, `Empty-bookmarks_dark.png` → `BookmarksClient`.  
+  - 플레이리스트: `public/images/empty/Empty-playlists.png`, `Empty-playlists_dark.png` → `PlaylistsClient`.  
+  - 필터 결과 없음: `public/images/empty/Empty-filter.png` → `FeedList` (필터 적용 시 결과 없을 때).
+- **아이콘(D) – 적용 경로 및 사용처:** `ThemeIcon` 컴포넌트(`src/components/ui/ThemeIcon.tsx`)에서 `/images/icons/` 경로 사용.
+  - **파일:** `Feed_List.png` · `Feed_List_dark.png` / `Play_the_radio.png` · `Play_the_radio_dark.png` / `AI_summary.png` · `AI_summary__dark.png` / `Connect_Sync.png` · `Connect_Sync_dark.png` / `a_briefing_summary.png`
+  - **적용:** 라디오 푸터(재생·재생목록·AI요약) → Play_the_radio, Feed_List, AI_summary / 사이드바·모바일 메뉴 "전체 피드" → Feed_List / AI 3줄 요약·인사이트 버튼 → AI_summary / 라디오에 추가 버튼 → Play_the_radio
 
 필요하면 프롬프트를 서비스 톤(예: 더 차갑게/따뜻하게)에 맞춰 한두 문장만 수정해 쓰시면 됩니다.

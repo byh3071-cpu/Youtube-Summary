@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getCurrentUserFromCookies, getBookmarksFromDb } from "@/lib/supabase-server-cookies";
 import BookmarksClient from "./BookmarksClient";
 import FloatingRadioPlayer from "@/components/player/FloatingRadioPlayer";
+import SmartBookmarkSuggestions from "./SmartBookmarkSuggestions";
 
 export default async function BookmarksPage() {
   const cookieStore = await cookies();
@@ -40,6 +41,7 @@ export default async function BookmarksPage() {
       <p className="mb-6 text-sm text-(--notion-fg)/65">
         저장한 영상과 AI 요약 메모를 한 번에 모아봅니다. 원하는 북마크는 바로 라디오 플레이어로 들을 수도 있어요.
       </p>
+      <SmartBookmarkSuggestions />
       <BookmarksClient bookmarks={bookmarks} />
       <div className="fixed inset-x-0 bottom-0 z-40">
         <FloatingRadioPlayer />

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
+import { ThemeIcon } from "@/components/ui/ThemeIcon";
 import { summarizeVideoAction } from "@/app/actions/summarize";
 
 interface Props {
@@ -56,9 +57,9 @@ export default function SummarizeButton({ videoId }: Props) {
     <div className="mt-2.5 text-sm">
       <button
         onClick={handleToggle}
-        className="inline-flex items-center gap-1.5 rounded-full border border-(--notion-border) bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-700 transition-colors hover:bg-purple-500/20 focus-visible:outline-none focus:ring-2 focus:ring-purple-500/40 dark:border-purple-500/30 dark:text-purple-300"
+        className="inline-flex items-center gap-1.5 rounded-full border border-(--notion-border) bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-700 transition-colors hover:bg-purple-500/20 focus-visible:outline-none focus:ring-2 focus:ring-purple-500/40 dark:border-purple-400/50 dark:bg-purple-500/15 dark:text-purple-100 hover:dark:bg-purple-500/25"
       >
-        <Sparkles size={12} className={loading && !isOpen ? 'animate-pulse text-purple-600 dark:text-purple-400' : ''} />
+        <ThemeIcon name="AI_summary" alt="AI 요약" size={14} className={loading && !isOpen ? "animate-pulse opacity-90" : ""} />
         {summary ? "AI 핵심 3줄 요약 보기" : "AI 3줄 요약 요청하기"}
         {isOpen ? <ChevronUp size={12} opacity={0.6} /> : <ChevronDown size={12} opacity={0.6} />}
       </button>
@@ -66,7 +67,7 @@ export default function SummarizeButton({ videoId }: Props) {
       {isOpen && (
         <div 
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
-          className="mt-3 cursor-text rounded-xl border border-purple-500/20 bg-purple-50/50 p-4 text-sm leading-relaxed text-purple-900 shadow-xs dark:bg-purple-900/10 dark:text-purple-100/90"
+          className="mt-3 cursor-text rounded-xl border border-purple-500/25 bg-purple-50/60 p-4 text-sm leading-relaxed text-purple-900 shadow-xs dark:border-purple-500/40 dark:bg-[rgba(15,23,42,0.92)] dark:text-slate-50"
         >
           {loading && (
             <div className="flex flex-col items-center justify-center py-5 opacity-70 gap-3">

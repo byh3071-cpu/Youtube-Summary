@@ -1,5 +1,8 @@
 "use client";
 
+import Image from "next/image";
+import { useTheme } from "next-themes";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import type { RadioQueueItem } from "@/contexts/RadioQueueContext";
 import { ListMusic } from "lucide-react";
@@ -15,6 +18,14 @@ interface PlaylistsClientProps {
 
 export default function PlaylistsClient({ playlists }: PlaylistsClientProps) {
   const radio = useRadioQueueOptional();
+  const isHydrated = useIsHydrated();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const emptyPlaylistsSrc = !isHydrated
+    ? "/images/empty/Empty-playlists.png"
+    : isDark
+      ? "/images/empty/Empty-playlists_dark.png"
+      : "/images/empty/Empty-playlists.png";
 
   if (!radio) {
     return <p className="text-sm text-(--notion-fg)/70">라디오 플레이어가 초기화되는 중입니다.</p>;
@@ -27,9 +38,22 @@ export default function PlaylistsClient({ playlists }: PlaylistsClientProps) {
 
   if (playlists.length === 0) {
     return (
-      <p className="text-sm text-(--notion-fg)/65">
-        아직 저장된 플레이리스트가 없습니다. 라디오 플레이어의 재생 대기열 서랍에서 현재 큐를 플레이리스트로 저장해 보세요.
-      </p>
+      <div className="rounded-xl border border-dashed border-(--notion-border) bg-(--notion-gray)/30 px-6 py-10 text-center">
+        <div className="mx-auto mb-4 h-28 w-28">
+          <Image
+            src={emptyPlaylistsSrc}
+            alt="저장된 플레이리스트가 없음을 나타내는 일러스트"
+            width={112}
+            height={112}
+            className="h-full w-full object-contain"
+            priority
+          />
+        </div>
+        <p className="text-sm font-medium text-(--notion-fg)/70">아직 저장된 플레이리스트가 없습니다.</p>
+        <p className="mt-1 text-xs text-(--notion-fg)/50">
+          라디오 플레이어의 재생 대기열 서랍에서 현재 큐를 플레이리스트로 저장해 보세요.
+        </p>
+      </div>
     );
   }
 

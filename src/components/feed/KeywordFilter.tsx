@@ -16,11 +16,22 @@ export function useKeywordFilter() {
   const [keywords, setKeywords] = useState<string[]>([]);
 
   useEffect(() => {
-    const prefs = storage.getPreferences();
-    if (JSON.stringify(prefs.keywords) !== JSON.stringify(keywords)) {
+    const syncFromStorage = () => {
+      const prefs = storage.getPreferences();
       setKeywords(prefs.keywords);
+    };
+
+    syncFromStorage();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus-feed:preferences-updated", syncFromStorage);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus-feed:preferences-updated", syncFromStorage);
+      }
+    };
   }, []);
 
   const addKeyword = (newKeyword: string) => {

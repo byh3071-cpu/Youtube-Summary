@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Home, Rss, Youtube, Tag, Bookmark, ListMusic } from "lucide-react";
+import { Rss, Youtube, Tag, Bookmark, ListMusic } from "lucide-react";
+import { ThemeIcon } from "@/components/ui/ThemeIcon";
 import { useTheme } from "next-themes";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
 import { LoginButton } from "@/components/auth/LoginButton";
@@ -61,7 +62,7 @@ export default function Sidebar({
                     className={`block rounded-lg px-3 py-2 transition-colors ${selectedSourceId ? "hover:bg-(--notion-hover)" : "bg-(--notion-hover)"}`}
                 >
                     <div className="mb-1 flex items-center gap-2 text-sm font-medium">
-                        <Home size={15} />
+                        <ThemeIcon name="Feed_List" alt="전체 피드" size={24} />
                         <span>전체 피드</span>
                     </div>
                     <p className="text-xs leading-relaxed text-(--notion-fg)/60">

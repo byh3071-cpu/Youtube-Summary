@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Home, X, Bookmark, ListMusic } from "lucide-react";
+import { X, Bookmark, ListMusic } from "lucide-react";
+import { ThemeIcon } from "@/components/ui/ThemeIcon";
 import { useTheme } from "next-themes";
 import { ModalTransition } from "@/components/ui/ModalTransition";
 import { LoginButton } from "@/components/auth/LoginButton";
@@ -108,7 +109,7 @@ export default function MobileNavDrawer({
             className={`mt-4 block rounded-xl border px-3 py-3 transition-colors ${selectedSourceId ? "border-transparent bg-(--notion-hover)" : "border-(--notion-border) bg-(--notion-bg)"}`}
           >
             <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-(--notion-fg)">
-              <Home size={18} className="shrink-0 text-(--notion-fg)/80" />
+              <ThemeIcon name="Feed_List" alt="전체 피드" size={26} />
               전체 피드
             </div>
             <p className="text-xs leading-snug text-(--notion-fg)/60">
