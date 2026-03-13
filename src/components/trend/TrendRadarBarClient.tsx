@@ -1,7 +1,7 @@
 "use client";
 
-import { useKeywordFilter } from "@/components/feed/KeywordFilter";
 import type { TrendRadarItem } from "@/app/actions/trend";
+import { useKeywordFilter } from "@/components/feed/KeywordFilter";
 
 interface Props {
   trends: TrendRadarItem[];

@@ -1,7 +1,7 @@
 "use client";
 
-import { Radio } from "lucide-react";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
+import { ThemeIcon } from "@/components/ui/ThemeIcon";
 
 interface Props {
   videoId: string;
@@ -31,7 +31,7 @@ export default function AddToRadioButton({ videoId, title }: Props) {
       aria-label={inQueue ? "이미 라디오 큐에 있음" : "라디오에 추가"}
       className="inline-flex items-center gap-1.5 rounded-full border border-(--notion-border) bg-(--notion-gray)/50 px-2.5 py-1 text-[11px] font-medium text-(--notion-fg)/80 transition-colors hover:bg-(--notion-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20"
     >
-      <Radio size={12} className={inQueue ? "text-green-600 dark:text-green-400" : ""} />
+      <ThemeIcon name="Play_the_radio" alt="라디오" size={14} />
       {inQueue ? "큐에 있음" : "라디오에 추가"}
     </button>
   );

@@ -1,9 +1,13 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 import RefreshButton from "@/components/ui/RefreshButton";
 import ConnectionStatusPopup from "@/components/feed/ConnectionStatusPopup";
 import { YOUTUBE_STATUS_TONE } from "@/lib/youtube-status";
 import type { YouTubeFetchStatus } from "@/lib/youtube";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 interface FeedHeaderProps {
   selectedSource?: { id: string; name: string; type: "YouTube" | "RSS" };
@@ -44,6 +48,14 @@ export default function FeedHeader({
   void youtubeSourceCount;
   void rssSourceCount;
   const showYoutubeNotice = sourceStatus.youtube !== "ready" && (!selectedSource || selectedSource.type === "YouTube");
+  const isHydrated = useIsHydrated();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const heroSrc = !isHydrated
+    ? "/images/hero/hero-illustration3.png"
+    : isDark
+      ? "/images/hero/hero-illustration_dark4.png"
+      : "/images/hero/hero-illustration3.png";
 
   return (
     <section className="mb-4 rounded-3xl border border-(--notion-border) bg-linear-to-b from-(--notion-bg) to-(--notion-gray) p-5 sm:mb-5 sm:p-7">
@@ -57,18 +69,32 @@ export default function FeedHeader({
               <span className="truncate">{selectedSource.name}</span>
             </h1>
           ) : (
-            <div className="mb-3 mt-3 -ml-4">
-              <div className="relative h-9 w-[180px] sm:h-11 sm:w-[220px]">
-                <Image
-                  src="/focus-feed-wordmark-v5.png"
-                  alt="Focus Feed 로고"
-                  fill
-                  sizes="220px"
-                  className="object-contain"
-                  priority
-                />
+            <>
+              <div className="mb-3 mt-3 -ml-4">
+                <div className="relative h-9 w-[180px] sm:h-11 sm:w-[220px]">
+                  <Image
+                    src="/focus-feed-wordmark-v5.png"
+                    alt="Focus Feed 로고"
+                    fill
+                    sizes="220px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
               </div>
-            </div>
+              <div className="mt-2 hidden sm:block">
+                <div className="relative h-32 w-full max-w-[420px]">
+                  <Image
+                    src={heroSrc}
+                    alt="텍스트 중심 피드와 라디오 플레이어를 함께 보여주는 Focus Feed 히어로 일러스트"
+                    fill
+                    sizes="(min-width: 768px) 420px, 100vw"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              </div>
+            </>
           )}
           {selectedSource && (
             <p className="max-w-2xl text-[13px] leading-relaxed text-(--notion-fg)/65 sm:text-[14px]">

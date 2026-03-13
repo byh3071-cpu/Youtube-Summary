@@ -35,6 +35,8 @@ export const storage = {
 
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+            // 키워드/설정이 변경되었음을 전역으로 알림 (클라이언트 훅들이 구독)
+            window.dispatchEvent(new CustomEvent("focus-feed:preferences-updated"));
         } catch (error) {
             console.error('Failed to save preferences to localStorage:', error);
         }

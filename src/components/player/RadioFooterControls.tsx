@@ -3,7 +3,8 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { qaLog } from "@/lib/qa-log";
-import { ChevronLeft, ChevronRight, X, Play, Pause, ListMusic, FileText, Video, Maximize2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Play, Pause, Video, Maximize2 } from "lucide-react";
+import { ThemeIcon } from "@/components/ui/ThemeIcon";
 
 interface RadioFooterControlsProps {
   drawerOpen: boolean;
@@ -100,7 +101,7 @@ export function RadioFooterControls({
           aria-label={radio.isPlaying ? "일시정지" : "재생"}
           title={radio.isPlaying ? "일시정지" : "재생"}
         >
-          {radio.isPlaying ? <Pause size={18} /> : <Play size={18} />}
+          {radio.isPlaying ? <Pause size={18} /> : <ThemeIcon name="Play_the_radio" alt="재생" size={18} />}
         </button>
         <button
           type="button"
@@ -175,7 +176,7 @@ export function RadioFooterControls({
           aria-label="재생 목록"
           title="재생 목록"
         >
-          <ListMusic size={18} />
+          <ThemeIcon name="Feed_List" alt="재생 목록" size={18} />
         </button>
         <button
           type="button"
@@ -189,7 +190,7 @@ export function RadioFooterControls({
           aria-label="AI 요약(가사) 보기"
           title="AI 요약(가사) 보기"
         >
-          <FileText size={18} />
+          <ThemeIcon name="AI_summary" alt="AI 요약" size={18} />
         </button>
         <button
           type="button"

@@ -37,7 +37,7 @@ export default function FeedItem({ item, bookmark, onBookmarkChange }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${item.sourceName}의 ${item.title} 열기`}
-            className="group mb-3 block rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-transform transition-shadow hover:-translate-y-[1px] hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 last:mb-0 sm:px-5"
+            className="group mb-3 block rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-transform transition-shadow hover:-translate-y-[1px] hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 last:mb-0 sm:px-5 dark:bg-[rgba(15,23,42,0.85)] dark:border-[rgba(148,163,184,0.28)] dark:hover:border-(--focus-accent)/60"
         >
             <div className="flex items-start gap-3 sm:gap-4">
                 {/* Source Icon Indicator (Minimal) */}

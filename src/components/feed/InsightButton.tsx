@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lightbulb, ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
+import { ThemeIcon } from "@/components/ui/ThemeIcon";
 import { summarizeInsightAction } from "@/app/actions/summarize";
 
 interface Props {
@@ -60,9 +61,9 @@ export default function InsightButton({ videoId, completed }: Props) {
     <div className="mt-1.5 text-sm">
       <button
         onClick={handleToggle}
-        className="inline-flex items-center gap-1.5 rounded-full border border-(--notion-border) bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus:ring-2 focus:ring-amber-500/40 dark:border-amber-500/30 dark:text-amber-200"
+        className="inline-flex items-center gap-1.5 rounded-full border border-(--notion-border) bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus:ring-2 focus:ring-amber-500/40 dark:border-amber-400/50 dark:bg-amber-500/15 dark:text-amber-50 hover:dark:bg-amber-500/25"
       >
-        <Lightbulb size={12} className={loading && !isOpen ? "animate-pulse text-amber-600 dark:text-amber-300" : ""} />
+        <ThemeIcon name="AI_summary" alt="AI 인사이트" size={14} className={loading && !isOpen ? "animate-pulse opacity-90" : ""} />
         {insight ? "내 인사이트 정리 보기" : "AI 인사이트 정리 받기"}
         {isOpen ? <ChevronUp size={12} opacity={0.6} /> : <ChevronDown size={12} opacity={0.6} />}
       </button>
@@ -73,7 +74,7 @@ export default function InsightButton({ videoId, completed }: Props) {
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="mt-3 cursor-text rounded-xl border border-amber-500/25 bg-amber-50/70 p-4 text-sm leading-relaxed text-amber-950 shadow-xs dark:bg-amber-950/10 dark:text-amber-50/90"
+          className="mt-3 cursor-text rounded-xl border border-amber-500/25 bg-amber-50/70 p-4 text-sm leading-relaxed text-amber-950 shadow-xs dark:border-amber-400/40 dark:bg-[rgba(15,23,42,0.92)] dark:text-amber-50/95"
         >
           {loading && (
             <div className="flex flex-col items-center justify-center gap-3 py-5 opacity-80">

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { Bookmark, Trash2, ExternalLink, Headphones, Rss } from "lucide-react";
 import type { BookmarkRow } from "@/lib/supabase-server-cookies";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 const RSS_BOOKMARK_PREFIX = "rss:";
 
@@ -19,10 +21,45 @@ function rssArticleUrl(videoId: string) {
 
 type FilterMode = "all" | "youtube" | "rss";
 
+function extractYouTubeVideoId(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // 이미 videoId만 들어온 경우 (11자 ID)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname === "youtu.be") {
+      const id = url.pathname.replace("/", "");
+      return id || null;
+    }
+    if (url.hostname.includes("youtube.com")) {
+      const id = url.searchParams.get("v");
+      return id || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function BookmarksClient({ bookmarks }: { bookmarks: BookmarkRow[] }) {
   const [list, setList] = useState(bookmarks);
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [newLink, setNewLink] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const radio = useRadioQueueOptional();
+  const isHydrated = useIsHydrated();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const emptyBookmarksSrc = !isHydrated
+    ? "/images/empty/Empty-bookmarks.png"
+    : isDark
+      ? "/images/empty/Empty-bookmarks_dark.png"
+      : "/images/empty/Empty-bookmarks.png";
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/bookmarks?id=${encodeURIComponent(id)}`, { method: "DELETE" });
@@ -40,6 +77,54 @@ export default function BookmarksClient({ bookmarks }: { bookmarks: BookmarkRow[
     ]);
   };
 
+  const handleAddByLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adding) return;
+
+    const videoId = extractYouTubeVideoId(newLink);
+    if (!videoId) {
+      setAddError("유효한 유튜브 영상 링크 또는 영상 ID를 입력해 주세요.");
+      return;
+    }
+
+    const title = newTitle.trim() || "제목 없는 유튜브 영상";
+
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          video_id: videoId,
+          video_title: title,
+          highlight: title,
+        }),
+      });
+
+      if (res.status === 401) {
+        setAddError("로그인이 필요합니다.");
+        return;
+      }
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setAddError(data.error ?? "북마크 추가에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      const refreshed = await fetch("/api/bookmarks").then((r) => r.json());
+      if (Array.isArray(refreshed)) {
+        setList(refreshed as BookmarkRow[]);
+      }
+      setNewLink("");
+      setNewTitle("");
+      setAddError(null);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const filtered = list.filter((b) => {
     if (filter === "youtube") return !isRssBookmark(b);
     if (filter === "rss") return isRssBookmark(b);
@@ -48,10 +133,19 @@ export default function BookmarksClient({ bookmarks }: { bookmarks: BookmarkRow[
 
   if (filtered.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-(--notion-border) bg-(--notion-gray)/30 py-12 text-center">
-        <Bookmark className="mx-auto mb-3 h-10 w-10 text-(--notion-fg)/30" />
-        <p className="text-sm text-(--notion-fg)/60">저장한 북마크가 없습니다.</p>
-        <p className="mt-1 text-xs text-(--notion-fg)/45">피드에서 북마크 아이콘을 눌러 저장해 보세요.</p>
+      <div className="rounded-xl border border-dashed border-(--notion-border) bg-(--notion-gray)/30 px-6 py-10 text-center">
+        <div className="mx-auto mb-4 h-28 w-28">
+          <Image
+            src={emptyBookmarksSrc}
+            alt="저장된 북마크가 없음을 나타내는 일러스트"
+            width={112}
+            height={112}
+            className="h-full w-full object-contain"
+            priority
+          />
+        </div>
+        <p className="text-sm font-medium text-(--notion-fg)/70">저장한 북마크가 없습니다.</p>
+        <p className="mt-1 text-xs text-(--notion-fg)/50">피드에서 북마크 아이콘을 눌러 저장해 보세요.</p>
         <Link
           href="/"
           className="mt-4 inline-block text-sm font-medium text-(--notion-fg)/80 underline hover:text-(--notion-fg)"
@@ -70,6 +164,57 @@ export default function BookmarksClient({ bookmarks }: { bookmarks: BookmarkRow[
 
   return (
     <>
+      <form
+        onSubmit={handleAddByLink}
+        className="mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-3 sm:px-5 sm:py-4"
+      >
+        <p className="mb-2 text-xs font-semibold text-(--notion-fg)/70">
+          유튜브 링크로 북마크 추가
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex-1">
+            <label htmlFor="bookmark-link" className="sr-only">
+              유튜브 링크 또는 영상 ID
+            </label>
+            <input
+              id="bookmark-link"
+              type="text"
+              autoComplete="off"
+              placeholder="https://www.youtube.com/watch?v=... 또는 영상 ID"
+              value={newLink}
+              onChange={(e) => setNewLink(e.target.value)}
+              className="w-full rounded-full border border-(--notion-border) bg-(--notion-bg) px-3 py-2 text-xs text-(--notion-fg) placeholder:text-(--notion-fg)/40 focus:border-(--focus-accent) focus:outline-none"
+            />
+          </div>
+          <div className="flex-1">
+            <label htmlFor="bookmark-title" className="sr-only">
+              제목 (선택)
+            </label>
+            <input
+              id="bookmark-title"
+              type="text"
+              autoComplete="off"
+              placeholder="북마크에 표시할 제목 (선택)"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="w-full rounded-full border border-(--notion-border) bg-(--notion-bg) px-3 py-2 text-xs text-(--notion-fg) placeholder:text-(--notion-fg)/40 focus:border-(--focus-accent) focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={adding}
+            className="shrink-0 rounded-full bg-(--focus-accent) px-4 py-2 text-xs font-semibold text-black shadow-sm transition-colors hover:bg-(--focus-accent)/90 disabled:opacity-60"
+          >
+            {adding ? "추가 중..." : "북마크 추가"}
+          </button>
+        </div>
+        {addError && (
+          <p className="mt-2 text-[11px] text-red-500">
+            {addError}
+          </p>
+        )}
+      </form>
+
       <div className="mb-4 inline-flex rounded-full border border-(--notion-border) bg-(--notion-bg) p-1 text-xs">
         <button
           type="button"
