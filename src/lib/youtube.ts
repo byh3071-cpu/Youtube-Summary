@@ -44,6 +44,9 @@ interface YouTubeVideoDetailsResponse {
     contentDetails?: {
       duration?: string;
     };
+    snippet?: {
+      liveBroadcastContent?: "live" | "upcoming" | "none";
+    };
   }>;
 }
 
@@ -117,14 +120,18 @@ function parseIsoDurationToSeconds(iso?: string): number | undefined {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-async function fetchVideoDurations(videoIds: string[]): Promise<Record<string, number>> {
-  if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
-    return {};
-  }
-  if (videoIds.length === 0) return {};
+export interface VideoDetailsMap {
+  durationSeconds: Record<string, number>;
+  isLive: Record<string, boolean>;
+}
+
+async function fetchVideoDetails(videoIds: string[]): Promise<VideoDetailsMap> {
+  const empty = { durationSeconds: {}, isLive: {} };
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) return empty;
+  if (videoIds.length === 0) return empty;
 
   const params = new URLSearchParams({
-    part: "contentDetails",
+    part: "contentDetails,snippet",
     id: videoIds.join(","),
     key: YOUTUBE_API_KEY!,
   });
@@ -133,20 +140,22 @@ async function fetchVideoDurations(videoIds: string[]): Promise<Record<string, n
     const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
       next: { revalidate: REVALIDATE_SECONDS },
     });
-    if (!res.ok) return {};
+    if (!res.ok) return empty;
     const data = (await res.json()) as YouTubeVideoDetailsResponse;
-    const map: Record<string, number> = {};
+    const durationSeconds: Record<string, number> = {};
+    const isLive: Record<string, boolean> = {};
     for (const item of data.items ?? []) {
       const id = item.id;
+      if (!id) continue;
       const durIso = item.contentDetails?.duration;
       const seconds = parseIsoDurationToSeconds(durIso);
-      if (id && typeof seconds === "number" && seconds > 0) {
-        map[id] = seconds;
-      }
+      if (typeof seconds === "number" && seconds > 0) durationSeconds[id] = seconds;
+      const lb = item.snippet?.liveBroadcastContent;
+      isLive[id] = lb === "live" || lb === "upcoming";
     }
-    return map;
+    return { durationSeconds, isLive };
   } catch {
-    return {};
+    return empty;
   }
 }
 
@@ -215,7 +224,7 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
       .map((item) => item.snippet?.resourceId?.videoId)
       .filter((id): id is string => !!id);
 
-    const durationMap = await fetchVideoDurations(videoIds);
+    const { durationSeconds: durationMap, isLive: liveMap } = await fetchVideoDetails(videoIds);
     const avatarUrl = await fetchChannelAvatar(channelId);
 
     // 결과를 공통 FeedItem 형식으로 매핑
@@ -242,6 +251,7 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
         sourceName: channelName,
         thumbnail: snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
         durationSeconds: durationMap[videoId],
+        isLive: liveMap[videoId],
         sourceAvatarUrl: avatarUrl,
       } satisfies FeedItem];
     });

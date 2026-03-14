@@ -136,6 +136,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  /** 다음 트랙으로 이동. 재생 중이던 영상이 끝났을 때(ENDED) 호출되면 다음 곡 자동 재생 */
   const next = useCallback(() => {
     setState((prev) => {
       if (prev.queue.length === 0) return prev;
@@ -143,7 +144,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       if (nextIndex >= prev.queue.length) {
         return { ...prev, isPlaying: false };
       }
-      return { ...prev, currentIndex: nextIndex };
+      return { ...prev, currentIndex: nextIndex, isPlaying: true };
     });
   }, []);
 

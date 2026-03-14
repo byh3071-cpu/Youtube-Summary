@@ -133,8 +133,8 @@ export default function KeywordFilter({
       className={
         compact
           ? "mb-4 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 pt-0 pb-1 sm:px-3.5"
-          : // 소스 상세 보기에서는 FeedHeader와 좌우 패딩을 맞춰 정렬
-            "mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-5 pt-0 pb-1 sm:mb-5 sm:px-7"
+          : // 소스 상세: 헤더 아래에 붙고, 그 아래 트렌드 레이더가 붙음
+            "mb-0 rounded-b-none rounded-t-none border border-t-0 border-(--notion-border) bg-(--notion-bg) px-5 pt-0 pb-1 sm:px-7 mt-0"
       }
     >
       <div className={compact ? "mb-0 flex items-center justify-between gap-3" : "mb-0 flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between"}>
@@ -168,21 +168,8 @@ export default function KeywordFilter({
               >
                 필터
               </h2>
-              {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-            </div>
-            <div className="flex min-w-0 flex-col items-start">
-              <p
-                className="m-0 w-full text-left text-[13px] leading-snug text-(--notion-fg)/60"
-                style={{ marginTop: `${tooltipMarginTop}px` }}
-              >
-                {selectedSourceName
-                  ? `${selectedSourceName} 안에서 키워드로 다시 좁혀볼 수 있습니다.`
-                  : "키워드를 등록하면 제목, 요약, 출처 이름 기준으로 피드를 빠르게 좁혀볼 수 있습니다."}
-              </p>
-              <div
-                className="flex w-full flex-col items-start gap-0.5 text-left text-xs text-(--notion-fg)/60"
-                style={{ marginTop: `${openButtonMarginTop}px` }}
-              >
+              <div className="flex items-center gap-2">
+                {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
                 <button
                   type="button"
                   onClick={() => setCollapsed(prev => !prev)}

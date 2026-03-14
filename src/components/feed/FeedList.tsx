@@ -16,6 +16,8 @@ interface Props {
     viewMode?: ViewMode;
     bookmarks?: BookmarkEntry[];
     onBookmarkChange?: () => void;
+    /** 소스 선택 시 해당 소스 총 개수 (유튜브/RSS 섹션 헤더에 표시) */
+    totalCount?: number;
 }
 
 function EmptyBlock({ message }: { message: string }) {
@@ -26,7 +28,7 @@ function EmptyBlock({ message }: { message: string }) {
     );
 }
 
-export default function FeedList({ items, hasActiveFilters = false, selectedSourceName, useTickerLayout = true, viewMode = "all", bookmarks = [], onBookmarkChange }: Props) {
+export default function FeedList({ items, hasActiveFilters = false, selectedSourceName, useTickerLayout = true, viewMode = "all", bookmarks = [], onBookmarkChange, totalCount }: Props) {
     const youtubeItems = (items ?? []).filter((i) => i.source === "YouTube");
     const rssItems = (items ?? []).filter((i) => i.source === "RSS");
     const hasAny = items && items.length > 0;
@@ -94,11 +96,12 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                     <div className="flex items-center justify-between gap-2 border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-[13px] text-(--notion-fg)/70 sm:px-5">
                         <div className="flex items-center gap-2">
                             <Youtube className="h-4 w-4 text-red-500" />
-                            <span className="font-semibold">유튜브 최신</span>
+                            <span className="font-semibold">유튜브</span>
                         </div>
-                        <span className="text-[12px] text-(--notion-fg)/55">
-                            최신순 정렬
-                        </span>
+                        <div className="flex items-center gap-2 text-[12px] text-(--notion-fg)/55">
+                            {typeof totalCount === "number" && <span>총 {totalCount}개</span>}
+                            <span>최신순 정렬</span>
+                        </div>
                     </div>
                     <div className="px-3 py-3 sm:px-4 sm:py-4">
                         {youtubeItems.length === 0 ? (
@@ -125,10 +128,15 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
 
             {showRss && (
                 <div className="overflow-hidden rounded-2xl border border-(--notion-border) bg-(--notion-bg)">
-                    <div className="flex items-center gap-2 border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-sm text-(--notion-fg)/60 sm:px-5">
-                        <Rss className="h-4 w-4 text-blue-500" />
-                        <span className="font-medium">RSS·뉴스 최신</span>
-                        <span className="text-(--notion-fg)/45">· 최신순</span>
+                    <div className="flex items-center justify-between gap-2 border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-[13px] text-(--notion-fg)/70 sm:px-5">
+                        <div className="flex items-center gap-2">
+                            <Rss className="h-4 w-4 text-blue-500" />
+                            <span className="font-semibold">RSS·뉴스</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[12px] text-(--notion-fg)/55">
+                            {typeof totalCount === "number" && <span>총 {totalCount}개</span>}
+                            <span>최신순 정렬</span>
+                        </div>
                     </div>
                     <AutoAnimateList as="div" className="flex flex-col">
                         {rssItems.length === 0 ? (

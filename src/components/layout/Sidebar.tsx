@@ -2,19 +2,38 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Rss, Youtube, Tag, Bookmark, ListMusic } from "lucide-react";
-import { ThemeIcon } from "@/components/ui/ThemeIcon";
-import { useTheme } from "next-themes";
+import { useSearchParams } from "next/navigation";
+import { Rss, Youtube, Tag, Bookmark, ListMusic, Film, Clapperboard, Radio } from "lucide-react";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
 import { LoginButton } from "@/components/auth/LoginButton";
 import AddChannelButton from "@/components/feed/AddChannelButton";
 import SourceExportImport from "@/components/feed/SourceExportImport";
 import YouTubeSourceList from "@/components/layout/YouTubeSourceList";
-import { YOUTUBE_STATUS_LABEL, YOUTUBE_STATUS_TONE } from "@/lib/youtube-status";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
 // rssSources moved inside Sidebar or taken from sources.ts directly
+
+function SidebarViewModeLinks({ currentViewMode }: { currentViewMode: string | null }) {
+    return (
+        <div className="flex w-full gap-1">
+            <Link
+                href="/?viewMode=longform"
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${currentViewMode === "longform" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
+            >
+                <Film size={14} className="shrink-0" />
+                롱폼
+            </Link>
+            <Link
+                href="/?viewMode=shortform"
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${currentViewMode === "shortform" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
+            >
+                <Clapperboard size={14} className="shrink-0" />
+                숏폼
+            </Link>
+        </div>
+    );
+}
 
 export default function Sidebar({
     sourceStatus,
@@ -32,46 +51,46 @@ export default function Sidebar({
     latestVideoBySource?: Record<string, string>;
 }) {
     const youtubeSources = youtubeSourcesProp ?? defaultSources.filter((s) => s.type === "YouTube");
-    const { theme, setTheme } = useTheme();
-    const isDark = theme === "dark";
+    const searchParams = useSearchParams();
+    const viewMode = searchParams?.get("viewMode") ?? null;
     return (
-        <aside className="hidden w-72 shrink-0 border-r border-(--notion-border) bg-(--notion-gray) md:flex md:flex-col">
-            <div className="m-2 rounded-xl border border-(--notion-border) bg-(--notion-bg) p-4">
-                <div className="mb-4 flex flex-col items-center gap-4">
-                    <button
-                        type="button"
-                        onClick={() => setTheme(isDark ? "light" : "dark")}
-                        className="relative h-20 w-20 overflow-hidden rounded-3xl bg-transparent"
-                        aria-label="테마 전환"
-                    >
+        <aside className="hidden w-72 shrink-0 bg-white dark:bg-(--notion-gray) md:flex md:flex-col">
+            <div className="mt-0 mb-2 mx-2 rounded-xl bg-white dark:bg-(--notion-bg) pt-1 px-4 pb-3">
+                <div className="mb-1.5 flex flex-col items-center gap-1.5">
+                    <Link href="/" className="relative block h-28 w-[300px] shrink-0 overflow-hidden rounded-lg">
                         <Image
-                            src="/focus-feed-logo-v2.png"
-                            alt="Focus Feed 로고"
+                            src="/rogo.png"
+                            alt="Focus Feed"
                             fill
-                            sizes="80px"
+                            sizes="300px"
                             className="object-contain"
                         />
-                    </button>
-                    <div className="flex items-center justify-center gap-2">
+                    </Link>
+                    <div className="flex w-full items-center justify-center gap-2">
                         <LoginButton />
                     </div>
-                </div>
-
-                <Link
-                    href="/"
-                    className={`block rounded-lg px-3 py-2 transition-colors ${selectedSourceId ? "hover:bg-(--notion-hover)" : "bg-(--notion-hover)"}`}
-                >
-                    <div className="mb-1 flex items-center gap-2 text-sm font-medium">
-                        <ThemeIcon name="Feed_List" alt="전체 피드" size={24} />
-                        <span>전체 피드</span>
+                    <div className="flex w-full justify-center">
+                        <Link
+                            href="/"
+                            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${!selectedSourceId && !selectedCategory && !viewMode ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
+                        >
+                            전체 피드
+                        </Link>
                     </div>
-                    <p className="text-xs leading-relaxed text-(--notion-fg)/60">
-                        유튜브와 RSS를 한 곳에서 모아 최신순으로 확인합니다.
-                    </p>
-                </Link>
+                    <SidebarViewModeLinks currentViewMode={viewMode} />
+                    <div className="flex w-full justify-center">
+                        <Link
+                            href="/?viewMode=live"
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${viewMode === "live" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
+                        >
+                            <Radio size={14} className="shrink-0" />
+                            라이브
+                        </Link>
+                    </div>
+                </div>
             </div>
 
-            <nav className="flex-1 space-y-6 px-3 py-2">
+            <nav className="flex-1 space-y-3 bg-white dark:bg-transparent px-3 pt-0.5 pb-2">
                 <SidebarSection
                     title="카테고리"
                     items={[{ id: "", name: "전체" }, ...FEED_CATEGORIES.map((id) => ({ id, name: id }))]}
@@ -84,17 +103,9 @@ export default function Sidebar({
                 />
 
                 <section>
-                    <div className="mb-2 flex items-center justify-between gap-2 px-2">
-                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
-                            <Youtube size={15} className="text-red-500" />
-                            <span>YouTube ({youtubeSources.length})</span>
-                        </div>
-                        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${YOUTUBE_STATUS_TONE[sourceStatus.youtube]}`}>
-                            {YOUTUBE_STATUS_LABEL[sourceStatus.youtube]}
-                        </span>
-                    </div>
-                    <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
-                        {sourceStatus.youtube === "ready" ? "모든 YouTube 채널을 함께 표시합니다." : "현재 YouTube 소스는 일시적으로 피드에서 빠져 있습니다."}
+                    <div className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
+                        <Youtube size={15} className="text-red-500" />
+                        <span>YouTube ({youtubeSources.length})</span>
                     </div>
                     <YouTubeSourceList
                         items={youtubeSources}
@@ -110,9 +121,9 @@ export default function Sidebar({
                     title={`RSS (${defaultSources.filter((s) => s.type === "RSS").length})`}
                     items={defaultSources.filter((s) => s.type === "RSS")}
                     icon={<Rss size={15} className="text-blue-500" />}
-                    statusLabel="표시 중"
-                    statusTone="border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                    helperText="RSS 소스는 현재 정상적으로 피드에 포함됩니다."
+                    statusLabel=""
+                    statusTone=""
+                    helperText=""
                     selectedSourceId={selectedSourceId}
                 />
 
@@ -139,7 +150,7 @@ export default function Sidebar({
                 </section>
             </nav>
 
-            <div className="flex flex-col gap-2 border-t border-(--notion-border) p-4 pb-28 md:pb-24">
+            <div className="flex flex-col gap-2 border-t border-(--notion-border) bg-white dark:bg-transparent p-4 pb-28 md:pb-24">
                 <div className="text-xs leading-relaxed text-(--notion-fg)/55">
                     새 기능은 검증이 끝난 뒤 순차적으로 추가합니다. 현재는 읽기와 필터링 경험에 집중합니다.
                 </div>
@@ -188,9 +199,11 @@ function SidebarSection({
                 ) : null}
             </div>
 
-            <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
-                {helperText}
-            </div>
+            {helperText ? (
+                <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
+                    {helperText}
+                </div>
+            ) : null}
 
             <div className="space-y-1">
                 {items.map((item) => {

@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { qaLog } from "@/lib/qa-log";
-import { ChevronLeft, ChevronRight, X, Play, Pause, Video, Maximize2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 import { ThemeIcon } from "@/components/ui/ThemeIcon";
 
 interface RadioFooterControlsProps {
@@ -93,15 +93,15 @@ export function RadioFooterControls({
       role="region"
       aria-label="라디오 플레이어"
     >
-      <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2 md:px-6">
+      <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-2 md:px-6">
         <button
           type="button"
           onClick={togglePlay}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-(--focus-accent) bg-(--notion-bg) text-(--focus-accent) shadow-sm transition-all hover:scale-105 hover:bg-(--focus-accent) hover:text-white min-h-[44px] min-w-[44px] touch-manipulation"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/80 text-(--notion-fg)/70 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[64px] min-w-[64px] touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60"
           aria-label={radio.isPlaying ? "일시정지" : "재생"}
           title={radio.isPlaying ? "일시정지" : "재생"}
         >
-          {radio.isPlaying ? <Pause size={18} /> : <ThemeIcon name="Play_the_radio" alt="재생" size={18} />}
+          {radio.isPlaying ? <Pause size={28} /> : <ThemeIcon name="Play_the_radio" alt="재생" size={56} />}
         </button>
         <button
           type="button"
@@ -137,12 +137,10 @@ export function RadioFooterControls({
               onClick={onSeek ? handleBarClick : undefined}
               className={`relative flex-1 overflow-visible py-1 ${onSeek ? "cursor-pointer touch-none" : ""}`}
             >
-              {/* 트랙: 초록 바가 흰 동그라미까지 이어지도록 progress% + 동그라미 반경만큼 연장 */}
+              {/* 트랙: 초록 바와 동그라미가 같은 progress로 즉시 갱신되도록 transition 없음 (재생 중 렉 방지) */}
               <div className="relative h-2 w-full overflow-hidden rounded-full bg-(--notion-gray)">
                 <div
-                  className={`h-full min-w-0 rounded-full bg-(--focus-accent) ${
-                    isDragging ? "transition-none" : "transition-[width] duration-150"
-                  } ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
+                  className={`h-full min-w-0 rounded-full bg-(--focus-accent) transition-none ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
                   style={{
                     width: `calc(${clampedProgress}% + ${clampedProgress > 0 && clampedProgress < 100 ? 8 : 0}px)`,
                   }}
@@ -164,34 +162,37 @@ export function RadioFooterControls({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const next = !drawerOpen;
-            setDrawerOpen(next);
-            if (next) qaLog.radio.playlistDrawerOpen(radio.queue.length);
-            else qaLog.radio.playlistDrawerClose();
-          }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
-          aria-label="재생 목록"
-          title="재생 목록"
-        >
-          <ThemeIcon name="Feed_List" alt="재생 목록" size={18} />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const next = !lyricsOpen;
-            setLyricsOpen(next);
-            if (next) qaLog.radio.lyricsViewOpen(!!radio.currentItem?.summary);
-            else qaLog.radio.lyricsViewClose();
-          }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
-          aria-label="AI 요약(가사) 보기"
-          title="AI 요약(가사) 보기"
-        >
-          <ThemeIcon name="AI_summary" alt="AI 요약" size={18} />
-        </button>
+        {/* 재생 대기열·AI 요약: 두 버튼 가운데 정렬·간격 일정(gap-4) */}
+        <div className="flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !drawerOpen;
+              setDrawerOpen(next);
+              if (next) qaLog.radio.playlistDrawerOpen(radio.queue.length);
+              else qaLog.radio.playlistDrawerClose();
+            }}
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/80 text-(--notion-fg)/70 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[64px] min-w-[64px] touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60"
+            aria-label="재생 목록"
+            title="재생 목록"
+          >
+            <ThemeIcon name="feed_list1" alt="재생 목록" size={65} className="translate-x-0.5 translate-y-0.5, -translate-y-0.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !lyricsOpen;
+              setLyricsOpen(next);
+              if (next) qaLog.radio.lyricsViewOpen(!!radio.currentItem?.summary);
+              else qaLog.radio.lyricsViewClose();
+            }}
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/80 text-(--notion-fg)/70 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[64px] min-w-[64px] touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60"
+            aria-label="AI 요약(가사) 보기"
+            title="AI 요약(가사) 보기"
+          >
+            <ThemeIcon name="ai_summary1" alt="AI 요약" size={70} className="-translate-y-0.5"  />
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -202,11 +203,11 @@ export function RadioFooterControls({
               return next;
             });
           }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-(--notion-hover) min-h-[44px] min-w-[44px] touch-manipulation ${videoExpanded ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/70 hover:text-(--notion-fg)"}`}
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/80 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) min-h-[64px] min-w-[64px] touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60 ${videoExpanded ? "bg-(--notion-hover) text-(--notion-fg) dark:bg-(--notion-hover)" : "text-(--notion-fg)/70 hover:text-(--notion-fg)"}`}
           aria-label={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"}
           title={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"}
         >
-          <Video size={18} />
+          <ThemeIcon name="watch_mini_video" alt="미니 영상" size={56} />
         </button>
         <button
           type="button"
@@ -214,20 +215,20 @@ export function RadioFooterControls({
             setFullPlayerOpen(true);
             qaLog.radio.fullPlayerOpen();
           }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/80 text-(--notion-fg)/70 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[64px] min-w-[64px] touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60"
           aria-label="전체 화면 영상"
           title="전체 화면 영상"
         >
-          <Maximize2 size={18} />
+          <ThemeIcon name="view_fullscreen" alt="전체 화면" size={56} />
         </button>
         <button
           type="button"
           onClick={() => radio.close()}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/50 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[44px] min-w-[44px] touch-manipulation"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/80 text-(--notion-fg)/50 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) min-h-[64px] min-w-[64px] touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60"
           aria-label="플레이어 닫기"
           title="플레이어 닫기"
         >
-          <X size={18} />
+          <ThemeIcon name="close_player" alt="플레이어 닫기" size={56} />
         </button>
       </div>
     </footer>

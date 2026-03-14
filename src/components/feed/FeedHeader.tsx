@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useTheme } from "next-themes";
 import RefreshButton from "@/components/ui/RefreshButton";
 import ConnectionStatusPopup from "@/components/feed/ConnectionStatusPopup";
-import { YOUTUBE_STATUS_TONE } from "@/lib/youtube-status";
 import type { YouTubeFetchStatus } from "@/lib/youtube";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 
@@ -16,14 +15,6 @@ interface FeedHeaderProps {
   youtubeSourceCount: number;
   rssSourceCount: number;
 }
-
-/** FeedHeader 전용 라벨: Sidebar보다 더 구체적인 표현 사용 */
-const HEADER_STATUS_LABEL: Record<YouTubeFetchStatus, string> = {
-  ready: "YouTube 연결됨",
-  missing_api_key: "YouTube 키 필요",
-  invalid_api_key: "YouTube 키 오류",
-  request_failed: "YouTube 일시 장애",
-};
 
 const youtubeNoticeMessage: Record<YouTubeFetchStatus, (selected: FeedHeaderProps["selectedSource"]) => string> = {
   missing_api_key: (selected) => selected
@@ -57,15 +48,19 @@ export default function FeedHeader({
       ? "/images/hero/hero-illustration_dark4.png"
       : "/images/hero/hero-illustration3.png";
 
+  // [채널명 위치 조정] 소스 선택 시(일잘러 장피엠 등) 문구 위치:
+  // - 섹션 상단: 아래 HEADER_SOURCE_* 값으로 조정 (위로 올리려면 음수 -mt-1 등, 아래로는 pt-2 등)
+  // - 채널명(h1)만: 아래 CHANNEL_TITLE_* 값으로 조정 (위로: -mt-1, 아래로: mt-1 등)
+  const HEADER_SOURCE_TOP = "pt-2 sm:pt-3"; // 섹션 상단 여백 (pt-0 = 없음, pt-4 = 더 아래)
+  const CHANNEL_TITLE_TOP = "-mt-6 sm:-mt-9"; // 채널명 블록 위아래 (위로: -mt-2 ~ -mt-8, 아래로: mt-1) — 상위 div에 적용돼야 더 올라감
+  const REFRESH_BLOCK_TOP = "mt-3 sm:mt-4"; // 새로고침(오른쪽 블록)만 아래로 (mt-0 = 유지, mt-2 ~ mt-4 = 더 내림)
+
   return (
-    <section className="mb-4 rounded-3xl border border-(--notion-border) bg-linear-to-b from-(--notion-bg) to-(--notion-gray) p-5 sm:mb-5 sm:p-7">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase ${selectedSource ? "border-(--notion-border) bg-(--notion-bg) text-(--notion-fg)/70" : "border-(--notion-border) bg-(--notion-bg) text-(--notion-fg)/55"}`}>
-            {selectedSource ? "소스 보기" : "전체 피드"}
-          </span>
+    <section className={`${selectedSource ? `mb-0 border-0 rounded-none bg-white dark:bg-(--notion-bg) ${HEADER_SOURCE_TOP} pb-5 px-4 sm:pb-7 sm:px-6` : "mb-4 rounded-3xl border border-(--notion-border) bg-linear-to-b from-(--notion-bg) to-(--notion-gray) p-5 sm:mb-5 sm:p-7"}`}>
+      <div className={`flex ${selectedSource ? "flex-row items-center justify-between gap-4" : "flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"}`}>
+        <div className={`min-w-0 ${selectedSource ? CHANNEL_TITLE_TOP : ""}`}>
           {selectedSource ? (
-            <h1 className="mb-3 mt-3 text-3xl font-extrabold tracking-tight sm:text-[2.35rem]">
+            <h1 className="mb-0 text-xl font-bold tracking-tight sm:text-2xl">
               <span className="truncate">{selectedSource.name}</span>
             </h1>
           ) : (
@@ -96,25 +91,17 @@ export default function FeedHeader({
               </div>
             </>
           )}
-          {selectedSource && (
-            <p className="max-w-2xl text-[13px] leading-relaxed text-(--notion-fg)/65 sm:text-[14px]">
-              {selectedSource.type === "YouTube"
-                ? "이 채널에서 올라온 최신 항목만 모아 보고 있어요."
-                : "이 소스에서 올라온 최신 항목만 모아 보고 있어요."}
-            </p>
-          )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-(--notion-fg)/60">
-            <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
-              총 {visibleItemsCount}개
-            </span>
-            <span className={`rounded-2xl border px-3 py-1.5 ${YOUTUBE_STATUS_TONE[sourceStatus.youtube]}`}>
-              {HEADER_STATUS_LABEL[sourceStatus.youtube]}
-            </span>
-          </div>
+          {!selectedSource && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-(--notion-fg)/60">
+              <span className="rounded-2xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1.5">
+                총 {visibleItemsCount}개
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+        <div className={`flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center ${selectedSource ? `flex-row items-center ${REFRESH_BLOCK_TOP}` : ""}`}>
           <ConnectionStatusPopup selectedSource={selectedSource} sourceStatus={sourceStatus} />
           <RefreshButton />
         </div>

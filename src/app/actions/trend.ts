@@ -86,7 +86,7 @@ async function callGeminiForTrends(items: FeedItem[]): Promise<TrendRadarItem[] 
           typeof t.summary === "string" &&
           Array.isArray(t.sampleTitles),
       )
-      .slice(0, 5);
+      .slice(0, 10);
   } catch (e) {
     console.error("[TrendRadar] Failed to parse Gemini response", e, raw);
     return null;

@@ -5,13 +5,22 @@ import { getVideoContext } from "@/lib/video-context";
 import { getSupabaseForSummaries, type Database } from "@/lib/supabase-server";
 import { getMergedFeed } from "@/lib/feed";
 import type { FeedItem } from "@/types/feed";
-import { 
-  SUMMARY_PROMPT_CAPTION, 
-  SUMMARY_PROMPT_SNIPPET, 
-  INSIGHT_PROMPT, 
-  getSystemGoalPrompt, 
-  getRankingPrompt 
+import {
+  SUMMARY_PROMPT_CAPTION,
+  SUMMARY_PROMPT_SNIPPET,
+  SUMMARY_RETRY_HINT,
+  getSummaryQualityEvalPrompt,
+  INSIGHT_PROMPT,
+  INSIGHT_RETRY_HINT,
+  getInsightQualityEvalPrompt,
+  getSystemGoalPrompt,
+  getRankingPrompt,
 } from "@/lib/prompts";
+
+/** 품질 기준 점수 이상이면 통과 (요약·인사이트 공통, 강화된 기준) */
+const QUALITY_THRESHOLD = 78;
+/** 미달 시 재생성 최대 횟수 (1회 생성 + 최대 2회 재생성 = 총 3회 시도) */
+const MAX_REGENERATION_ATTEMPTS = 3;
 
 // Removed local INSIGHT_PROMPT as it's now in @/lib/prompts
 
@@ -37,6 +46,58 @@ async function summarizeWithGemini(prompt: string): Promise<string | null> {
     if (code !== 404 && code !== "NOT_FOUND") {
       console.error("[Summarize] Gemini generateContent failed", e);
     }
+    return null;
+  }
+}
+
+type QualityEvalResult = { score: number; passed: boolean; reason?: string };
+
+async function evaluateSummaryQuality(
+  contextSnippet: string,
+  summary: string,
+): Promise<QualityEvalResult | null> {
+  if (!process.env.GEMINI_API_KEY) return null;
+  const prompt = getSummaryQualityEvalPrompt(contextSnippet, summary);
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: "models/gemini-pro-latest",
+      contents: prompt,
+    });
+    const raw = (response.text || "").trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}") + 1;
+    const json = start >= 0 && end > start ? raw.slice(start, end) : raw;
+    const parsed = JSON.parse(json) as { score?: number; passed?: boolean; reason?: string };
+    const score = typeof parsed.score === "number" ? parsed.score : 0;
+    const passed = parsed.passed === true || score >= QUALITY_THRESHOLD;
+    return { score, passed, reason: parsed.reason };
+  } catch {
+    return null;
+  }
+}
+
+async function evaluateInsightQuality(
+  contextSnippet: string,
+  insight: string,
+): Promise<QualityEvalResult | null> {
+  if (!process.env.GEMINI_API_KEY) return null;
+  const prompt = getInsightQualityEvalPrompt(contextSnippet, insight);
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: "models/gemini-pro-latest",
+      contents: prompt,
+    });
+    const raw = (response.text || "").trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}") + 1;
+    const json = start >= 0 && end > start ? raw.slice(start, end) : raw;
+    const parsed = JSON.parse(json) as { score?: number; passed?: boolean; reason?: string };
+    const score = typeof parsed.score === "number" ? parsed.score : 0;
+    const passed = parsed.passed === true || score >= QUALITY_THRESHOLD;
+    return { score, passed, reason: parsed.reason };
+  } catch {
     return null;
   }
 }
@@ -80,26 +141,49 @@ export async function summarizeVideoAction(videoId: string) {
 
     const { text, source } = ctx;
 
-    const prompt =
+    const basePrompt =
       source === "자막"
         ? SUMMARY_PROMPT_CAPTION(text)
         : SUMMARY_PROMPT_SNIPPET(text);
+    const contextSnippet = text.slice(0, 5000);
 
-    const summary = await summarizeWithGemini(prompt);
-    if (summary) {
-      const final = source === "제목·설명" ? `(제목·설명 기반)\n\n${summary}` : summary;
+    let lastSummary: string | null = null;
+    let attempt = 0;
+    let retryReason: string | undefined;
 
-      // 3. Supabase에 캐시 저장 (best-effort)
+    while (attempt < MAX_REGENERATION_ATTEMPTS) {
+      attempt += 1;
+      const prompt = retryReason
+        ? basePrompt + SUMMARY_RETRY_HINT(retryReason)
+        : basePrompt;
+      const summary = await summarizeWithGemini(prompt);
+      if (!summary) {
+        if (lastSummary) break;
+        return { error: "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요." };
+      }
+      lastSummary = summary;
+
+      const evalResult = await evaluateSummaryQuality(contextSnippet, summary);
+      if (!evalResult) {
+        break;
+      }
+      if (evalResult.passed) {
+        break;
+      }
+      retryReason = evalResult.reason;
+    }
+
+    if (lastSummary) {
+      const final = source === "제목·설명" ? `(제목·설명 기반)\n\n${lastSummary}` : lastSummary;
+
       if (summariesTable) {
         const row: Database["public"]["Tables"]["summaries"]["Insert"] = {
           video_id: videoId,
           summary: final,
           source,
         };
-        // Supabase 클라이언트 제네릭이 테이블별로 추론되지 않을 때 타입 단언 (빌드 호환)
         await (summariesTable as unknown as { upsert: (v: typeof row, o: { onConflict: string }) => Promise<unknown> }).upsert(row, { onConflict: "video_id" });
       }
-
       return { summary: final };
     }
     return { error: "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요." };
@@ -121,15 +205,35 @@ export async function summarizeInsightAction(videoId: string) {
     }
 
     const { text } = ctx;
+    const basePrompt = INSIGHT_PROMPT(text);
+    const contextSnippet = text.slice(0, 5000);
 
-    const prompt = INSIGHT_PROMPT(text);
+    let lastInsight: string | null = null;
+    let attempt = 0;
+    let retryReason: string | undefined;
 
-    const insight = await summarizeWithGemini(prompt);
-    if (!insight) {
-      return { error: "인사이트 정리에 실패했습니다. 잠시 후 다시 시도해 주세요." };
+    while (attempt < MAX_REGENERATION_ATTEMPTS) {
+      attempt += 1;
+      const prompt = retryReason
+        ? basePrompt + INSIGHT_RETRY_HINT(retryReason)
+        : basePrompt;
+      const insight = await summarizeWithGemini(prompt);
+      if (!insight) {
+        if (lastInsight) break;
+        return { error: "인사이트 정리에 실패했습니다. 잠시 후 다시 시도해 주세요." };
+      }
+      lastInsight = insight.trim();
+
+      const evalResult = await evaluateInsightQuality(contextSnippet, lastInsight);
+      if (!evalResult) break;
+      if (evalResult.passed) break;
+      retryReason = evalResult.reason;
     }
 
-    return { insight: insight.trim() };
+    if (lastInsight) {
+      return { insight: lastInsight };
+    }
+    return { error: "인사이트 정리에 실패했습니다. 잠시 후 다시 시도해 주세요." };
   } catch (error) {
     console.error("Summarize Insight Error:", error);
     return { error: "인사이트 정리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." };

@@ -21,6 +21,18 @@ export function filterFeedByKeywords(items: FeedItem[], keywords: string[]): Fee
 }
 
 /**
+ * 트렌드 키워드 하나로 피드를 임시 필터링합니다.
+ * (요즘 뜨는 키워드 클릭 시 사용, 필터에 저장하지 않음)
+ */
+export function filterFeedByTrendKeyword(items: FeedItem[], keyword: string | null): FeedItem[] {
+  if (!keyword || !keyword.trim()) return items;
+  const k = keyword.toLowerCase().trim();
+  const searchTarget = (item: FeedItem) =>
+    `${item.title} ${item.summary || ""} ${item.sourceName}`.toLowerCase();
+  return items.filter((item) => searchTarget(item).includes(k));
+}
+
+/**
  * 카테고리 기준으로 피드를 필터링합니다.
  * category가 없으면 전체, 있으면 해당 카테고리만 반환합니다.
  */

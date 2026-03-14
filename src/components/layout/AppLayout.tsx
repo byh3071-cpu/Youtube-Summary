@@ -19,9 +19,11 @@ interface LayoutProps {
     authError?: string;
     authErrorHint?: string;
     authSuccess?: boolean;
+    /** 롱폼/숏폼 리얼 뷰일 때 상단·좌우 여백 제거해 플레이어가 맨 위까지 꽉 차게 */
+    reelMode?: boolean;
 }
 
-export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, customYouTubeSourceIds, latestVideoBySource, authError, authErrorHint, authSuccess }: LayoutProps) {
+export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, customYouTubeSourceIds, latestVideoBySource, authError, authErrorHint, authSuccess, reelMode }: LayoutProps) {
     return (
         <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg)">
             <a
@@ -30,7 +32,7 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
             >
                 본문으로 건너뛰기
             </a>
-            <div className="w-full shrink-0 space-y-1.5 px-2 py-1.5 sm:px-4 md:px-6">
+            <div className={`w-full shrink-0 space-y-1.5 px-2 sm:px-4 md:px-6 ${reelMode ? "py-0" : "py-1.5"}`}>
                 <AuthSuccessBanner authSuccess={authSuccess ?? false} />
                 <AuthErrorBanner authError={authError} authErrorHint={authErrorHint} />
             </div>
@@ -51,8 +53,14 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
                 latestVideoBySource={latestVideoBySource}
             />
 
-            <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-2 pt-2 pb-28 sm:px-4 sm:pt-4 sm:pb-32 md:px-6 lg:px-8">
-                <div className="mx-auto max-w-6xl lg:max-w-7xl">
+            <main
+                id="main"
+                tabIndex={-1}
+                className={`min-w-0 flex-1 pb-28 sm:pb-32 ${
+                    reelMode ? "px-0 pt-0" : "px-2 pt-2 sm:px-4 sm:pt-4 md:px-6 lg:px-8"
+                }`}
+            >
+                <div className={reelMode ? "w-full max-w-none" : "mx-auto max-w-6xl lg:max-w-7xl"}>
                     {children}
                 </div>
             </main>

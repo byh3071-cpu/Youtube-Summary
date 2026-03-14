@@ -12,7 +12,13 @@ interface Props {
   onBookmarkChange: () => void;
   /** 로그인 안 했을 때 true */
   disabled?: boolean;
+  /** 리얼 뷰 등에서 큰 버튼용 (예: h-9 w-9) */
+  className?: string;
+  /** 리얼 뷰 등에서 아이콘 크기 (기본 16, 20~30 권장) */
+  iconSize?: number;
 }
+
+const DEFAULT_ICON_SIZE = 16;
 
 export default function BookmarkButton({
   videoId,
@@ -22,6 +28,8 @@ export default function BookmarkButton({
   bookmarkId,
   onBookmarkChange,
   disabled,
+  className,
+  iconSize = DEFAULT_ICON_SIZE,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [optimisticBookmarked, setOptimisticBookmarked] = useState(isBookmarked);
@@ -83,7 +91,7 @@ export default function BookmarkButton({
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+      className={`inline-flex items-center justify-center rounded-full transition-colors ${className ?? "h-7 w-7"} ${
         optimisticBookmarked
           ? "text-amber-500 hover:bg-amber-500/10 hover:text-amber-600"
           : "text-(--notion-fg)/50 hover:bg-(--notion-hover) hover:text-(--notion-fg)/70"
@@ -91,10 +99,10 @@ export default function BookmarkButton({
       aria-label={isBookmarked ? "북마크 해제" : "북마크 추가"}
     >
       {loading ? (
-        <Loader2 size={16} className="animate-spin text-(--notion-fg)/60" />
+        <Loader2 size={iconSize} className="animate-spin text-(--notion-fg)/60" />
       ) : (
         <Bookmark
-          size={16}
+          size={iconSize}
           className={isBookmarked ? "fill-current" : ""}
         />
       )}
