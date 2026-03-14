@@ -1,0 +1,307 @@
+"use client";
+
+import { useRef, useEffect, useState, useCallback } from "react";
+import Image from "next/image";
+import { ExternalLink, ChevronDown } from "lucide-react";
+import type { FeedItem } from "@/types/feed";
+import AddToRadioButton from "./AddToRadioButton";
+import BookmarkButton from "./BookmarkButton";
+import type { BookmarkEntry } from "./FeedClientContainer";
+
+const RSS_BOOKMARK_PREFIX = "rss:";
+
+/** iframe용 (YT API 미사용 시). mute=0으로 소리 시도 */
+const EMBED_PARAMS = "autoplay=1&mute=0&rel=0&modestbranding=1";
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (
+        el: string,
+        opts: {
+          height?: string;
+          width?: string;
+          videoId?: string;
+          playerVars?: Record<string, number | string>;
+          events?: { onStateChange?: (ev: { data: number }) => void };
+        }
+      ) => { destroy: () => void; pauseVideo?: () => void };
+      PlayerState?: { ENDED: number };
+    };
+  }
+}
+
+interface Props {
+  items: FeedItem[];
+  viewMode: "longform" | "shortform" | "live";
+  bookmarks?: BookmarkEntry[];
+  onBookmarkChange?: () => void;
+}
+
+function ReelSlide({
+  item,
+  index,
+  total,
+  bookmark,
+  onBookmarkChange,
+  onVideoEnd,
+  scrollRoot,
+  ytReady,
+}: {
+  item: FeedItem;
+  index: number;
+  total: number;
+  bookmark?: BookmarkEntry | null;
+  onBookmarkChange?: () => void;
+  onVideoEnd?: () => void;
+  scrollRoot: React.RefObject<HTMLDivElement | null>;
+  ytReady: boolean;
+}) {
+  const isYoutube = item.source === "YouTube";
+  const videoId = isYoutube && item.id ? item.id : null;
+  const thumbUrl = item.thumbnail ?? (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "");
+  const sectionRef = useRef<HTMLElement>(null);
+  const playerRef = useRef<{ destroy: () => void; pauseVideo?: () => void } | null>(null);
+  const [inView, setInView] = useState(false);
+  const playerId = `reel-yt-${index}`;
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || !scrollRoot.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        if (e) setInView(e.isIntersecting && e.intersectionRatio >= 0.4);
+      },
+      { threshold: [0.2, 0.4, 0.6], root: scrollRoot.current, rootMargin: "0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [scrollRoot]);
+
+  useEffect(() => {
+    if (!inView || !videoId || !ytReady || typeof window === "undefined") return;
+    const YT = window.YT;
+    if (!YT?.Player) return;
+    const el = document.getElementById(playerId);
+    if (!el) return;
+    try {
+      const player = new YT.Player(playerId, {
+        height: "100%",
+        width: "100%",
+        videoId,
+        playerVars: { autoplay: 1, mute: 0, rel: 0, modestbranding: 1 },
+        events: {
+          onStateChange(ev: { data: number }) {
+            if (ev.data === YT.PlayerState?.ENDED) onVideoEnd?.();
+          },
+        },
+      });
+      playerRef.current = player as unknown as { destroy: () => void };
+    } catch {
+      playerRef.current = null;
+    }
+    return () => {
+      try {
+        playerRef.current?.pauseVideo?.();
+      } catch {}
+      playerRef.current = null;
+      // YouTube player.destroy() mutates DOM and can trigger React "removeChild" errors;
+      // skip destroy and let React unmount the container normally.
+    };
+  }, [inView, videoId, playerId, onVideoEnd, ytReady]);
+
+  const showPlayer = inView && videoId;
+  const useApiPlayer = showPlayer && ytReady;
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative flex h-[100dvh] w-full shrink-0 snap-start snap-always flex-col items-center justify-start bg-black px-0 py-0"
+      aria-label={`${index + 1} / ${total}`}
+    >
+      <div className="flex h-full w-full flex-col">
+        {/* 플레이어: 버튼 바·라디오 플레이어와 살짝 간격 두기 위해 영상 화면만 조금 더 줄임 (7.5rem) */}
+        <div className="relative flex min-h-0 w-full flex-1 items-stretch justify-center bg-black max-h-[calc(100dvh-1rem)]">
+          <div className="relative h-full w-full max-w-6xl">
+            {videoId && ytReady ? (
+              <div
+                id={playerId}
+                className="h-full w-full"
+                style={{ display: useApiPlayer ? "block" : "none" }}
+                aria-hidden={!useApiPlayer}
+              />
+            ) : null}
+            {!useApiPlayer ? (
+              showPlayer ? (
+                <iframe
+                  title={item.title}
+                  className="absolute inset-0 h-full w-full border-0"
+                  src={`https://www.youtube.com/embed/${videoId}?${EMBED_PARAMS}`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              ) : (
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative block h-full w-full bg-black"
+                >
+                  {thumbUrl ? (
+                    <Image
+                      src={thumbUrl}
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 896px"
+                      className="object-contain"
+                      priority={index < 3}
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-[50vh] w-full items-center justify-center text-white/40 text-sm">
+                      썸네일 없음
+                    </div>
+                  )}
+                </a>
+              )
+            ) : null}
+          </div>
+          <span className="absolute bottom-3 right-3 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">
+            {item.sourceName}
+          </span>
+        </div>
+        <div className="grid shrink-0 grid-cols-3 items-center gap-4 bg-(--notion-bg) px-4 py-3.5 min-h-[1rem]">
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-(--notion-border) bg-(--notion-bg) px-4 py-2.5 text-sm font-medium text-(--notion-fg)/80 hover:bg-(--notion-hover)"
+          >
+            <ExternalLink size={18} />
+            원문 보기
+          </a>
+          <div className="flex justify-center items-center">
+            {isYoutube && item.id && (
+              <AddToRadioButton videoId={item.id} title={item.title} className="px-4 py-2.5 text-sm rounded-full border border-(--notion-border) bg-(--notion-gray)/50 font-medium gap-2 [&_svg]:size-5" />
+            )}
+          </div>
+          <div className="flex justify-end items-center">
+            {item.source === "RSS" && onBookmarkChange && (
+              <BookmarkButton
+                videoId={`${RSS_BOOKMARK_PREFIX}${item.link}`}
+                videoTitle={item.title}
+                highlight={item.summary ?? item.title}
+                isBookmarked={!!bookmark}
+                bookmarkId={bookmark?.id ?? null}
+                onBookmarkChange={onBookmarkChange}
+                className="h-9 w-9 shrink-0"
+                iconSize={24}
+              />
+            )}
+            {isYoutube && item.id && onBookmarkChange && (
+              <BookmarkButton
+                videoId={item.id}
+                videoTitle={item.title}
+                highlight={item.title}
+                isBookmarked={!!bookmark}
+                bookmarkId={bookmark?.id ?? null}
+                onBookmarkChange={onBookmarkChange}
+                className="h-9 w-9 shrink-0"
+                iconSize={24}
+              />
+            )}
+          </div>
+        </div>
+        {/* 버튼 바 아래 여백: 높이 그대로, 색만 배경색으로 */}
+        <div className="shrink-0 min-h-[5rem] bg-(--notion-bg)" aria-hidden />
+      </div>
+      {index < total - 1 && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-white/60">
+          <ChevronDown size={28} className="animate-bounce" aria-hidden />
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default function FeedReelView({ items, viewMode, bookmarks = [], onBookmarkChange }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [ytReady, setYtReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.YT?.Player) {
+      setYtReady(true);
+      return;
+    }
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    const first = document.getElementsByTagName("script")[0];
+    first?.parentNode?.insertBefore(tag, first);
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      setYtReady(true);
+    };
+    return () => {
+      window.onYouTubeIframeAPIReady = prev;
+    };
+  }, []);
+
+  const scrollToNext = useCallback((currentIndex: number) => {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= items.length || !containerRef.current) return;
+    const nextSlide = containerRef.current.children[nextIndex] as HTMLElement | undefined;
+    if (nextSlide) {
+      nextSlide.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [items.length]);
+
+  if (items.length === 0) {
+    const emptyLabel =
+      viewMode === "live"
+        ? "라이브"
+        : viewMode === "shortform"
+          ? "60초 이하 숏폼"
+          : "61초 이상 롱폼";
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-(--notion-border) py-16 text-center">
+        <p className="text-(--notion-fg)/70">{emptyLabel} 영상이 없습니다.</p>
+        <p className="mt-1 text-sm text-(--notion-fg)/50">
+          {viewMode === "live"
+            ? "연결된 채널 중 현재 라이브 중인 영상이 없습니다."
+            : "유튜브 피드에 재생 시간 정보가 있으면 여기에서 구분해 표시합니다."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex h-[100dvh] w-full flex-col overflow-y-auto overscroll-y-contain snap-y snap-mandatory"
+      style={{ scrollBehavior: "smooth" }}
+    >
+      {items.map((item, index) => {
+        const bookmark = item.source === "RSS"
+          ? bookmarks.find((b) => b.video_id === RSS_BOOKMARK_PREFIX + item.link)
+          : item.id
+            ? bookmarks.find((b) => b.video_id === item.id)
+            : null;
+        return (
+          <ReelSlide
+            key={`${item.source}:${item.sourceId}:${item.id ?? item.link}`}
+            item={item}
+            index={index}
+            total={items.length}
+            bookmark={bookmark ?? null}
+            onBookmarkChange={onBookmarkChange}
+            onVideoEnd={() => scrollToNext(index)}
+            scrollRoot={containerRef}
+            ytReady={ytReady}
+          />
+        );
+      })}
+    </div>
+  );
+}

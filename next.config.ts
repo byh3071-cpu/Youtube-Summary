@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     "http://192.168.0.81",
     "192.168.0.81:3000",
     "192.168.0.81",
+    "http://192.168.219.102:3000",
+    "http://192.168.219.102",
   ],
   images: {
     remotePatterns: [

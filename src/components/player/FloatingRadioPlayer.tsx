@@ -111,7 +111,9 @@ export default function FloatingRadioPlayer() {
             if (radio.isPlaying) ev.target.playVideo();
           },
           onStateChange(ev: { data: number }) {
-            if (ev.data === window.YT.PlayerState.ENDED) radio.next();
+            if (ev.data === window.YT.PlayerState.ENDED) {
+              radio.next();
+            }
           },
         },
       });

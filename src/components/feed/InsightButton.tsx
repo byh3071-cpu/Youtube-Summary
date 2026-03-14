@@ -63,7 +63,7 @@ export default function InsightButton({ videoId, completed }: Props) {
         onClick={handleToggle}
         className="inline-flex items-center gap-1.5 rounded-full border border-(--notion-border) bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus:ring-2 focus:ring-amber-500/40 dark:border-amber-400/50 dark:bg-amber-500/15 dark:text-amber-50 hover:dark:bg-amber-500/25"
       >
-        <ThemeIcon name="AI_summary" alt="AI 인사이트" size={14} className={loading && !isOpen ? "animate-pulse opacity-90" : ""} />
+        <ThemeIcon name="AI_summary" alt="AI 인사이트" size={24} className={loading && !isOpen ? "animate-pulse opacity-90" : ""} />
         {insight ? "내 인사이트 정리 보기" : "AI 인사이트 정리 받기"}
         {isOpen ? <ChevronUp size={12} opacity={0.6} /> : <ChevronDown size={12} opacity={0.6} />}
       </button>

@@ -3,9 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { X, Bookmark, ListMusic } from "lucide-react";
-import { ThemeIcon } from "@/components/ui/ThemeIcon";
-import { useTheme } from "next-themes";
+import { useSearchParams } from "next/navigation";
+import { X, Bookmark, ListMusic, Film, Clapperboard, Radio } from "lucide-react";
 import { ModalTransition } from "@/components/ui/ModalTransition";
 import { LoginButton } from "@/components/auth/LoginButton";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
@@ -43,8 +42,8 @@ export default function MobileNavDrawer({
   youtubeSources?: FeedSource[];
 }) {
   const ytSources = youtubeSources ?? defaultSources.filter((s) => s.type === "YouTube");
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
+  const searchParams = useSearchParams();
+  const viewMode = searchParams?.get("viewMode") ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -69,7 +68,7 @@ export default function MobileNavDrawer({
       overlayZ={40}
       panelZ={50}
       variant="left"
-      panelClassName="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto border-r border-(--notion-border) bg-(--notion-bg) md:hidden"
+      panelClassName="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white dark:bg-(--notion-bg) md:hidden"
     >
       <aside className="outline-none" role="dialog" aria-modal="true" aria-label="메뉴">
         <div className="border-b border-(--notion-border) px-4 pt-6 pb-4">
@@ -82,42 +81,64 @@ export default function MobileNavDrawer({
             >
               <X size={20} />
             </button>
-            <div className="flex flex-col items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setTheme(isDark ? "light" : "dark")}
-                className="relative h-24 w-24 overflow-hidden rounded-3xl bg-transparent"
-                aria-label="테마 전환"
-              >
+            <div className="flex flex-col items-start gap-3 w-full">
+              <div className="relative h-14 w-[180px] shrink-0 overflow-hidden rounded-lg">
                 <Image
-                  src="/focus-feed-logo-v2.png"
-                  alt="Focus Feed 로고"
+                  src="/rogo.png"
+                  alt="Focus Feed"
                   fill
-                  sizes="96px"
-                  className="object-contain"
+                  sizes="180px"
+                  className="object-contain object-left"
                   priority
                 />
-              </button>
-              <div className="flex items-center justify-center gap-2">
+              </div>
+              <Link
+                href="/"
+                onClick={onClose}
+                className={`block w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors ${!selectedSourceId && !selectedCategory ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
+              >
+                전체 피드
+              </Link>
+              <div className="flex items-center justify-center gap-2 pt-1 w-full">
                 <LoginButton />
               </div>
             </div>
           </div>
-          <Link
-            href="/"
-            onClick={onClose}
-            className={`mt-4 block rounded-xl border px-3 py-3 transition-colors ${selectedSourceId ? "border-transparent bg-(--notion-hover)" : "border-(--notion-border) bg-(--notion-bg)"}`}
-          >
-            <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-(--notion-fg)">
-              <ThemeIcon name="Feed_List" alt="전체 피드" size={26} />
-              전체 피드
-            </div>
-            <p className="text-xs leading-snug text-(--notion-fg)/60">
-              유튜브와 RSS를 한 곳에서 모아 최신순으로 확인합니다.
-            </p>
-          </Link>
         </div>
         <nav className="space-y-5 p-4">
+          <section>
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">
+              피드 보기
+            </p>
+            <div className="flex gap-1.5 rounded-xl border border-(--notion-border)/60 bg-(--notion-bg)/50 p-1.5">
+              <Link
+                href="/?viewMode=longform"
+                onClick={onClose}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm ${viewMode === "longform" ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
+              >
+                <Film size={16} className="shrink-0" />
+                롱폼
+              </Link>
+              <Link
+                href="/?viewMode=shortform"
+                onClick={onClose}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm ${viewMode === "shortform" ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
+              >
+                <Clapperboard size={16} className="shrink-0" />
+                숏폼
+              </Link>
+            </div>
+            <div className="flex justify-center pt-1">
+              <Link
+                href="/?viewMode=live"
+                onClick={onClose}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm ${viewMode === "live" ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
+              >
+                <Radio size={16} className="shrink-0" />
+                라이브
+              </Link>
+            </div>
+          </section>
 
           <section>
             <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">

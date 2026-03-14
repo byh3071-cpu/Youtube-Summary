@@ -5,6 +5,7 @@ import Image from "next/image";
 import { loadGoals } from "@/lib/goals";
 import { rankFeedByGoalsAction } from "@/app/actions/summarize";
 import type { TodayFocusEntry } from "@/components/feed/TodayFocusCard";
+import AddToRadioButton from "@/components/feed/AddToRadioButton";
 
 type AiRankedRecommendation = TodayFocusEntry;
 
@@ -46,7 +47,7 @@ export default function SmartBookmarkSuggestions() {
         return;
       }
       if ("ranked" in result && Array.isArray(result.ranked) && result.ranked.length > 0) {
-        setItems(result.ranked.slice(0, 5) as AiRankedRecommendation[]);
+        setItems(result.ranked.slice(0, 10) as AiRankedRecommendation[]);
       } else {
         setError("최근 피드에서 추천할 만한 영상을 찾지 못했습니다.");
         setItems(null);
@@ -134,6 +135,9 @@ export default function SmartBookmarkSuggestions() {
             const isYoutube = item.source === "YouTube" && !!item.id;
             const alreadyBookmarked = isYoutube && item.id ? bookmarkedIds.has(item.id) : false;
             const videoId = isYoutube && item.id ? item.id : null;
+            const thumbSrc =
+              item.thumbnail ||
+              (isYoutube && videoId ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : null);
 
             return (
               <li
@@ -141,9 +145,9 @@ export default function SmartBookmarkSuggestions() {
                 className="flex gap-3 rounded-xl border border-(--notion-border) bg-(--notion-gray)/40 px-3 py-2"
               >
                 <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-md bg-(--notion-gray)">
-                  {item.thumbnail ? (
+                  {thumbSrc ? (
                     <Image
-                      src={item.thumbnail}
+                      src={thumbSrc}
                       alt={item.title}
                       fill
                       sizes="120px"
@@ -157,11 +161,10 @@ export default function SmartBookmarkSuggestions() {
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center justify-between gap-2 text-[11px] text-(--notion-fg)/60">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-(--notion-fg)/10 text-[10px] text-(--notion-fg)">
-                        {entry.priority}
+                    <span className="inline-flex items-center gap-1 font-semibold">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-(--notion-fg)/15 text-[10px] text-(--notion-fg)">
+                        {entry.priority}위
                       </span>
-                      <span>우선순위</span>
                     </span>
                     <span className="text-[10px]">적합도 {Math.round(score)}점</span>
                   </div>
@@ -171,24 +174,37 @@ export default function SmartBookmarkSuggestions() {
                   <p className="text-[11px] leading-snug text-(--notion-fg)/75 line-clamp-2">
                     {why}
                   </p>
-                  {isYoutube && videoId && (
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
-                      <button
-                        type="button"
-                        disabled={alreadyBookmarked}
-                        onClick={() =>
-                          addBookmark({
-                            video_id: videoId,
-                            video_title: item.title,
-                            highlight: why,
-                          })
-                        }
-                        className="rounded-full border border-(--notion-border) bg-(--notion-bg) px-2.5 py-1 font-semibold text-(--notion-fg)/80 hover:bg-(--notion-hover) disabled:cursor-not-allowed disabled:opacity-60"
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                    {item.link && (
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-(--notion-border) bg-(--notion-bg) px-2.5 py-1 font-semibold text-(--notion-fg)/80 hover:bg-(--notion-hover)"
                       >
-                        {alreadyBookmarked ? "북마크 완료" : "이 영상 북마크"}
-                      </button>
-                    </div>
-                  )}
+                        원문보기
+                      </a>
+                    )}
+                    {isYoutube && videoId && (
+                      <>
+                        <AddToRadioButton videoId={videoId} title={item.title} />
+                        <button
+                          type="button"
+                          disabled={alreadyBookmarked}
+                          onClick={() =>
+                            addBookmark({
+                              video_id: videoId,
+                              video_title: item.title,
+                              highlight: why,
+                            })
+                          }
+                          className="rounded-full border border-(--notion-border) bg-(--notion-bg) px-2.5 py-1 font-semibold text-(--notion-fg)/80 hover:bg-(--notion-hover) disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {alreadyBookmarked ? "북마크 완료" : "이 영상 북마크"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </li>
             );

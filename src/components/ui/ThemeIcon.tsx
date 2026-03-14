@@ -15,6 +15,12 @@ const ICON_PATHS: Record<string, { light: string; dark: string }> = {
 /** 단일 버전만 있는 아이콘 (라이트만 사용) */
 const ICON_SINGLE: Record<string, string> = {
   a_briefing_summary: "/images/icons/a_briefing_summary.png",
+  /** 라디오 플레이어 5개 (실제 파일명 기준) */
+  close_player: "/images/icons/Close%20Player.png",
+  watch_mini_video: "/images/icons/Watch%20mini-video.png",
+  view_fullscreen: "/images/icons/View%20the%20full%20screen.png",
+  feed_list1: "/images/icons/Feed_List1.png",
+  ai_summary1: "/images/icons/AI_summary1.png",
 };
 
 export type ThemeIconName = keyof typeof ICON_PATHS | keyof typeof ICON_SINGLE;
@@ -34,7 +40,7 @@ export function ThemeIcon({ name, alt, size = 24, className = "" }: ThemeIconPro
   const singleSrc = ICON_SINGLE[name as keyof typeof ICON_SINGLE];
   if (singleSrc) {
     return (
-      <span className={`relative inline-block shrink-0 ${className}`} style={{ width: size, height: size }}>
+      <span className={`relative inline-flex shrink-0 items-center justify-center ${className}`} style={{ width: size, height: size }}>
         <Image src={singleSrc} alt={alt} width={size} height={size} className="object-contain" />
       </span>
     );
@@ -46,7 +52,7 @@ export function ThemeIcon({ name, alt, size = 24, className = "" }: ThemeIconPro
   const src = !isHydrated ? paths.light : isDark ? paths.dark : paths.light;
 
   return (
-    <span className={`relative inline-block shrink-0 ${className}`} style={{ width: size, height: size }}>
+    <span className={`relative inline-flex shrink-0 items-center justify-center ${className}`} style={{ width: size, height: size }}>
       <Image src={src} alt={alt} width={size} height={size} className="object-contain" />
     </span>
   );

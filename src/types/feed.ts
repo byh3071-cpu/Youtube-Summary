@@ -15,6 +15,8 @@ export interface FeedItem {
     tags?: string[];     // 키워드 필터 등에서 활용할 태그 배열
     /** YouTube 영상 길이(초 단위). RSS 항목은 비워둘 수 있음 */
     durationSeconds?: number;
+    /** YouTube 라이브/예정 라이브 여부 (live | upcoming). RSS 항목은 미사용 */
+    isLive?: boolean;
     /** YouTube 채널 아바타 URL (있으면 사용) */
     sourceAvatarUrl?: string;
 }

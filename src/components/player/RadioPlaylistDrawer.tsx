@@ -54,28 +54,30 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
       overlayZ={55}
       panelZ={56}
       variant="bottom"
-      panelClassName="fixed bottom-16 left-4 right-4 max-h-[60vh] overflow-auto rounded-t-2xl border border-b-0 border-(--notion-border) bg-(--notion-bg) shadow-2xl md:left-auto md:right-6 md:max-w-sm"
+      panelClassName="fixed bottom-16 left-4 right-4 max-h-[70vh] overflow-auto rounded-t-2xl border border-b-0 border-(--notion-border) bg-(--notion-bg) shadow-2xl md:left-auto md:right-6 md:max-w-md"
     >
       <div className="outline-none" role="dialog" aria-label="재생 대기열">
         <div className="sticky top-0 border-b border-(--notion-border) bg-(--notion-gray)">
-          <div className="flex items-center justify-between px-4 py-3">
-            <h3 className="text-sm font-semibold text-(--notion-fg)">재생 대기열</h3>
-            <div className="flex items-center gap-2">
+          <div className="grid grid-cols-3 items-center gap-2 px-4 py-4">
+            <div className="flex items-center justify-start">
               <button
                 type="button"
                 onClick={handleSavePlaylist}
                 disabled={saving || radio.queue.length === 0}
-                className="inline-flex items-center rounded-full border border-(--notion-border) bg-(--notion-bg) px-3 py-1 text-[11px] font-semibold text-(--notion-fg)/80 shadow-sm transition-colors hover:bg-(--notion-hover) disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center rounded-full border border-(--notion-border) bg-(--notion-bg) px-3 py-1.5 text-xs font-semibold text-(--notion-fg)/80 shadow-sm transition-colors hover:bg-(--notion-hover) disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "저장 중…" : "플레이리스트 저장"}
               </button>
+            </div>
+            <h3 className="text-center text-lg font-semibold text-(--notion-fg)">재생 대기열</h3>
+            <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="rounded-full p-1 text-(--notion-fg)/60 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                className="rounded-full p-1.5 text-(--notion-fg)/60 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
                 aria-label="닫기"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
           </div>

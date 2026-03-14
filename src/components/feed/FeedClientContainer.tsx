@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { FeedItem } from "@/types/feed";
 import type { FeedCategory } from "@/types/feed";
-import { filterFeedByKeywords, filterFeedByCategory } from "@/lib/filter";
+import { filterFeedByKeywords, filterFeedByCategory, filterFeedByTrendKeyword } from "@/lib/filter";
 import FeedList from "./FeedList";
+import FeedReelView from "./FeedReelView";
 import KeywordFilter, { useKeywordFilter } from "./KeywordFilter";
 import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
 import MyFocusSection from "./MyFocusSection";
+import { TrendFilterProvider, useTrendFilter } from "@/contexts/TrendFilterContext";
 
 export type BookmarkEntry = {
   id: string;
@@ -25,31 +27,41 @@ function filterByView(items: FeedItem[], view: ViewMode): FeedItem[] {
 }
 
 
-export default function FeedClientContainer({
-    initialItems,
-    selectedSourceName,
-    initialCategory = null,
-    initialView = "all",
-    showViewSwitcher = false,
-    filterLabelTranslateYCompact,
-    filterLabelTranslateYSource,
-    tooltipMarginTop,
-    openButtonMarginTop,
-}: {
+type FeedClientContainerProps = {
     initialItems: FeedItem[];
     selectedSourceName?: string;
     initialCategory?: FeedCategory | null;
     initialView?: ViewMode;
     showViewSwitcher?: boolean;
-    /** 전체 피드일 때 필터 라벨 세로 위치(px). KeywordFilter 기본값 쓰려면 생략 */
     filterLabelTranslateYCompact?: number;
-    /** 소스 선택 시(채널/RSS) 필터 라벨 세로 위치(px). KeywordFilter 기본값 쓰려면 생략 */
     filterLabelTranslateYSource?: number;
-    /** 소스 선택 시 툴팁 위쪽 여백(px). KeywordFilter 기본값 쓰려면 생략 */
     tooltipMarginTop?: number;
-    /** 소스 선택 시 "열기" 버튼 위쪽 여백(px). KeywordFilter 기본값 쓰려면 생략 */
     openButtonMarginTop?: number;
-}) {
+    viewMode?: "longform" | "shortform" | "live" | null;
+    children?: ReactNode;
+};
+
+export default function FeedClientContainer(props: FeedClientContainerProps) {
+  return (
+    <TrendFilterProvider>
+      <FeedClientContainerContent {...props} />
+    </TrendFilterProvider>
+  );
+}
+
+function FeedClientContainerContent({
+    initialItems,
+    selectedSourceName,
+    initialCategory = null,
+    initialView = "all",
+    showViewSwitcher = false,
+    viewMode = null,
+    filterLabelTranslateYCompact,
+    filterLabelTranslateYSource,
+    tooltipMarginTop,
+    openButtonMarginTop,
+    children,
+}: FeedClientContainerProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -85,12 +97,28 @@ export default function FeedClientContainer({
         router.push(q ? `${pathname}?${q}` : pathname);
     };
 
+    const trendFilter = useTrendFilter();
+    const selectedTrendKeyword = trendFilter?.selectedTrendKeyword ?? null;
+
     const byView = filterByView(initialItems, view);
     const byKeywords = filterFeedByKeywords(byView, keywords);
-    const filteredItems = filterFeedByCategory(byKeywords, selectedCategory);
+    const byCategory = filterFeedByCategory(byKeywords, selectedCategory);
+    const filteredItems = filterFeedByTrendKeyword(byCategory, selectedTrendKeyword);
     const hasActiveFilters = keywords.length > 0;
 
     const isGlobalFeed = !selectedSourceName;
+    const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
+
+    if (isReelMode && viewMode) {
+        return (
+            <FeedReelView
+                items={filteredItems}
+                viewMode={viewMode}
+                bookmarks={bookmarks}
+                onBookmarkChange={fetchBookmarks}
+            />
+        );
+    }
 
     return (
         <>
@@ -113,6 +141,7 @@ export default function FeedClientContainer({
                 tooltipMarginTop={tooltipMarginTop}
                 openButtonMarginTop={openButtonMarginTop}
             />
+            {children}
             <FeedList
                 items={filteredItems}
                 hasActiveFilters={hasActiveFilters}
@@ -120,6 +149,7 @@ export default function FeedClientContainer({
                 viewMode={view}
                 bookmarks={bookmarks}
                 onBookmarkChange={fetchBookmarks}
+                totalCount={selectedSourceName ? filteredItems.length : undefined}
             />
         </>
     );
