@@ -117,7 +117,7 @@ export default function SmartBookmarkSuggestions() {
           disabled={loading}
           className="rounded-full bg-(--focus-accent) px-3 py-1 text-[11px] font-semibold text-black shadow-sm transition-colors hover:bg-(--focus-accent)/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? \"분석 중...\" : \"AI 추천 불러오기\"}
+          {loading ? "분석 중..." : "AI 추천 불러오기"}
         </button>
       </div>
 
