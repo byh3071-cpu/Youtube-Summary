@@ -3,10 +3,11 @@
 import { getTypedTable, type Database } from "@/lib/supabase-server";
 import type { RadioQueueItem } from "@/contexts/RadioQueueContext";
 
-// 라디오 큐를 Supabase playlists 테이블에 저장
+// 라디오 큐를 Supabase playlists 테이블에 저장. userId가 있으면 해당 사용자 소유로 저장.
 export async function savePlaylistAction(
   items: RadioQueueItem[],
   title?: string,
+  userId?: string | null,
 ) {
   const table = getTypedTable("playlists");
   if (!table) {
@@ -18,6 +19,7 @@ export async function savePlaylistAction(
   }
 
   const row: Database["public"]["Tables"]["playlists"]["Insert"] = {
+    user_id: userId ?? null,
     title: title ?? null,
     items: items as unknown as Database["public"]["Tables"]["playlists"]["Row"]["items"],
   };

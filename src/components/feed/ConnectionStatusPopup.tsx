@@ -49,7 +49,7 @@ export default function ConnectionStatusPopup({
   const [open, setOpen] = useState(false);
 
   const visibleSourceSummary = selectedSource
-    ? `${selectedSource.name} 소스만 따로 보고 있습니다.`
+    ? `${selectedSource?.name ?? "소스"} 소스만 따로 보고 있습니다.`
     : sourceStatus.youtube !== "ready"
       ? "현재 RSS 소스만 피드에 반영되고 있습니다."
       : "현재 YouTube와 RSS 소스가 모두 피드에 반영되고 있습니다.";

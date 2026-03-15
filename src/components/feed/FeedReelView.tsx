@@ -13,23 +13,7 @@ const RSS_BOOKMARK_PREFIX = "rss:";
 /** iframe용 (YT API 미사용 시). mute=0으로 소리 시도 */
 const EMBED_PARAMS = "autoplay=1&mute=0&rel=0&modestbranding=1";
 
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (
-        el: string,
-        opts: {
-          height?: string;
-          width?: string;
-          videoId?: string;
-          playerVars?: Record<string, number | string>;
-          events?: { onStateChange?: (ev: { data: number }) => void };
-        }
-      ) => { destroy: () => void; pauseVideo?: () => void };
-      PlayerState?: { ENDED: number };
-    };
-  }
-}
+/** Window.YT 타입은 FloatingRadioPlayer의 전역 선언 사용 */
 
 interface Props {
   items: FeedItem[];

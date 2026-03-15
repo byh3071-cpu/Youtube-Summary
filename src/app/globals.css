@@ -86,3 +86,10 @@ a {
   text-decoration: none;
   cursor: pointer;
 }
+
+/* CTA 버튼(어두운 배경): a { color: inherit } 덮어써서 흰 글자 보이게 */
+.cta-primary,
+a.cta-primary,
+button.cta-primary {
+  color: #fff !important;
+}

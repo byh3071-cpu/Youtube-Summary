@@ -1,11 +1,15 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
 import type { RadioQueueItem } from "@/contexts/RadioQueueContext";
 import PlaylistsClient from "./PlaylistsClient";
 import FloatingRadioPlayer from "@/components/player/FloatingRadioPlayer";
 
 export default async function MyPlaylistsPage() {
   const supabase = getServerSupabaseClient();
+  const cookieStore = await cookies();
+  const user = await getCurrentUserFromCookies(cookieStore);
 
   if (!supabase) {
     return (
@@ -24,10 +28,16 @@ export default async function MyPlaylistsPage() {
     );
   }
 
-  const { data, error } = (await supabase
+  let query = supabase
     .from("playlists")
     .select("id, title, items, created_at")
-    .order("created_at", { ascending: false })) as {
+    .order("created_at", { ascending: false });
+  if (user) {
+    query = query.eq("user_id", user.id);
+  } else {
+    query = query.is("user_id", null);
+  }
+  const { data, error } = (await query) as {
     data: { id: string; title: string | null; items: unknown; created_at: string }[] | null;
     error: unknown;
   };

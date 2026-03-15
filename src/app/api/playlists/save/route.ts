@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { savePlaylistAction } from "@/app/actions/playlists";
+import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
 import type { RadioQueueItem } from "@/contexts/RadioQueueContext";
 
 export async function POST(req: NextRequest) {
@@ -16,7 +18,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await savePlaylistAction(items, title);
+    const cookieStore = await cookies();
+    const user = await getCurrentUserFromCookies(cookieStore);
+    const result = await savePlaylistAction(items, title, user?.id ?? null);
 
     if ("error" in result && result.error) {
       return NextResponse.json(
