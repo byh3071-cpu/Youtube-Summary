@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { GoogleGenAI } from "@google/genai";
 import { getVideoContext } from "@/lib/video-context";
 import { getSupabaseForSummaries, type Database } from "@/lib/supabase-server";
@@ -16,6 +17,7 @@ import {
   getSystemGoalPrompt,
   getRankingPrompt,
 } from "@/lib/prompts";
+import { checkUsageLimit, incrementUsage } from "@/lib/plan";
 
 /** 품질 기준 점수 이상이면 통과 (요약·인사이트 공통, 강화된 기준) */
 const QUALITY_THRESHOLD = 78;
@@ -120,6 +122,12 @@ export async function summarizeVideoAction(videoId: string) {
     return { error: ".env.local 파일에 GEMINI_API_KEY 설정이 필요합니다." };
   }
 
+  const cookieStore = await cookies();
+  const limitResult = await checkUsageLimit(cookieStore, "summary");
+  if (!limitResult.allowed) {
+    return { error: limitResult.error };
+  }
+
   // 0. Supabase 캐시 조회
   const summariesTable = getSupabaseForSummaries();
   if (summariesTable) {
@@ -184,6 +192,7 @@ export async function summarizeVideoAction(videoId: string) {
         };
         await (summariesTable as unknown as { upsert: (v: typeof row, o: { onConflict: string }) => Promise<unknown> }).upsert(row, { onConflict: "video_id" });
       }
+      await incrementUsage(cookieStore, "summary");
       return { summary: final };
     }
     return { error: "요약 생성에 실패했습니다. 잠시 후 다시 시도해 주세요." };
@@ -196,6 +205,12 @@ export async function summarizeVideoAction(videoId: string) {
 export async function summarizeInsightAction(videoId: string) {
   if (!process.env.GEMINI_API_KEY) {
     return { error: ".env.local 파일에 GEMINI_API_KEY 설정이 필요합니다." };
+  }
+
+  const cookieStore = await cookies();
+  const limitResult = await checkUsageLimit(cookieStore, "insight");
+  if (!limitResult.allowed) {
+    return { error: limitResult.error };
   }
 
   try {
@@ -231,6 +246,7 @@ export async function summarizeInsightAction(videoId: string) {
     }
 
     if (lastInsight) {
+      await incrementUsage(cookieStore, "insight");
       return { insight: lastInsight };
     }
     return { error: "인사이트 정리에 실패했습니다. 잠시 후 다시 시도해 주세요." };
@@ -285,6 +301,12 @@ export async function rankFeedByGoalsAction(goals: string, limit: number = 20) {
   const goalText = goals.trim();
   if (!goalText) {
     return { error: "먼저 상단의 My Focus 영역에 목표/관심사를 입력해 주세요." };
+  }
+
+  const cookieStore = await cookies();
+  const limitResult = await checkUsageLimit(cookieStore, "briefing");
+  if (!limitResult.allowed) {
+    return { error: limitResult.error };
   }
 
   const summariesTable = getSupabaseForSummaries();
@@ -358,6 +380,7 @@ export async function rankFeedByGoalsAction(goals: string, limit: number = 20) {
       return { error: "사용자 목표/관심사와 잘 맞는 추천을 찾지 못했습니다." };
     }
 
+    await incrementUsage(cookieStore, "briefing");
     return { ranked };
   } catch (error) {
     console.error("rankFeedByGoalsAction Error:", error);

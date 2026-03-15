@@ -24,22 +24,61 @@ export type Database = {
       playlists: {
         Row: {
           id: string;
+          user_id: string | null;
           title: string | null;
           items: unknown;
           created_at: string;
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           title?: string | null;
           items: unknown;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["playlists"]["Row"]>;
       };
+      user_plan: {
+        Row: {
+          user_id: string;
+          plan: string;
+          expires_at: string | null;
+          stripe_subscription_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          plan?: string;
+          expires_at?: string | null;
+          stripe_subscription_id?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_plan"]["Row"]>;
+      };
+      usage_daily: {
+        Row: {
+          user_id: string;
+          date: string;
+          summary_count: number;
+          insight_count: number;
+          briefing_count: number;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          date: string;
+          summary_count?: number;
+          insight_count?: number;
+          briefing_count?: number;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["usage_daily"]["Row"]>;
+      };
       bookmarks: {
         Row: {
           id: string;
           user_id: string;
+          team_id: string | null;
           video_id: string;
           video_title: string;
           highlight: string;
@@ -48,12 +87,66 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          team_id?: string | null;
           video_id: string;
           video_title: string;
           highlight: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["bookmarks"]["Row"]>;
+      };
+      teams: {
+        Row: {
+          id: string;
+          name: string;
+          plan: string;
+          goal_text: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          plan?: string;
+          goal_text?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["teams"]["Row"]>;
+      };
+      team_members: {
+        Row: {
+          id: string;
+          team_id: string;
+          user_id: string;
+          role: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          team_id: string;
+          user_id: string;
+          role?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_members"]["Row"]>;
+      };
+      team_invites: {
+        Row: {
+          id: string;
+          team_id: string;
+          email: string;
+          token: string;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          team_id: string;
+          email: string;
+          token: string;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_invites"]["Row"]>;
       };
       trend_cache: {
         Row: {
@@ -124,7 +217,7 @@ function isValidSupabaseEnv(url: string | undefined, key: string | undefined): b
 export function getServerSupabaseClient():
   | SupabaseClient<Database>
   | null {
-  const url = process.env.SUPABASE_URL;
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!isValidSupabaseEnv(url, serviceKey)) {

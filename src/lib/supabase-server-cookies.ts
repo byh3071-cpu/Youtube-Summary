@@ -96,6 +96,7 @@ export async function getBookmarksFromDb(cookieStore: CookieStore): Promise<Book
     .from("bookmarks")
     .select("id, video_id, video_title, highlight, created_at")
     .eq("user_id", user.id)
+    .is("team_id", null)
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[getBookmarksFromDb]", error.message);

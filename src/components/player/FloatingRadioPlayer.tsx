@@ -13,8 +13,8 @@ import { getWatchProgress, saveWatchProgress } from "@/lib/watch-history";
 
 declare global {
   interface Window {
-    YT: typeof YT;
-    onYouTubeIframeAPIReady: () => void;
+    YT?: typeof YT;
+    onYouTubeIframeAPIReady?: () => void;
   }
 }
 
@@ -92,7 +92,7 @@ export default function FloatingRadioPlayer() {
   }, []);
 
   useEffect(() => {
-    if (!apiReady || !radio?.currentItem) return;
+    if (!apiReady || !radio?.currentItem || !window.YT) return;
     const videoId = radio.currentItem.videoId;
     const isPlaying = radio.isPlaying;
     if (!playerRef.current) {
@@ -111,7 +111,7 @@ export default function FloatingRadioPlayer() {
             if (radio.isPlaying) ev.target.playVideo();
           },
           onStateChange(ev: { data: number }) {
-            if (ev.data === window.YT.PlayerState.ENDED) {
+            if (window.YT && ev.data === window.YT.PlayerState.ENDED) {
               radio.next();
             }
           },

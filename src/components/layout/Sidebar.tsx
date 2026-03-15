@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { Rss, Youtube, Tag, Bookmark, ListMusic, Film, Clapperboard, Radio } from "lucide-react";
+import { Rss, Youtube, Tag, Bookmark, ListMusic, Film, Clapperboard, Radio, Users } from "lucide-react";
 import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
 import { LoginButton } from "@/components/auth/LoginButton";
 import AddChannelButton from "@/components/feed/AddChannelButton";
@@ -145,6 +145,30 @@ export default function Sidebar({
                         >
                             <Bookmark size={15} className="text-(--notion-fg)/60" />
                             북마크
+                        </Link>
+                        <Link
+                            href="/teams"
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                        >
+                            <Users size={15} className="text-(--notion-fg)/60" />
+                            팀
+                        </Link>
+                    </div>
+                </section>
+
+                <section className="pt-2">
+                    <div className="space-y-0.5">
+                        <Link
+                            href="/pricing"
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                        >
+                            요금제
+                        </Link>
+                        <Link
+                            href="/landing"
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                        >
+                            소개
                         </Link>
                     </div>
                 </section>
