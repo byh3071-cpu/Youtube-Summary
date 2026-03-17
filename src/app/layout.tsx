@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { RadioQueueProvider } from "@/contexts/RadioQueueContext";
+import PwaInstaller from "@/components/PwaInstaller";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <RadioQueueProvider>
+            <PwaInstaller />
             {children}
           </RadioQueueProvider>
         </ThemeProvider>
