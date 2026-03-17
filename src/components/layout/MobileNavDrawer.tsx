@@ -68,9 +68,9 @@ export default function MobileNavDrawer({
       overlayZ={40}
       panelZ={50}
       variant="left"
-      panelClassName="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white dark:bg-(--notion-bg) md:hidden"
+      panelClassName="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto overflow-x-hidden overscroll-contain bg-white dark:bg-(--notion-bg) md:hidden"
     >
-      <aside className="outline-none" role="dialog" aria-modal="true" aria-label="메뉴">
+      <aside className="outline-none pb-32 md:pb-0" role="dialog" aria-modal="true" aria-label="메뉴">
         <div className="border-b border-(--notion-border) px-4 pt-6 pb-4">
           <div className="relative">
             <button
