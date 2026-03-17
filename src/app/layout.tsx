@@ -9,7 +9,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   title: "Focus Feed",
   description: "유튜브와 RSS 소스를 한 곳에서 정리해 보는 텍스트 중심 피드 리더",
-  manifest: "/manifest.webmanifest",
+  manifest: "/app.webmanifest",
   metadataBase: new URL(siteUrl),
   openGraph: {
     title: "Focus Feed",
