@@ -126,7 +126,7 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange }: Props)
             </div>
           )}
 
-          {(completed || (progressRatio > 0 && progressSeconds != null)) && (
+          {(completed || (progressRatio >= 0.05 && progressSeconds != null)) && (
             <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-[1px]">
               {completed ? (
                 <>

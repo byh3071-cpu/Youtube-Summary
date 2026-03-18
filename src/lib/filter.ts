@@ -5,6 +5,15 @@ import type { FeedCategory } from "../types/feed";
  * 주어진 피드 목록을 사용자의 관심사(키워드) 배열에 맞게 필터링합니다.
  * 키워드가 비어있다면 전체 목록을 반환합니다.
  */
+/** ASCII 전용 키워드(영어 등)는 단어 경계 매칭, 그 외(한국어 등)는 포함 매칭 */
+function keywordMatches(keyword: string, target: string): boolean {
+    if (/^[a-zA-Z0-9 ]+$/.test(keyword)) {
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`\\b${escaped}\\b`, "i").test(target);
+    }
+    return target.includes(keyword);
+}
+
 export function filterFeedByKeywords(items: FeedItem[], keywords: string[]): FeedItem[] {
     if (!keywords || keywords.length === 0) {
         return items;
@@ -16,7 +25,7 @@ export function filterFeedByKeywords(items: FeedItem[], keywords: string[]): Fee
         const searchTarget = `${item.title} ${item.summary || ''} ${item.sourceName}`.toLowerCase();
 
         // 하나라도 매칭되면 노출 (OR 조건)
-        return lowerCaseKeywords.some(keyword => searchTarget.includes(keyword));
+        return lowerCaseKeywords.some(keyword => keywordMatches(keyword, searchTarget));
     });
 }
 

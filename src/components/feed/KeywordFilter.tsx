@@ -70,6 +70,8 @@ interface KeywordFilterProps {
   onClearKeywords: () => void;
   selectedCategory?: FeedCategory | null;
   onCategoryChange?: (category: FeedCategory | null) => void;
+  /** 현재 피드에 실제 존재하는 카테고리만 전달. 없으면 전체 표시 */
+  availableCategories?: FeedCategory[];
   /** 보기 전환(전체/유튜브/RSS)과 함께 표시할 때 설명·여백 축소 */
   compact?: boolean;
   /** 헤더 오른쪽에 추가로 표시할 컴포넌트 (예: 보기 전환 버튼) */
@@ -102,6 +104,7 @@ export default function KeywordFilter({
   onClearKeywords,
   selectedCategory,
   onCategoryChange,
+  availableCategories,
   compact = false,
   headerRight,
   filterLabelTranslateYCompact = DEFAULT_FILTER_LABEL_TRANSLATE_Y_COMPACT,
@@ -109,6 +112,7 @@ export default function KeywordFilter({
   tooltipMarginTop = DEFAULT_TOOLTIP_MARGIN_TOP,
   openButtonMarginTop = DEFAULT_OPEN_BUTTON_MARGIN_TOP,
 }: KeywordFilterProps) {
+  const displayCategories = availableCategories ?? FEED_CATEGORIES;
   const [isAdding, setIsAdding] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
   const hasActiveFilters = keywords.length > 0;
@@ -196,7 +200,7 @@ export default function KeywordFilter({
             >
                 전체
             </button>
-            {FEED_CATEGORIES.map((cat) => (
+            {displayCategories.map((cat) => (
                 <button
                     key={cat}
                     type="button"
