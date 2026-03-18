@@ -27,6 +27,11 @@ function AuthCallbackClientContent() {
     (async () => {
       try {
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) {
+          setStatus("error");
+          router.replace("/?auth_error=no_supabase");
+          return;
+        }
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!mounted) return;
         if (error) {

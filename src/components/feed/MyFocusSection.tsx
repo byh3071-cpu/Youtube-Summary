@@ -152,7 +152,7 @@ export default function MyFocusSection() {
         </div>
       )}
 
-      {focusExpanded && ((aiBriefing && aiBriefing.length > 0) || aiError) ? (
+      {((aiBriefing && aiBriefing.length > 0) || aiError) ? (
         <div className="mt-3 space-y-1.5 rounded-xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-2.5 text-[12px]">
           <div className="mb-1 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-(--notion-fg)/75">

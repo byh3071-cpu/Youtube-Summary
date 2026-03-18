@@ -10,6 +10,7 @@ export default function LoginForm({ next = "/" }: { next?: string }) {
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         router.replace(next);
@@ -23,6 +24,7 @@ export default function LoginForm({ next = "/" }: { next?: string }) {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       await supabase.auth.signInWithOAuth({
         provider: "google",
