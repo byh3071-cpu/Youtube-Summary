@@ -62,7 +62,10 @@ export default function MyFocusSection() {
     setAiError(null);
     setAiLoading(true);
     try {
-      const result = await rankFeedByGoalsAction(goals);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 30000)
+      );
+      const result = await Promise.race([rankFeedByGoalsAction(goals), timeout]);
       if (!result) {
         setAiError("AI 브리핑 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.");
         setAiBriefing(null);
@@ -80,8 +83,12 @@ export default function MyFocusSection() {
         setAiBriefing(null);
       }
     } catch (error) {
+      const isTimeout = error instanceof Error && error.message === "timeout";
       console.error("AI Morning Briefing 호출 오류:", error);
-      setAiError("AI 브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      setAiError(isTimeout
+        ? "AI 브리핑이 시간 초과되었습니다. 잠시 후 다시 시도해 주세요."
+        : "AI 브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      );
       setAiBriefing(null);
     } finally {
       setAiLoading(false);

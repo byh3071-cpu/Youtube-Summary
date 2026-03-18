@@ -11,6 +11,7 @@ import KeywordFilter, { useKeywordFilter } from "./KeywordFilter";
 import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
 import MyFocusSection from "./MyFocusSection";
 import { TrendFilterProvider, useTrendFilter } from "@/contexts/TrendFilterContext";
+import { FEED_CATEGORIES } from "@/lib/sources";
 
 export type BookmarkEntry = {
   id: string;
@@ -110,6 +111,10 @@ function FeedClientContainerContent({
     const filteredItems = filterFeedByTrendKeyword(byCategory, selectedTrendKeyword);
     const hasActiveFilters = keywords.length > 0;
 
+    const availableCategories = FEED_CATEGORIES.filter(cat =>
+        byKeywords.some(item => item.category === cat)
+    );
+
     const isGlobalFeed = !selectedSourceName;
     const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
 
@@ -136,6 +141,7 @@ function FeedClientContainerContent({
                 onClearKeywords={clearKeywords}
                 selectedCategory={selectedCategory}
                 onCategoryChange={handleCategoryChange}
+                availableCategories={availableCategories}
                 compact={showViewSwitcher}
                 headerRight={
                     showViewSwitcher ? <ViewSwitcher currentView={view} /> : undefined

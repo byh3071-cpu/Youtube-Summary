@@ -147,8 +147,6 @@ export default async function Home({ searchParams }: HomeProps) {
           selectedSource={selectedSource}
           visibleItemsCount={visibleItems.length}
           sourceStatus={sourceStatus}
-          youtubeSourceCount={youtubeSources.length}
-          rssSourceCount={rssSourceCount}
         />
       )}
 

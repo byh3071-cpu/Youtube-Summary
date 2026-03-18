@@ -12,8 +12,6 @@ interface FeedHeaderProps {
   selectedSource?: { id: string; name: string; type: "YouTube" | "RSS" };
   visibleItemsCount: number;
   sourceStatus: { youtube: YouTubeFetchStatus; rss: "ready" | "request_failed" };
-  youtubeSourceCount: number;
-  rssSourceCount: number;
 }
 
 const youtubeNoticeMessage: Record<YouTubeFetchStatus, (selected: FeedHeaderProps["selectedSource"]) => string> = {
@@ -33,11 +31,7 @@ export default function FeedHeader({
   selectedSource,
   visibleItemsCount,
   sourceStatus,
-  youtubeSourceCount,
-  rssSourceCount,
 }: FeedHeaderProps) {
-  void youtubeSourceCount;
-  void rssSourceCount;
   const showYoutubeNotice = sourceStatus.youtube !== "ready" && (!selectedSource || selectedSource.type === "YouTube");
   const isHydrated = useIsHydrated();
   const { resolvedTheme } = useTheme();

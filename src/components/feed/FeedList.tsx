@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { FeedItem as FeedItemType } from "@/types/feed";
 import FeedItemComponent from "./FeedItem";
 import YouTubeCard from "./YouTubeCard";
@@ -5,6 +6,9 @@ import { AutoAnimateList } from "@/components/ui/AutoAnimateList";
 import { Coffee, Rss, Youtube } from "lucide-react";
 import type { BookmarkEntry } from "./FeedClientContainer";
 import Image from "next/image";
+
+const YOUTUBE_PAGE_SIZE = 60;
+const RSS_PAGE_SIZE = 30;
 
 type ViewMode = "all" | "youtube" | "rss";
 
@@ -29,8 +33,13 @@ function EmptyBlock({ message }: { message: string }) {
 }
 
 export default function FeedList({ items, hasActiveFilters = false, selectedSourceName, useTickerLayout = true, viewMode = "all", bookmarks = [], onBookmarkChange, totalCount }: Props) {
+    const [ytLimit, setYtLimit] = useState(YOUTUBE_PAGE_SIZE);
+    const [rssLimit, setRssLimit] = useState(RSS_PAGE_SIZE);
+
     const youtubeItems = (items ?? []).filter((i) => i.source === "YouTube");
     const rssItems = (items ?? []).filter((i) => i.source === "RSS");
+    const visibleYoutubeItems = youtubeItems.slice(0, ytLimit);
+    const visibleRssItems = rssItems.slice(0, rssLimit);
     const hasAny = items && items.length > 0;
 
     if (!hasAny) {
@@ -107,20 +116,33 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                         {youtubeItems.length === 0 ? (
                             <EmptyBlock message="이번 필터에 해당하는 유튜브 영상이 없습니다." />
                         ) : (
-                            <AutoAnimateList as="ul" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
-                                {youtubeItems.map((item) => {
-                                    const b = item.id ? bookmarks.find((x) => x.video_id === item.id) : null;
-                                    return (
-                                        <li key={`${item.source}:${item.sourceId}:${item.id}`}>
-                                            <YouTubeCard
-                                                item={item}
-                                                bookmark={b}
-                                                onBookmarkChange={onBookmarkChange}
-                                            />
-                                        </li>
-                                    );
-                                })}
-                            </AutoAnimateList>
+                            <>
+                                <AutoAnimateList as="ul" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
+                                    {visibleYoutubeItems.map((item) => {
+                                        const b = item.id ? bookmarks.find((x) => x.video_id === item.id) : null;
+                                        return (
+                                            <li key={`${item.source}:${item.sourceId}:${item.id}`}>
+                                                <YouTubeCard
+                                                    item={item}
+                                                    bookmark={b}
+                                                    onBookmarkChange={onBookmarkChange}
+                                                />
+                                            </li>
+                                        );
+                                    })}
+                                </AutoAnimateList>
+                                {youtubeItems.length > ytLimit && (
+                                    <div className="mt-3 flex justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => setYtLimit(prev => prev + YOUTUBE_PAGE_SIZE)}
+                                            className="rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--notion-fg)/60 hover:bg-(--notion-hover)"
+                                        >
+                                            더 보기 ({youtubeItems.length - ytLimit}개 남음)
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -142,18 +164,31 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                         {rssItems.length === 0 ? (
                             <EmptyBlock message="이번 필터에 해당하는 RSS·뉴스가 없습니다." />
                         ) : (
-                            rssItems.map((item) => {
-                                const rssBookmarkId = "rss:" + item.link;
-                                const b = bookmarks.find((x) => x.video_id === rssBookmarkId) ?? null;
-                                return (
-                                    <FeedItemComponent
-                                        key={`${item.source}:${item.sourceId}:${item.id}`}
-                                        item={item}
-                                        bookmark={b}
-                                        onBookmarkChange={onBookmarkChange}
-                                    />
-                                );
-                            })
+                            <>
+                                {visibleRssItems.map((item) => {
+                                    const rssBookmarkId = "rss:" + item.link;
+                                    const b = bookmarks.find((x) => x.video_id === rssBookmarkId) ?? null;
+                                    return (
+                                        <FeedItemComponent
+                                            key={`${item.source}:${item.sourceId}:${item.id}`}
+                                            item={item}
+                                            bookmark={b}
+                                            onBookmarkChange={onBookmarkChange}
+                                        />
+                                    );
+                                })}
+                                {rssItems.length > rssLimit && (
+                                    <div className="flex justify-center py-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setRssLimit(prev => prev + RSS_PAGE_SIZE)}
+                                            className="rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--notion-fg)/60 hover:bg-(--notion-hover)"
+                                        >
+                                            더 보기 ({rssItems.length - rssLimit}개 남음)
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </AutoAnimateList>
                 </div>
