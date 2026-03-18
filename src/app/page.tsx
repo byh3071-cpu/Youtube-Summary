@@ -17,7 +17,8 @@ import type { FeedCategory, FeedItem } from "@/types/feed";
 import type { FeedSource } from "@/lib/sources";
 
 export const revalidate = 7200; // 2 hours
-const MAX_YOUTUBE_AVATAR_RESOLVE = 24;
+// YouTube 채널 수가 많지 않으므로, 프로필 이미지는 여유 있게 최대 64개까지 조회
+const MAX_YOUTUBE_AVATAR_RESOLVE = 64;
 
 /** 숏폼: 60초 이하, 롱폼: 61초 초과 또는 길이 미상 */
 const SHORTS_MAX_SECONDS = 60;

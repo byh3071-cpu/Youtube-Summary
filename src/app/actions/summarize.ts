@@ -24,6 +24,9 @@ const QUALITY_THRESHOLD = 78;
 /** 미달 시 재생성 최대 횟수 (1회 생성 + 최대 2회 재생성 = 총 3회 시도) */
 const MAX_REGENERATION_ATTEMPTS = 3;
 
+/** 비용을 최소화하기 위한 기본 Gemini 모델 (Tier 1 저렴한 Flash 계열) */
+const GEMINI_MODEL_ID = "models/gemini-1.5-flash";
+
 // Removed local INSIGHT_PROMPT as it's now in @/lib/prompts
 
 async function summarizeWithGemini(prompt: string): Promise<string | null> {
@@ -35,8 +38,8 @@ async function summarizeWithGemini(prompt: string): Promise<string | null> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
-      // 최신 모델 ID
-      model: "models/gemini-pro-latest",
+      // 비용이 저렴한 Flash 계열 모델 사용
+      model: GEMINI_MODEL_ID,
       contents: prompt,
     });
     // SDK의 .text 속성을 통해 텍스트 추출
@@ -63,7 +66,7 @@ async function evaluateSummaryQuality(
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: "models/gemini-pro-latest",
+      model: GEMINI_MODEL_ID,
       contents: prompt,
     });
     const raw = (response.text || "").trim();
@@ -88,7 +91,7 @@ async function evaluateInsightQuality(
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: "models/gemini-pro-latest",
+      model: GEMINI_MODEL_ID,
       contents: prompt,
     });
     const raw = (response.text || "").trim();
