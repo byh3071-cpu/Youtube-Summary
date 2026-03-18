@@ -21,6 +21,9 @@ export type TrendRadarResult = {
 const TREND_BUCKET_LATEST_24H = "latest_24h_all";
 const TREND_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+/** 트렌드 레이더에서도 비용을 최소화하기 위해 동일한 Flash 계열 모델 사용 */
+const GEMINI_TREND_MODEL_ID = "models/gemini-1.5-flash";
+
 async function callGeminiForTrends(items: FeedItem[]): Promise<TrendRadarItem[] | null> {
   if (!process.env.GEMINI_API_KEY) return null;
 
@@ -48,8 +51,8 @@ async function callGeminiForTrends(items: FeedItem[]): Promise<TrendRadarItem[] 
 
   let raw = "";
   try {
-    // 1. 최신 모델 시도
-    raw = await generateWithModel("models/gemini-pro-latest");
+    // 1. 비용이 저렴한 Flash 계열 기본 모델 사용
+    raw = await generateWithModel(GEMINI_TREND_MODEL_ID);
   } catch (e: unknown) {
     const err = e as { error?: { code?: number | string }; code?: number | string; status?: number | string };
     const code = err.error?.code ?? err.code ?? err.status;
