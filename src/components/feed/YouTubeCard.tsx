@@ -180,7 +180,7 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange }: Props)
             </div>
           </div>
 
-          <p className="mt-0.5 text-[10px] text-(--notion-fg)/55">
+          <p className="mt-0.5 text-[10px] text-(--notion-fg)/55" suppressHydrationWarning>
             {formLabel ? `${formLabel} · ${timeAgo}` : timeAgo}
           </p>
         </div>
