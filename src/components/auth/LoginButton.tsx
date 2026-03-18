@@ -12,12 +12,19 @@ export function LoginButton() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [supabaseReady, setSupabaseReady] = useState(true);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setSupabaseReady(false);
+      setLoading(false);
+      return;
+    }
     let mounted = true;
 
     async function checkSession() {
+      if (!supabase) return;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (mounted) {
@@ -50,6 +57,7 @@ export function LoginButton() {
     if (!searchParams.get("auth_success")) return;
     
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
     const t = setTimeout(async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (u) setUser({ email: u.email ?? undefined });
@@ -60,6 +68,7 @@ export function LoginButton() {
 
   const handleLogin = async () => {
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -71,6 +80,7 @@ export function LoginButton() {
 
   const handleLogout = async () => {
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
     await supabase.auth.signOut();
   };
 
@@ -82,6 +92,19 @@ export function LoginButton() {
         disabled
       >
         로그인 확인 중…
+      </button>
+    );
+  }
+
+  if (!supabaseReady) {
+    return (
+      <button
+        type="button"
+        className="rounded-full bg-(--notion-gray)/20 px-3 py-2 text-[11px] font-medium text-(--notion-fg)/55 min-h-[32px] touch-manipulation whitespace-nowrap"
+        disabled
+        title="Supabase 환경변수가 설정되지 않아 로그인이 비활성화되어 있습니다."
+      >
+        로그인(설정 필요)
       </button>
     );
   }

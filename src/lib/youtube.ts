@@ -204,9 +204,18 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[YouTube] ${channelName} HTTP ${response.status}: ${errorText.slice(0, 400)}`);
 
-      if (response.status === 400 && errorText.includes("API key not valid")) {
+      if (
+        (response.status === 400 || response.status === 403) &&
+        (errorText.includes("API key not valid") || errorText.includes("keyInvalid"))
+      ) {
         logInvalidApiKeyWarning();
+        return { items: [], status: "invalid_api_key" };
+      }
+
+      if (response.status === 403 && errorText.includes("accessNotConfigured")) {
+        warnOnce("api_not_enabled", "[YouTube] YouTube Data API v3가 활성화되지 않았습니다. console.cloud.google.com에서 활성화해 주세요.");
         return { items: [], status: "invalid_api_key" };
       }
 

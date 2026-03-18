@@ -73,10 +73,14 @@ function FeedClientContainerContent({
     const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
 
     const fetchBookmarks = useCallback(async () => {
-        const res = await fetch("/api/bookmarks");
-        if (res.ok) {
-            const data = await res.json();
-            setBookmarks(Array.isArray(data) ? data : []);
+        try {
+            const res = await fetch("/api/bookmarks");
+            if (res.ok) {
+                const data = await res.json();
+                setBookmarks(Array.isArray(data) ? data : []);
+            }
+        } catch {
+            // 북마크 로드 실패 시 조용히 무시 (비필수 기능)
         }
     }, []);
 
