@@ -16,7 +16,9 @@ import { resolveYouTubeChannel } from "@/lib/youtube";
 import type { FeedCategory, FeedItem } from "@/types/feed";
 import type { FeedSource } from "@/lib/sources";
 
-export const revalidate = 7200; // 2 hours
+// 페이지는 항상 동적 렌더링 (cookies, searchParams 사용).
+// YouTube/RSS API 응답은 개별 fetch()의 { next: { revalidate: 7200 } }로 캐싱.
+export const dynamic = "force-dynamic";
 // YouTube 채널 수가 많지 않으므로, 프로필 이미지는 여유 있게 최대 64개까지 조회
 const MAX_YOUTUBE_AVATAR_RESOLVE = 64;
 
