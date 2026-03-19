@@ -48,10 +48,12 @@ function formatSeconds(sec: number): string {
 }
 
 export default function YouTubeCard({ item, bookmark, onBookmarkChange }: Props) {
-  const timeAgo = formatTimeAgo(item.pubDate);
   const radio = useRadioQueueOptional();
   const [menuOpen, setMenuOpen] = useState(false);
   const isHydrated = useIsHydrated();
+  // Date.now() 기반 timeAgo는 서버/클라이언트 시간이 달라 hydration 에러(#418)를 유발.
+  // hydration 이후에만 계산하여 서버·클라이언트 초기 렌더를 일치시킴.
+  const timeAgo = isHydrated ? formatTimeAgo(item.pubDate) : "";
 
   const storedProgress = isHydrated && item.id ? getWatchProgress(item.id) : null;
   const playback = radio?.playback;
