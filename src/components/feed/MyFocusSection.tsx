@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { loadGoals, saveGoals } from "@/lib/goals";
 import { rankFeedByGoalsAction } from "@/app/actions/summarize";
@@ -17,6 +17,7 @@ export default function MyFocusSection() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiBriefing, setAiBriefing] = useState<AiRankedRecommendation[] | null>(null);
   const [focusExpanded, setFocusExpanded] = useState(false);
+  const briefingRequestId = useRef(0);
 
   useEffect(() => {
     const stored = loadGoals();
@@ -59,6 +60,7 @@ export default function MyFocusSection() {
   );
 
   const handleRunAiBriefing = async () => {
+    const currentId = ++briefingRequestId.current;
     setAiError(null);
     setAiLoading(true);
     try {
@@ -66,6 +68,7 @@ export default function MyFocusSection() {
         setTimeout(() => reject(new Error("timeout")), 30000)
       );
       const result = await Promise.race([rankFeedByGoalsAction(goals), timeout]);
+      if (currentId !== briefingRequestId.current) return;
       if (!result) {
         setAiError("AI 브리핑 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.");
         setAiBriefing(null);
@@ -83,6 +86,7 @@ export default function MyFocusSection() {
         setAiBriefing(null);
       }
     } catch (error) {
+      if (currentId !== briefingRequestId.current) return;
       const isTimeout = error instanceof Error && error.message === "timeout";
       console.error("AI Morning Briefing 호출 오류:", error);
       setAiError(isTimeout
@@ -91,7 +95,9 @@ export default function MyFocusSection() {
       );
       setAiBriefing(null);
     } finally {
-      setAiLoading(false);
+      if (currentId === briefingRequestId.current) {
+        setAiLoading(false);
+      }
     }
   };
 
@@ -159,7 +165,25 @@ export default function MyFocusSection() {
         </div>
       )}
 
-      {((aiBriefing && aiBriefing.length > 0) || aiError) ? (
+      {aiLoading && !aiBriefing && (
+        <div className="mt-3 space-y-2 rounded-xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-3" aria-live="polite">
+          <div className="flex items-center gap-2 text-[11px] text-(--notion-fg)/60">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-(--notion-fg)/20 border-t-(--notion-fg)/60" />
+            <span>AI가 맞춤 브리핑을 준비하고 있습니다...</span>
+          </div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex gap-3 animate-pulse rounded-lg bg-(--notion-gray)/30 px-3 py-2">
+              <div className="h-16 w-28 shrink-0 rounded-md bg-(--notion-gray)/50" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-3 w-3/4 rounded bg-(--notion-gray)/50" />
+                <div className="h-3 w-1/2 rounded bg-(--notion-gray)/50" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {((aiBriefing && aiBriefing.length > 0) || aiError) && !aiLoading ? (
         <div className="mt-3 space-y-1.5 rounded-xl border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-2.5 text-[12px]">
           <div className="mb-1 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-(--notion-fg)/75">
@@ -173,9 +197,19 @@ export default function MyFocusSection() {
           </div>
 
           {aiError && (
-            <p className="text-[11px] leading-relaxed text-(--notion-fg)/65">
-              {aiError}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] leading-relaxed text-(--notion-fg)/65">
+                {aiError}
+              </p>
+              <button
+                type="button"
+                onClick={handleRunAiBriefing}
+                disabled={aiLoading}
+                className="shrink-0 rounded-full border border-(--notion-border) px-2.5 py-1 text-[10px] font-semibold text-(--notion-fg)/70 hover:bg-(--notion-hover)"
+              >
+                다시 시도
+              </button>
+            </div>
           )}
 
           {aiBriefing && aiBriefing.length > 0 && (
