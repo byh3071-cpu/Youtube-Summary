@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
 import { ThemeIcon } from "@/components/ui/ThemeIcon";
 import { summarizeVideoAction } from "@/app/actions/summarize";
@@ -14,6 +14,7 @@ export default function SummarizeButton({ videoId }: Props) {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const requestInFlight = useRef(false);
 
   useEffect(() => {
     const cached = localStorage.getItem(`summary_${videoId}`);
@@ -35,22 +36,29 @@ export default function SummarizeButton({ videoId }: Props) {
     setIsOpen(true);
 
     if (summary) {
-      return; 
+      return;
     }
 
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     setLoading(true);
     setError(null);
 
-    const result = await summarizeVideoAction(videoId);
+    try {
+      const result = await summarizeVideoAction(videoId);
 
-    if (result.error) {
-      setError(result.error);
-    } else if (result.summary) {
-      setSummary(result.summary);
-      localStorage.setItem(`summary_${videoId}`, result.summary);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.summary) {
+        setSummary(result.summary);
+        localStorage.setItem(`summary_${videoId}`, result.summary);
+      }
+    } catch {
+      setError("요약 요청 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+      requestInFlight.current = false;
     }
-
-    setLoading(false);
   };
 
   return (

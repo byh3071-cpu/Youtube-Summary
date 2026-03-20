@@ -3,7 +3,7 @@ import {
   getCurrentUserFromCookies,
   createServerSupabaseFromCookies,
 } from "@/lib/supabase-server-cookies";
-import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 import type { Database } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     if (!serverSupabase) {
       return Response.json([]);
     }
-    const { data, error } = await (serverSupabase as any)
+    const { data, error } = await serverSupabase
       .from("bookmarks")
       .select("id, video_id, video_title, highlight, created_at")
       .eq("team_id", teamId)
@@ -112,8 +112,9 @@ export async function POST(request: Request) {
     video_title,
     highlight: highlight ?? video_title,
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 제네릭 추론
-  const { data, error } = await supabase.from("bookmarks").insert(row as any).select("id").single();
+  const mutTable = getMutationTable("bookmarks");
+  if (!mutTable) return Response.json({ error: "서버 설정 오류" }, { status: 500 });
+  const { data, error } = await mutTable.insert(row).select("id").single();
   if (error) {
     if (error.code === "23505") {
       const q = supabase.from("bookmarks").select("id").eq("user_id", user.id).eq("video_id", video_id);

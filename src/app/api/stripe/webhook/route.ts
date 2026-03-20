@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -57,16 +57,19 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      await (supabase.from("user_plan") as unknown as { upsert: (v: object, o?: { onConflict: string }) => Promise<unknown> }).upsert(
-        {
-          user_id: userId,
-          plan: "pro",
-          expires_at: expiresAt,
-          stripe_subscription_id: subId ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
+      const planMut = getMutationTable("user_plan");
+      if (planMut) {
+        await planMut.upsert(
+          {
+            user_id: userId,
+            plan: "pro",
+            expires_at: expiresAt,
+            stripe_subscription_id: subId ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
+      }
     } else if (event.type === "customer.subscription.updated") {
       const sub = event.data.object as Stripe.Subscription;
       const { data: rows } = await supabase.from("user_plan").select("user_id").eq("stripe_subscription_id", sub.id);
@@ -74,16 +77,16 @@ export async function POST(req: NextRequest) {
       const periodEnd = (sub as { current_period_end?: number }).current_period_end;
       if (row?.user_id) {
         const expiresAt = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
-        const planTable = supabase.from("user_plan") as unknown as { update: (v: object) => { eq: (k: string, v: string) => Promise<unknown> } };
-        await planTable.update({ expires_at: expiresAt, updated_at: new Date().toISOString() }).eq("user_id", row.user_id);
+        const planMut = getMutationTable("user_plan");
+        if (planMut) await planMut.update({ expires_at: expiresAt, updated_at: new Date().toISOString() }).eq("user_id", row.user_id);
       }
     } else if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
       const { data: rows } = await supabase.from("user_plan").select("user_id").eq("stripe_subscription_id", sub.id);
       const row = Array.isArray(rows) ? rows[0] : (rows as { user_id: string }[] | null)?.[0];
       if (row?.user_id) {
-        const planTable = supabase.from("user_plan") as unknown as { update: (v: object) => { eq: (k: string, v: string) => Promise<unknown> } };
-        await planTable
+        const planMut = getMutationTable("user_plan");
+        if (planMut) await planMut
           .update({
             plan: "free",
             expires_at: null,
@@ -91,6 +94,41 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", row.user_id);
+      }
+    } else if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null };
+      const rawSub = invoice.subscription;
+      const subId = typeof rawSub === "string" ? rawSub : (rawSub as { id: string } | null)?.id ?? null;
+      if (subId) {
+        const { data: rows } = await supabase.from("user_plan").select("user_id").eq("stripe_subscription_id", subId);
+        const row = Array.isArray(rows) ? rows[0] : (rows as { user_id: string }[] | null)?.[0];
+        const userId = row?.user_id ?? "unknown";
+        console.warn(`[stripe webhook] invoice.payment_failed for user ${userId}`);
+      }
+    } else if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const customerId = typeof charge.customer === "string" ? charge.customer : null;
+      if (customerId) {
+        const subs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
+        const subId = subs.data?.[0]?.id ?? null;
+        if (subId) {
+          const { data: rows } = await supabase.from("user_plan").select("user_id").eq("stripe_subscription_id", subId);
+          const row = Array.isArray(rows) ? rows[0] : (rows as { user_id: string }[] | null)?.[0];
+          if (row?.user_id && charge.refunded) {
+            const planMut = getMutationTable("user_plan");
+            if (planMut) {
+              await planMut
+                .update({
+                  plan: "free",
+                  stripe_subscription_id: null,
+                  expires_at: null,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", row.user_id);
+            }
+            console.warn(`[stripe webhook] charge.refunded – downgraded user ${row.user_id}`);
+          }
+        }
       }
     }
   } catch (e) {
