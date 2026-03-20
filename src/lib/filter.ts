@@ -42,6 +42,20 @@ export function filterFeedByTrendKeyword(items: FeedItem[], keyword: string | nu
 }
 
 /**
+ * 검색어로 피드를 필터링합니다.
+ * 제목, 소스 이름, 요약에서 검색어가 포함된 항목만 반환합니다.
+ */
+export function filterFeedBySearch(items: FeedItem[], query: string): FeedItem[] {
+  if (!query.trim()) return items;
+  const q = query.toLowerCase().trim();
+  return items.filter(item =>
+    item.title.toLowerCase().includes(q) ||
+    item.sourceName.toLowerCase().includes(q) ||
+    (item.summary?.toLowerCase().includes(q) ?? false)
+  );
+}
+
+/**
  * 카테고리 기준으로 피드를 필터링합니다.
  * category가 없으면 전체, 있으면 해당 카테고리만 반환합니다.
  */

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
-import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 import { canManageTeam } from "@/types/teams";
 
 export async function PATCH(
@@ -52,8 +52,11 @@ export async function PATCH(
     return NextResponse.json({ error: "변경할 필드가 없습니다." }, { status: 400 });
   }
 
-  const { data: team, error } = await (supabase as any)
-    .from("teams")
+  const teamsMut = getMutationTable("teams");
+  if (!teamsMut) {
+    return NextResponse.json({ error: "서버 설정 오류" }, { status: 500 });
+  }
+  const { data: team, error } = await teamsMut
     .update(updates)
     .eq("id", teamId)
     .select("id, name, plan, goal_text, created_at")

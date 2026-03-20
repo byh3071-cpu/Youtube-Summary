@@ -256,3 +256,16 @@ export function getTypedTable<T extends keyof Database["public"]["Tables"]>(
 export function getSupabaseForSummaries() {
   return getTypedTable("summaries");
 }
+
+/**
+ * Supabase PostgREST의 제네릭 추론이 insert/update/delete에서
+ * `never`로 귀결되는 문제를 우회하는 헬퍼.
+ * 타입 안전성보다 런타임 동작이 우선인 mutation 작업에 사용합니다.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getMutationTable(tableName: string): any | null {
+  const supabase = getServerSupabaseClient();
+  if (!supabase) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any).from(tableName);
+}

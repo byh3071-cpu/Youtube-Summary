@@ -34,3 +34,47 @@ export function mergeCustomSources(existing: FeedSource[], incoming: FeedSource[
   const added = incoming.filter((s) => typeof s?.id === "string" && !idSet.has(s.id));
   return [...existing, ...added];
 }
+
+/**
+ * 쿠키에 저장된 커스텀 소스를 DB와 동기화합니다.
+ * - 쿠키에만 있는 소스 → DB에 추가
+ * - DB에만 있는 소스 → 쿠키 목록에 추가
+ * 로그인 시 호출하면 기기 간 소스 동기화 가능.
+ */
+export async function syncCustomSourcesWithDb(
+  cookieSources: FeedSource[],
+  userId: string,
+): Promise<{ merged: FeedSource[]; changed: boolean }> {
+  try {
+    const res = await fetch("/api/custom-sources");
+    if (!res.ok) return { merged: cookieSources, changed: false };
+    const dbSources = (await res.json()) as FeedSource[];
+
+    const dbIds = new Set(dbSources.map((s) => s.id));
+    const cookieIds = new Set(cookieSources.map((s) => s.id));
+
+    // 쿠키에만 있는 → DB에 추가
+    const onlyCookie = cookieSources.filter((s) => !dbIds.has(s.id));
+    for (const src of onlyCookie) {
+      await fetch("/api/custom-sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceId: src.id,
+          name: src.name,
+          category: src.category,
+          avatarUrl: src.avatarUrl,
+        }),
+      });
+    }
+
+    // DB에만 있는 → 쿠키 목록에 추가
+    const onlyDb = dbSources.filter((s) => !cookieIds.has(s.id));
+    const merged = mergeCustomSources(cookieSources, onlyDb);
+    const changed = onlyCookie.length > 0 || onlyDb.length > 0;
+
+    return { merged, changed };
+  } catch {
+    return { merged: cookieSources, changed: false };
+  }
+}

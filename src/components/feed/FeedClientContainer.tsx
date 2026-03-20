@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { FeedItem } from "@/types/feed";
 import type { FeedCategory } from "@/types/feed";
-import { filterFeedByKeywords, filterFeedByCategory, filterFeedByTrendKeyword } from "@/lib/filter";
+import { filterFeedByKeywords, filterFeedByCategory, filterFeedByTrendKeyword, filterFeedBySearch } from "@/lib/filter";
 import FeedList from "./FeedList";
 import FeedReelView from "./FeedReelView";
+import FeedSearch from "./FeedSearch";
 import KeywordFilter, { useKeywordFilter } from "./KeywordFilter";
 import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
 import MyFocusSection from "./MyFocusSection";
@@ -71,6 +72,7 @@ function FeedClientContainerContent({
 
     const { keywords, addKeyword, removeKeyword, clearKeywords } = useKeywordFilter();
     const [selectedCategory, setSelectedCategory] = useState<FeedCategory | null>(initialCategory);
+    const [searchQuery, setSearchQuery] = useState("");
     const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
 
     const fetchBookmarks = useCallback(async () => {
@@ -106,7 +108,8 @@ function FeedClientContainerContent({
     const selectedTrendKeyword = trendFilter?.selectedTrendKeyword ?? null;
 
     const byView = filterByView(initialItems, view);
-    const byKeywords = filterFeedByKeywords(byView, keywords);
+    const bySearch = filterFeedBySearch(byView, searchQuery);
+    const byKeywords = filterFeedByKeywords(bySearch, keywords);
     const byCategory = filterFeedByCategory(byKeywords, selectedCategory);
     const filteredItems = filterFeedByTrendKeyword(byCategory, selectedTrendKeyword);
     const hasActiveFilters = keywords.length > 0;
@@ -132,6 +135,12 @@ function FeedClientContainerContent({
     return (
         <>
             {isGlobalFeed && <MyFocusSection />}
+
+            {isGlobalFeed && (
+                <div style={{ marginBottom: 12, padding: "0 4px" }}>
+                    <FeedSearch value={searchQuery} onChange={setSearchQuery} />
+                </div>
+            )}
 
             <KeywordFilter
                 selectedSourceName={selectedSourceName}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
-import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 import type { TeamRow, TeamMemberSummary, TeamWithRole } from "@/types/teams";
 
 export async function GET() {
@@ -69,8 +69,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "서버 설정 오류" }, { status: 500 });
   }
 
-  const { data: teamData, error: teamError } = await (supabase as any)
-    .from("teams")
+  const teamsMut = getMutationTable("teams");
+  const membersMut = getMutationTable("team_members");
+  if (!teamsMut || !membersMut) {
+    return NextResponse.json({ error: "서버 설정 오류" }, { status: 500 });
+  }
+
+  const { data: teamData, error: teamError } = await teamsMut
     .insert({ name, plan: "free" })
     .select("id, name, plan, created_at")
     .single();
@@ -82,14 +87,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `팀 생성 실패: ${message}` }, { status: 500 });
   }
 
-  const { error: memberError } = await (supabase as any).from("team_members").insert({
+  const { error: memberError } = await membersMut.insert({
     team_id: team.id,
     user_id: user.id,
     role: "owner",
   });
 
   if (memberError) {
-    await (supabase as any).from("teams").delete().eq("id", team.id);
+    await teamsMut.delete().eq("id", team.id);
     const message = memberError.message ?? "멤버 추가 실패";
     console.error("[POST /api/teams] team_members insert:", message);
     return NextResponse.json({ error: `팀 생성 실패: ${message}` }, { status: 500 });
