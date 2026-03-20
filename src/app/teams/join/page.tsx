@@ -73,13 +73,18 @@ export default async function TeamJoinPage({
     );
   }
 
-  const { error: insertError } = await (serverSupabase as any).from("team_members").upsert(
-    { team_id: invite.team_id, user_id: user.id, role: "member" },
-    { onConflict: "team_id,user_id" },
-  );
+  const { getMutationTable: getMut } = await import("@/lib/supabase-server");
+  const membersMut = getMut("team_members");
+  const invitesMut = getMut("team_invites");
+  const { error: insertError } = membersMut
+    ? await membersMut.upsert(
+        { team_id: invite.team_id, user_id: user.id, role: "member" },
+        { onConflict: "team_id,user_id" },
+      )
+    : { error: { message: "서버 설정 오류" } };
 
-  if (!insertError) {
-    await (serverSupabase as any).from("team_invites").delete().eq("id", invite.id);
+  if (!insertError && invitesMut) {
+    await invitesMut.delete().eq("id", invite.id);
   }
 
   redirect("/?team_joined=1");

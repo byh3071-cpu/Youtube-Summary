@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
-import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 
 export async function POST(
   req: NextRequest,
@@ -48,8 +48,11 @@ export async function POST(
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from("team_invites").insert({
+  const invitesMut = getMutationTable("team_invites");
+  if (!invitesMut) {
+    return NextResponse.json({ error: "서버 설정 오류" }, { status: 500 });
+  }
+  const { error } = await invitesMut.insert({
     team_id: teamId,
     email,
     token,
