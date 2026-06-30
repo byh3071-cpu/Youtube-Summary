@@ -63,3 +63,6 @@ lint_output.txt
 *.log
 
 .env
+
+# Serena MCP cache
+.serena/
