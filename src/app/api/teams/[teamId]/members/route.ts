@@ -3,6 +3,44 @@ import { cookies } from "next/headers";
 import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
 import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 
+type LockoutCheck = { ok: true } | { ok: false; status: number; error: string };
+
+/**
+ * owner 멤버 제거 시 팀이 소유자 없이 락아웃되는 것을 막는다.
+ * - admin은 다른 owner를 제거할 수 없다(owner만 owner를 건드릴 수 있음).
+ * - 마지막 owner는 제거할 수 없다(자기 자신이든 타인이든).
+ * 대상이 owner가 아니면 통과.
+ */
+export function checkOwnerLockoutOnRemove(
+  selfRole: string,
+  targetRole: string,
+  ownerCount: number,
+): LockoutCheck {
+  if (targetRole !== "owner") return { ok: true };
+  if (selfRole !== "owner") {
+    return { ok: false, status: 403, error: "소유자는 다른 소유자만 제거할 수 있습니다." };
+  }
+  if (ownerCount <= 1) {
+    return { ok: false, status: 400, error: "유일한 소유자는 제거할 수 없습니다." };
+  }
+  return { ok: true };
+}
+
+/**
+ * owner를 다른 역할로 강등할 때 마지막 owner가 강등돼 팀이 락아웃되는 것을 막는다.
+ * owner→owner(무변경)나 owner가 2명 이상이면 통과.
+ */
+export function checkOwnerLockoutOnRoleChange(
+  targetRole: string,
+  newRole: string,
+  ownerCount: number,
+): LockoutCheck {
+  if (targetRole === "owner" && newRole !== "owner" && ownerCount <= 1) {
+    return { ok: false, status: 400, error: "마지막 소유자의 역할은 변경할 수 없습니다." };
+  }
+  return { ok: true };
+}
+
 /* ------------------------------------------------------------------ */
 /*  GET  /api/teams/[teamId]/members — 팀 멤버 목록                    */
 /* ------------------------------------------------------------------ */
@@ -105,19 +143,18 @@ export async function DELETE(
     return NextResponse.json({ error: "멤버를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  // 자신이 유일한 owner인 경우 자기 자신 제거 방지
-  if (target.user_id === user.id && target.role === "owner") {
+  // 대상이 owner이면 소유자 락아웃 방지:
+  // admin은 owner를 제거할 수 없고, 마지막 owner는 자기든 타인이든 제거 불가
+  if (target.role === "owner") {
     const { count } = await supabase
       .from("team_members")
       .select("id", { count: "exact", head: true })
       .eq("team_id", teamId)
       .eq("role", "owner");
 
-    if ((count ?? 0) <= 1) {
-      return NextResponse.json(
-        { error: "유일한 소유자는 팀을 떠날 수 없습니다." },
-        { status: 400 },
-      );
+    const check = checkOwnerLockoutOnRemove(selfRole, target.role, count ?? 0);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: check.status });
     }
   }
 
@@ -185,15 +222,30 @@ export async function PATCH(
   }
 
   // 대상 멤버가 같은 팀에 속하는지 확인
-  const { data: target } = await supabase
+  const { data: targetData } = await supabase
     .from("team_members")
     .select("id, role")
     .eq("id", memberId)
     .eq("team_id", teamId)
     .single();
 
+  const target = targetData as { id: string; role: string } | null;
   if (!target) {
     return NextResponse.json({ error: "멤버를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  // owner를 다른 역할로 강등하는 경우 마지막 owner 보호 (팀 락아웃 방지)
+  if (target.role === "owner" && role !== "owner") {
+    const { count } = await supabase
+      .from("team_members")
+      .select("id", { count: "exact", head: true })
+      .eq("team_id", teamId)
+      .eq("role", "owner");
+
+    const check = checkOwnerLockoutOnRoleChange(target.role, role, count ?? 0);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: check.status });
+    }
   }
 
   const membersMut = getMutationTable("team_members");
