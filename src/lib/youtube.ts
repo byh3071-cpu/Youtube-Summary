@@ -1,4 +1,5 @@
 import { FeedItem } from "../types/feed";
+import { fetchWithTimeout } from "./fetch-timeout";
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const REVALIDATE_SECONDS = 7200;
@@ -151,7 +152,7 @@ export async function fetchVideoDetails(videoIds: string[]): Promise<VideoDetail
   });
 
   try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
+    const res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
       next: { revalidate: REVALIDATE_SECONDS },
     });
     if (!res.ok) return empty;
@@ -183,7 +184,7 @@ async function fetchChannelAvatar(channelId: string): Promise<string | undefined
   });
 
   try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
+    const res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
       next: { revalidate: REVALIDATE_SECONDS },
     });
     if (!res.ok) return undefined;
@@ -212,7 +213,7 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
 
   try {
     // Next.js 15의 fetch 캐싱: { next: { revalidate: 7200 } } (2시간)
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       next: { revalidate: REVALIDATE_SECONDS }
     });
 
@@ -310,7 +311,7 @@ export async function resolveYouTubeChannel(parsed: { type: "channelId"; channel
     params.set("forHandle", parsed.handle.startsWith("@") ? parsed.handle : `@${parsed.handle}`);
   }
   try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
+    const res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
       // 채널명·아바타는 거의 안 바뀌므로 24시간 캐시 — 페이지 SSR 시 아바타 해석 비용 절감
       next: { revalidate: 86400 },
     });
@@ -357,7 +358,7 @@ export async function getVideoSnippet(videoId: string): Promise<VideoSnippet | n
     key: YOUTUBE_API_KEY,
   });
   try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
+    const res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;

@@ -90,7 +90,12 @@ export async function generateGeminiTextResult(
 ): Promise<GeminiTextResult> {
   if (!process.env.GEMINI_API_KEY) return { ok: false, kind: "missing_key" };
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  // SDK 레벨 타임아웃(ms). digest 경로는 자체 Promise.race(60초)로 더 짧게 끊지만,
+  // summarize/insight/feed-qa/ranking 경로는 별도 타임아웃이 없어 여기서 상한을 건다.
+  const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+    httpOptions: { timeout: 90_000 },
+  });
   const run = async (model: string) => {
     const res = await ai.models.generateContent({ model, contents: prompt });
     return res.text || null;

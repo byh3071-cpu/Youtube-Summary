@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import { FeedItem } from '../types/feed';
 import { htmlToPlainText } from './html-entities';
+import { fetchWithTimeout } from './fetch-timeout';
 
 type CustomFeed = { title: string };
 type CustomItem = {
@@ -31,7 +32,7 @@ export async function fetchRssFeed(url: string, sourceName: string): Promise<Fee
         // rss-parser는 기본적으로 내부에서 http 모듈을 사용하므로 Next.js의 fetch 캐싱이 
         // 기본적으로 적용되지 않을 수 있습니다. 
         // 이를 해결하기 위해 fetch로 먼저 가져온 뒤 파싱합니다.
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
             next: { revalidate: REVALIDATE_SECONDS }, // 2시간 캐시
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
