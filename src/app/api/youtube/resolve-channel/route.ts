@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseYouTubeChannelInput } from "@/lib/youtube-channel-parse";
-import { resolveYouTubeChannel } from "@/lib/youtube";
+import { getVideoChannelId, resolveYouTubeChannel } from "@/lib/youtube";
 import { takeToken } from "@/lib/rate-limit";
 
 function getClientIp(request: Request): string {
@@ -30,12 +30,27 @@ export async function POST(request: Request) {
     const parsed = parseYouTubeChannelInput(input);
     if (!parsed) {
       return NextResponse.json(
-        { error: "채널 URL 또는 ID를 입력해 주세요. 예: youtube.com/@조코딩 또는 UC..." },
+        { error: "채널·영상 URL 또는 ID를 입력해 주세요. 예: youtube.com/@조코딩 또는 UC..." },
         { status: 400 }
       );
     }
 
-    const resolved = await resolveYouTubeChannel(parsed);
+    // 영상 URL이면 업로드 채널로 역해석 (videos.list 1 + channels.list 1 = 쿼터 2)
+    let target: Exclude<NonNullable<typeof parsed>, { type: "videoId" }>;
+    if (parsed.type === "videoId") {
+      const channelId = await getVideoChannelId(parsed.videoId);
+      if (!channelId) {
+        return NextResponse.json(
+          { error: "영상을 찾을 수 없습니다. 링크를 확인해 주세요." },
+          { status: 404 }
+        );
+      }
+      target = { type: "channelId", channelId };
+    } else {
+      target = parsed;
+    }
+
+    const resolved = await resolveYouTubeChannel(target);
     if (!resolved) {
       return NextResponse.json(
         { error: "채널을 찾을 수 없습니다. URL·핸들·채널 ID를 확인해 주세요." },

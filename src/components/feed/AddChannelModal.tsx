@@ -134,7 +134,7 @@ export default function AddChannelModal({
           </button>
         </div>
         <p className="mb-3 text-sm text-(--notion-fg)/65">
-          채널 주소나 @핸들을 붙여넣으면 됩니다. 채널 ID를 직접 찾을 필요 없어요.
+          채널 주소, @핸들, 보고 있던 영상 링크 모두 됩니다. 영상 링크면 그 채널을 찾아드려요.
         </p>
         <div className="mb-3">
           <label htmlFor="add-channel-category" className="mb-1.5 block text-xs font-medium text-(--notion-fg)/60">
@@ -155,7 +155,7 @@ export default function AddChannelModal({
         </div>
         <div className="mb-3">
           <label htmlFor="add-channel-input" className="mb-1.5 block text-xs font-medium text-(--notion-fg)/60">
-            채널 주소 또는 @핸들
+            채널·영상 주소 또는 @핸들
           </label>
           <input
             id="add-channel-input"
@@ -167,7 +167,7 @@ export default function AddChannelModal({
               setError(null);
             }}
             onKeyDown={(e) => e.key === "Enter" && addChannel()}
-            placeholder="예: https://www.youtube.com/@jocoding 또는 @조코딩"
+            placeholder="예: youtube.com/@jocoding 또는 영상 링크"
             className="w-full rounded-lg border border-(--notion-border) bg-(--notion-bg) px-3 py-2.5 text-sm text-(--notion-fg) placeholder:text-(--notion-fg)/40 focus:border-(--notion-fg)/30 focus:outline-none"
             disabled={loading}
             aria-invalid={!!error}
