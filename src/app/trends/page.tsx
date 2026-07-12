@@ -37,7 +37,7 @@ export default async function TrendsPage({ searchParams }: TrendsPageProps) {
   const plan = await getPlanForUser(cookieStore);
   const forceRefresh = sp?.refresh === "1" && plan === "owner";
 
-  const { mergedSources, customSourceIds: customYouTubeSourceIds } = await getSessionSourcesBundle();
+  const { mergedSources } = await getSessionSourcesBundle();
   const { items, sourceStatus } = await getMergedFeed(mergedSources);
   const youtubeSources = mergedSources.filter((s) => s.type === "YouTube");
   const latestVideoBySource = buildLatestVideoMap(items);
@@ -48,7 +48,6 @@ export default async function TrendsPage({ searchParams }: TrendsPageProps) {
     <AppLayout
       sourceStatus={sourceStatus}
       youtubeSources={youtubeSources}
-      customYouTubeSourceIds={customYouTubeSourceIds}
       latestVideoBySource={latestVideoBySource}
     >
       <div className="mb-4">

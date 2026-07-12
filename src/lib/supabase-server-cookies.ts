@@ -70,8 +70,12 @@ export function getCurrentUserFromCookies(cookieStore: CookieStore): Promise<Aut
 
 /**
  * 로그인 유저의 custom_sources를 FeedSource[]로 반환. 비로그인이면 [].
+ * 조회 오류는 null — 호출부가 "빈 목록"과 구분해 쿠키 미러로 폴백할 수 있어야
+ * 일시적 DB 오류에 채널 목록이 통째로 사라져 보이지 않는다.
  */
-export async function getCustomSourcesFromDb(cookieStore: CookieStore): Promise<FeedSource[]> {
+export async function getCustomSourcesFromDb(
+  cookieStore: CookieStore,
+): Promise<FeedSource[] | null> {
   const user = await getCurrentUserFromCookies(cookieStore);
   if (!user) return [];
   const supabase = createServerSupabaseFromCookies(cookieStore);
@@ -83,7 +87,7 @@ export async function getCustomSourcesFromDb(cookieStore: CookieStore): Promise<
     .order("created_at", { ascending: true });
   if (error) {
     console.error("[getCustomSourcesFromDb]", error.message);
-    return [];
+    return null;
   }
   const rows = (data ?? []) as {
     source_id: string;
@@ -98,6 +102,31 @@ export async function getCustomSourcesFromDb(cookieStore: CookieStore): Promise<
     category: (row.category || "기타") as FeedSource["category"],
     avatarUrl: row.avatar_url ?? undefined,
   }));
+}
+
+/**
+ * 로그인 유저가 숨긴 기본 채널 ID 목록. 비로그인이면 [].
+ * 조회 오류는 null — 단, 숨김의 폴백 방향은 호출부가 결정한다
+ * (테이블 미생성(42P01) 같은 구조적 오류는 "숨김 없음"이 안전).
+ */
+export async function getHiddenSourceIdsFromDb(
+  cookieStore: CookieStore,
+): Promise<string[] | null> {
+  const user = await getCurrentUserFromCookies(cookieStore);
+  if (!user) return [];
+  const supabase = createServerSupabaseFromCookies(cookieStore);
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("hidden_default_sources")
+    .select("source_id")
+    .eq("user_id", user.id);
+  if (error) {
+    // 마이그레이션 010 미적용(테이블 없음)이면 숨김 기능만 조용히 비활성
+    if (error.code === "42P01") return [];
+    console.error("[getHiddenSourceIdsFromDb]", error.message);
+    return null;
+  }
+  return ((data ?? []) as { source_id: string }[]).map((row) => row.source_id);
 }
 
 export type BookmarkRow = {

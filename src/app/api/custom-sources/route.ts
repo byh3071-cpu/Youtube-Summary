@@ -3,83 +3,22 @@ import {
   getCurrentUserFromCookies,
   createServerSupabaseFromCookies,
 } from "@/lib/supabase-server-cookies";
-import type { Database } from "@/lib/supabase-server";
+import { mergeCustomSources, filterValidSources } from "@/lib/custom-sources-cookie";
 import {
-  CUSTOM_SOURCES_COOKIE_NAME,
-  CUSTOM_SOURCES_MAX_AGE,
-  getCustomSourcesFromCookie,
-  compactCustomSources,
-  mergeCustomSources,
-  filterValidSources,
-} from "@/lib/custom-sources-cookie";
+  DEFAULT_YOUTUBE_SOURCE_IDS,
+  getAuthedSupabase,
+  hideDefaultInDb,
+  insertSourceToDb,
+  readCookieSources,
+  readHiddenIds,
+  setCustomSourcesCookie,
+  setHiddenSourcesCookie,
+  setSyncOwnerCookie,
+  unhideDefaultInDb,
+} from "@/lib/custom-sources-server";
 import type { FeedSource } from "@/lib/sources";
 
 export const dynamic = "force-dynamic";
-
-/**
- * 브라우저 쿠키 1개 한도(이름+값 4096B)를 넘기지 않기 위한 저장 크기 예산.
- * Set-Cookie는 값을 percent-encoding해 저장하므로(한글은 글자당 최대 9B로 팽창)
- * 직렬화 문자열 길이가 아니라 인코딩 후 바이트 기준으로 판정해야 한다 —
- * 한도를 넘긴 Set-Cookie는 브라우저가 통째로 버려 조용한 유실이 된다.
- */
-const COOKIE_NAME_PLUS_VALUE_BYTE_LIMIT = 4000;
-
-type MutableCookieStore = Awaited<ReturnType<typeof cookies>>;
-
-/**
- * 커스텀 소스 쿠키를 서버에서 직접 굽는다 (단일 쓰기 경로).
- * - JS(document.cookie)로 쓴 쿠키는 iOS Safari ITP가 만료를 7일로 강제 단축하지만
- *   서버 Set-Cookie는 제한을 받지 않아 1년 만료가 유지된다.
- * @returns 쿠키 저장 성공 여부 (용량 초과 시 false)
- */
-function setCustomSourcesCookie(cookieStore: MutableCookieStore, sources: FeedSource[]): boolean {
-  const value = JSON.stringify(compactCustomSources(sources));
-  const storedBytes = CUSTOM_SOURCES_COOKIE_NAME.length + encodeURIComponent(value).length;
-  if (storedBytes > COOKIE_NAME_PLUS_VALUE_BYTE_LIMIT) return false;
-  cookieStore.set(CUSTOM_SOURCES_COOKIE_NAME, value, {
-    path: "/",
-    maxAge: CUSTOM_SOURCES_MAX_AGE,
-    sameSite: "lax",
-  });
-  return true;
-}
-
-function readCookieSources(cookieStore: MutableCookieStore): FeedSource[] {
-  return getCustomSourcesFromCookie(cookieStore.get(CUSTOM_SOURCES_COOKIE_NAME)?.value);
-}
-
-type AuthedClient = {
-  supabase: NonNullable<ReturnType<typeof createServerSupabaseFromCookies>>;
-  userId: string;
-};
-
-/** 로그인 사용자면 supabase 클라이언트와 userId를, 아니면 null (getUser 1회만 호출) */
-async function getAuthedSupabase(cookieStore: MutableCookieStore): Promise<AuthedClient | null> {
-  const user = await getCurrentUserFromCookies(cookieStore);
-  if (!user) return null;
-  const supabase = createServerSupabaseFromCookies(cookieStore);
-  if (!supabase) return null;
-  return { supabase, userId: user.id };
-}
-
-async function insertSourceToDb(
-  auth: AuthedClient,
-  source: { id: string; name: string; category: string; avatarUrl?: string },
-): Promise<boolean> {
-  const row: Database["public"]["Tables"]["custom_sources"]["Insert"] = {
-    user_id: auth.userId,
-    source_id: source.id,
-    name: source.name,
-    category: source.category || "기타",
-    avatar_url: source.avatarUrl ?? null,
-  };
-  const { error } = await auth.supabase.from("custom_sources").insert(row as never);
-  if (error && error.code !== "23505") {
-    console.error("[custom-sources] DB insert failed", error.message);
-    return false;
-  }
-  return true;
-}
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -113,7 +52,10 @@ export async function GET() {
   return Response.json(list);
 }
 
-/** 채널 1개 추가: 쿠키는 항상(용량 내) 갱신, DB는 로그인 시에만 저장 */
+/**
+ * 채널 1개 추가: 쿠키는 항상(용량 내) 갱신, DB는 로그인 시에만 저장.
+ * 숨겨둔 기본 채널을 다시 추가하면 커스텀 등록 대신 숨김 해제(복원)로 처리한다.
+ */
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   let body: { sourceId?: string; name?: string; category?: string; avatarUrl?: string };
@@ -125,6 +67,24 @@ export async function POST(request: Request) {
   const { sourceId, name, category, avatarUrl } = body;
   if (!sourceId || !name) {
     return Response.json({ error: "sourceId and name required" }, { status: 400 });
+  }
+
+  if (DEFAULT_YOUTUBE_SOURCE_IDS.has(sourceId)) {
+    const hiddenCookie = readHiddenIds(cookieStore);
+    const wasHiddenInCookie = hiddenCookie.includes(sourceId);
+    if (wasHiddenInCookie) {
+      setHiddenSourcesCookie(cookieStore, hiddenCookie.filter((id) => id !== sourceId));
+    }
+    const auth = await getAuthedSupabase(cookieStore);
+    let wasHiddenInDb = false;
+    if (auth) {
+      wasHiddenInDb = await unhideDefaultInDb(auth, sourceId);
+      setSyncOwnerCookie(cookieStore, auth.userId);
+    }
+    if (!wasHiddenInCookie && !wasHiddenInDb) {
+      return Response.json({ error: "이미 목록에 있는 기본 채널입니다." }, { status: 409 });
+    }
+    return Response.json({ ok: true, restored: true, saved: !!auth, cookieStored: true });
   }
 
   const existing = readCookieSources(cookieStore);
@@ -142,6 +102,7 @@ export async function POST(request: Request) {
   const saved = auth
     ? await insertSourceToDb(auth, { id: sourceId, name, category: category ?? "기타", avatarUrl })
     : false;
+  if (auth) setSyncOwnerCookie(cookieStore, auth.userId);
 
   if (!cookieStored && !saved) {
     return Response.json(
@@ -152,7 +113,7 @@ export async function POST(request: Request) {
   return Response.json({ ok: true, saved, cookieStored });
 }
 
-/** 채널 목록 일괄 병합 (가져오기·백업 복원·동기화용) */
+/** 채널 목록 일괄 병합 (가져오기·백업 복원용). 기본 채널 id는 커스텀 대신 숨김 해제로 처리 */
 export async function PUT(request: Request) {
   const cookieStore = await cookies();
   let body: unknown;
@@ -161,18 +122,33 @@ export async function PUT(request: Request) {
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const incoming = filterValidSources(body);
-  if (incoming.length === 0) {
+  const incomingAll = filterValidSources(body);
+  if (incomingAll.length === 0) {
     return Response.json({ error: "올바른 채널 목록 형식이 아닙니다." }, { status: 400 });
   }
+  const incomingDefaults = incomingAll.filter((s) => DEFAULT_YOUTUBE_SOURCE_IDS.has(s.id));
+  const incoming = incomingAll.filter((s) => !DEFAULT_YOUTUBE_SOURCE_IDS.has(s.id));
 
   const existing = readCookieSources(cookieStore);
   const merged = mergeCustomSources(existing, incoming);
   const cookieStored = setCustomSourcesCookie(cookieStore, merged);
 
+  const auth = await getAuthedSupabase(cookieStore);
+
+  // 가져온 목록에 기본 채널이 있으면 "보이는 상태"가 의도이므로 숨김을 푼다
+  if (incomingDefaults.length > 0) {
+    const hiddenCookie = readHiddenIds(cookieStore);
+    const incomingDefaultIds = new Set(incomingDefaults.map((s) => s.id));
+    setHiddenSourcesCookie(cookieStore, hiddenCookie.filter((id) => !incomingDefaultIds.has(id)));
+    if (auth) {
+      for (const s of incomingDefaults) {
+        await unhideDefaultInDb(auth, s.id);
+      }
+    }
+  }
+
   // 로그인 상태면 DB에 없는 항목을 채워 넣는다 (중복은 23505로 무시됨)
   let saved = 0;
-  const auth = await getAuthedSupabase(cookieStore);
   if (auth) {
     for (const src of merged) {
       const ok = await insertSourceToDb(auth, {
@@ -183,6 +159,7 @@ export async function PUT(request: Request) {
       });
       if (ok) saved += 1;
     }
+    setSyncOwnerCookie(cookieStore, auth.userId);
   }
 
   // 쿠키도 못 쓰고 DB에도 못 넣었다면 아무 데도 저장되지 않은 것 — 거짓 성공 금지
@@ -196,13 +173,27 @@ export async function PUT(request: Request) {
   return Response.json({ ok: true, count: merged.length, cookieStored, saved });
 }
 
-/** 채널 제거: 쿠키에서 항상 제거, DB는 로그인 시에만 */
+/**
+ * 채널 제거. 기본 채널이면 숨김 목록에 추가(코드 상수라 행 삭제 불가),
+ * 커스텀이면 쿠키·DB에서 제거.
+ */
 export async function DELETE(request: Request) {
   const cookieStore = await cookies();
   const { searchParams } = new URL(request.url);
   const sourceId = searchParams.get("sourceId");
   if (!sourceId) {
     return Response.json({ error: "sourceId required" }, { status: 400 });
+  }
+
+  if (DEFAULT_YOUTUBE_SOURCE_IDS.has(sourceId)) {
+    const hidden = readHiddenIds(cookieStore);
+    setHiddenSourcesCookie(cookieStore, [...hidden, sourceId]);
+    const auth = await getAuthedSupabase(cookieStore);
+    if (auth) {
+      await hideDefaultInDb(auth, sourceId);
+      setSyncOwnerCookie(cookieStore, auth.userId);
+    }
+    return Response.json({ ok: true, hidden: true });
   }
 
   const existing = readCookieSources(cookieStore);
@@ -225,6 +216,7 @@ export async function DELETE(request: Request) {
         return Response.json({ error: error.message }, { status: 500 });
       }
     }
+    setSyncOwnerCookie(cookieStore, user.id);
   }
   // 남은 목록이 여전히 예산 초과라 쿠키를 못 구우면(기존 초과 쿠키), 비로그인은 삭제가
   // 어디에도 반영되지 않은 것 — 거짓 성공 금지

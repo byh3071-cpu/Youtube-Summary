@@ -29,6 +29,7 @@ const requiredTables = [
   "user_plan",
   "usage_daily",
   "custom_sources",
+  "hidden_default_sources",
   "bookmarks",
   "playlists",
   "teams",
