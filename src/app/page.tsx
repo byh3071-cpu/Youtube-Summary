@@ -69,7 +69,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const selectedSourceId = resolvedSearchParams?.source;
   const initialView = parseView(resolvedSearchParams?.view);
   const viewMode = parseViewMode(resolvedSearchParams?.viewMode);
-  const { mergedSources, customSourceIds: customYouTubeSourceIds } = await getSessionSourcesBundle();
+  const { mergedSources } = await getSessionSourcesBundle();
 
   // YouTube 채널 프로필 이미지(avatarUrl) 하이드레이션
   const hydratedSources: FeedSource[] = await Promise.all(
@@ -120,7 +120,6 @@ export default async function Home({ searchParams }: HomeProps) {
       selectedSourceId={selectedSource?.id}
       selectedCategory={resolvedSearchParams?.category ?? undefined}
       youtubeSources={youtubeSources}
-      customYouTubeSourceIds={customYouTubeSourceIds}
       latestVideoBySource={latestVideoBySource}
       authError={
         resolvedSearchParams?.auth_error ??

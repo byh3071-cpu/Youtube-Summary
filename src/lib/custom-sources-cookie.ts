@@ -56,27 +56,43 @@ export function mergeCustomSources(existing: FeedSource[], incoming: FeedSource[
 }
 
 /**
- * 쿠키의 커스텀 소스와 DB 목록을 비교해 병합 결과를 계산한다 (읽기 전용).
- * 실제 저장(쿠키 Set-Cookie + DB upsert)은 호출부가 PUT /api/custom-sources 한 번으로 수행한다.
+ * 숨긴 기본 채널 ID 목록 쿠키.
+ * 기본 채널은 코드 상수라 삭제가 불가능하므로, 병합 시 빼기 집합으로 쓴다.
  */
-export async function syncCustomSourcesWithDb(
-  cookieSources: FeedSource[],
-): Promise<{ merged: FeedSource[]; changed: boolean }> {
+export const HIDDEN_SOURCES_COOKIE_NAME = "focus_feed_hidden";
+
+/**
+ * 소스 쿠키가 "누구의 DB 미러인지" 표시하는 마커 (user id).
+ * - 마커 == 현재 유저: 쿠키는 미러 — DB가 단일 진실, 쿠키→DB push 금지
+ *   (낡은 미러를 union으로 되밀면 다른 기기에서 지운 채널이 부활한다)
+ * - 마커 없음: 비로그인 시절 데이터 — 로그인 동기화 때 1회 DB로 push
+ * - 마커 != 현재 유저: 이전 계정 잔재 — 버리고 현재 유저 DB로 교체 (계정 오염 방지)
+ */
+export const SYNC_OWNER_COOKIE_NAME = "focus_feed_sync_owner";
+
+const HIDDEN_CHANNEL_ID_REGEX = /^UC[\w-]{22}$/;
+
+export function getHiddenSourceIdsFromCookie(cookieValue: string | undefined): string[] {
+  if (!cookieValue) return [];
+  const raw = cookieValue.trim();
+  const candidates = [raw];
   try {
-    const res = await fetch("/api/custom-sources");
-    // 401(비로그인) 포함 실패 시 동기화 건너뜀
-    if (!res.ok) return { merged: cookieSources, changed: false };
-    const dbSources = (await res.json()) as FeedSource[];
-    if (!Array.isArray(dbSources)) return { merged: cookieSources, changed: false };
-
-    const dbIds = new Set(dbSources.map((s) => s.id));
-    const cookieIds = new Set(cookieSources.map((s) => s.id));
-    const onlyCookie = cookieSources.filter((s) => !dbIds.has(s.id));
-    const onlyDb = dbSources.filter((s) => !cookieIds.has(s.id));
-
-    const merged = mergeCustomSources(cookieSources, onlyDb);
-    return { merged, changed: onlyCookie.length > 0 || onlyDb.length > 0 };
+    candidates.push(decodeURIComponent(raw));
   } catch {
-    return { merged: cookieSources, changed: false };
+    // plain JSON에 %가 있으면 decode 실패 — raw로 시도
   }
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (Array.isArray(parsed)) {
+        const ids = parsed.filter(
+          (v): v is string => typeof v === "string" && HIDDEN_CHANNEL_ID_REGEX.test(v),
+        );
+        return [...new Set(ids)];
+      }
+    } catch {
+      // 다음 후보로
+    }
+  }
+  return [];
 }

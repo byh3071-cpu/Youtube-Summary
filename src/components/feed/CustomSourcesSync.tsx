@@ -4,12 +4,15 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   CUSTOM_SOURCES_COOKIE_NAME,
+  HIDDEN_SOURCES_COOKIE_NAME,
+  SYNC_OWNER_COOKIE_NAME,
   getCustomSourcesFromCookie,
+  getHiddenSourceIdsFromCookie,
   filterValidSources,
   compactCustomSources,
-  syncCustomSourcesWithDb,
 } from "@/lib/custom-sources-cookie";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { FeedSource } from "@/lib/sources";
 
 const SYNCED_FLAG_KEY = "focus_feed_sources_synced_v1";
 const BACKUP_KEY = "focus_feed_sources_backup_v1";
@@ -23,12 +26,14 @@ function getCookie(name: string): string | undefined {
 /**
  * 앱 진입 시 커스텀 소스를 복원·동기화한다.
  * 1. 쿠키가 비었는데 localStorage 백업이 있으면 복원 (ITP·쿠키 유실 자가 치유)
- * 2. 로그인 상태면 쿠키↔DB를 양방향 병합 (쿠키→DB push, DB→쿠키 pull)
- * 3. 최종 목록을 localStorage에 백업하고, 변경 시 서버 PUT으로 쿠키를 다시 굽고 새로고침
+ * 2. 로그인 상태면 /api/custom-sources/sync 로 DB 단일 진실 동기화:
+ *    - 소유자 마커(SYNC_OWNER_COOKIE_NAME) == 나: 쿠키는 미러 — push 없이 DB로 교체
+ *    - 마커 없음: 비로그인 시절 데이터 — 1회 push 후 미러 전환 (서버가 멱등 처리)
+ *    - 마커 != 나: 이전 계정 잔재 — push 금지, 내 DB 미러로 교체 (계정 오염 방지)
+ *    예전 union 동기화는 낡은 쿠키가 삭제된 채널을 DB로 되밀어 부활시켰다(결함 B).
+ * 3. 동기화 결과를 localStorage에 백업하고, SSR 시점과 목록이 달라졌으면 새로고침
  *
- * 세션당 1회 가드(SYNCED_FLAG_KEY)는 **DB 동기화를 실제로 수행(로그인)한 경우에만** 기록한다.
- * 비로그인·세션판독 실패로 DB 동기화를 건너뛴 경우 플래그를 남기지 않아야, 같은 탭에서
- * 로그인하거나 다음 진입 때 다시 시도된다. 같은 탭 로그인은 onAuthStateChange로 즉시 재동기화.
+ * 세션당 1회 가드(SYNCED_FLAG_KEY)는 **동기화가 실제로 성공한 경우에만** 기록한다.
  * UI는 렌더링하지 않는다.
  */
 export default function CustomSourcesSync() {
@@ -63,54 +68,82 @@ export default function CustomSourcesSync() {
             // 백업 파싱 실패는 무시
           }
         }
+        const hiddenFromCookie = getHiddenSourceIdsFromCookie(
+          getCookie(HIDDEN_SOURCES_COOKIE_NAME),
+        );
 
-        // 비로그인은 GET /api/custom-sources가 예상된 401을 내며 콘솔에 리소스 오류를 남기므로,
+        // 비로그인은 GET/sync가 예상된 401을 내며 콘솔에 리소스 오류를 남기므로,
         // 로컬 세션을 먼저 확인하고 로그인 시에만 DB 동기화한다.
-        let isLoggedIn = false;
+        let userId: string | null = null;
         const supabase = getSupabaseBrowserClient();
         if (supabase) {
           try {
             const {
               data: { session },
             } = await supabase.auth.getSession();
-            isLoggedIn = !!session;
+            userId = session?.user?.id ?? null;
           } catch {
             // 세션 확인 실패 시 비로그인으로 간주
           }
         }
 
-        const { merged, changed } = isLoggedIn
-          ? await syncCustomSourcesWithDb(baseSources)
-          : { merged: baseSources, changed: false };
+        if (!userId) {
+          // 비로그인: 백업 복원분만 서버 Set-Cookie로 굽고 화면 갱신
+          if (restoredFromBackup && baseSources.length > 0) {
+            try {
+              await fetch("/api/custom-sources", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(baseSources),
+              });
+            } catch {
+              // 실패해도 다음 진입 시 재시도됨
+            }
+            router.refresh();
+          }
+          try {
+            if (baseSources.length > 0) {
+              localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(baseSources)));
+            }
+          } catch {
+            // ignore
+          }
+          return;
+        }
+
+        const owner = getCookie(SYNC_OWNER_COOKIE_NAME);
+        const isPreLoginData = !owner;
+        const res = await fetch("/api/custom-sources/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            isPreLoginData ? { localSources: baseSources, localHidden: hiddenFromCookie } : {},
+          ),
+        });
+        if (!res.ok) return; // 플래그를 남기지 않아 다음 진입 때 재시도
+        const data = (await res.json()) as { sources: FeedSource[]; hiddenIds: string[] };
 
         try {
-          if (merged.length > 0) {
-            localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(merged)));
+          sessionStorage.setItem(SYNCED_FLAG_KEY, "1");
+        } catch {
+          // ignore
+        }
+        try {
+          if (data.sources.length > 0) {
+            localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(data.sources)));
           }
         } catch {
           // ignore
         }
 
-        // DB 동기화를 실제로 수행했을 때만 세션 플래그 기록 — 비로그인/실패는 재시도 여지를 남긴다.
-        if (isLoggedIn) {
-          try {
-            sessionStorage.setItem(SYNCED_FLAG_KEY, "1");
-          } catch {
-            // ignore
-          }
-        }
-
-        if (changed || restoredFromBackup) {
-          // 쿠키는 서버 Set-Cookie로 굽는다 (JS 쿠키는 iOS Safari에서 7일 만료)
-          try {
-            await fetch("/api/custom-sources", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(merged),
-            });
-          } catch {
-            // 실패해도 다음 진입 시 재시도됨
-          }
+        // SSR이 그린 목록(쿠키 기준)과 동기화 결과가 다르면 화면 갱신
+        const before = JSON.stringify(
+          [...baseSources.map((s) => s.id), ...hiddenFromCookie].sort(),
+        );
+        const after = JSON.stringify(
+          [...data.sources.map((s) => s.id), ...data.hiddenIds].sort(),
+        );
+        if (before !== after || restoredFromBackup) {
           router.refresh();
         }
       } finally {
@@ -135,6 +168,8 @@ export default function CustomSourcesSync() {
         // 계정 전환 오염 방지: 이 흔적이 남으면 같은 브라우저에서 다음에 로그인한
         // 다른 계정의 동기화가 이전 계정의 채널을 자기 DB로 push해 버린다.
         document.cookie = `${CUSTOM_SOURCES_COOKIE_NAME}=; path=/; max-age=0`;
+        document.cookie = `${HIDDEN_SOURCES_COOKIE_NAME}=; path=/; max-age=0`;
+        document.cookie = `${SYNC_OWNER_COOKIE_NAME}=; path=/; max-age=0`;
         try {
           localStorage.removeItem(BACKUP_KEY);
         } catch {

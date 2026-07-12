@@ -19,7 +19,6 @@ function LinkPendingSpinner() {
 interface Props {
   items: FeedSource[];
   selectedSourceId?: string;
-  customSourceIds: string[];
   latestVideoBySource?: Record<string, string>;
 }
 
@@ -33,11 +32,9 @@ function getInitials(name: string): string {
 export default function YouTubeSourceList({
   items,
   selectedSourceId,
-  customSourceIds,
   latestVideoBySource,
 }: Props) {
   const router = useRouter();
-  const customSet = new Set(customSourceIds);
   const [now] = useState(() => Date.now());
   const [lastSeen, setLastSeen] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
@@ -87,7 +84,6 @@ export default function YouTubeSourceList({
     <div className="space-y-1">
       {items.map((item) => {
         const isActive = selectedSourceId === item.id;
-        const isCustom = customSet.has(item.id);
         const latest = latestVideoBySource?.[item.id];
         const isRecent =
           latest && Number.isFinite(new Date(latest).getTime())
@@ -131,16 +127,14 @@ export default function YouTubeSourceList({
                 <span className="ml-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-gradient-to-r from-emerald-400 to-sky-400 shadow-[0_0_0_3px_rgba(16,185,129,0.25)]" />
               )}
             </Link>
-            {isCustom && (
-              <button
-                type="button"
-                onClick={(e) => handleRemove(e, item.id)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 hover:bg-(--notion-gray) hover:text-red-600 min-h-[44px] min-w-[44px] touch-manipulation"
-                aria-label={`${item.name} 채널 목록에서 제거`}
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => handleRemove(e, item.id)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 hover:bg-(--notion-gray) hover:text-red-600 min-h-[44px] min-w-[44px] touch-manipulation"
+              aria-label={`${item.name} 채널 목록에서 제거`}
+            >
+              <Trash2 size={14} />
+            </button>
           </div>
         );
       })}

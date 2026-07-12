@@ -40,14 +40,12 @@ export default function Sidebar({
     selectedSourceId,
     selectedCategory,
     youtubeSources: youtubeSourcesProp,
-    customYouTubeSourceIds = [],
     latestVideoBySource,
 }: {
     sourceStatus: MergedFeedResult["sourceStatus"];
     selectedSourceId?: string;
     selectedCategory?: string;
     youtubeSources?: FeedSource[];
-    customYouTubeSourceIds?: string[];
     latestVideoBySource?: Record<string, string>;
 }) {
     const youtubeSources = youtubeSourcesProp ?? defaultSources.filter((s) => s.type === "YouTube");
@@ -122,7 +120,6 @@ export default function Sidebar({
                     <YouTubeSourceList
                         items={youtubeSources}
                         selectedSourceId={selectedSourceId}
-                        customSourceIds={customYouTubeSourceIds}
                         latestVideoBySource={latestVideoBySource}
                     />
                     <AddChannelButton />

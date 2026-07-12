@@ -3,6 +3,7 @@ import {
   compactCustomSources,
   filterValidSources,
   getCustomSourcesFromCookie,
+  getHiddenSourceIdsFromCookie,
   mergeCustomSources,
 } from "@/lib/custom-sources-cookie";
 import type { FeedSource } from "@/lib/sources";
@@ -77,6 +78,33 @@ describe("mergeCustomSources", () => {
     expect(mergeCustomSources([], [src("UChhhhhhhhhhhhhhhhhhhhhh")])).toEqual([
       src("UChhhhhhhhhhhhhhhhhhhhhh"),
     ]);
+  });
+});
+
+describe("getHiddenSourceIdsFromCookie", () => {
+  const UC_A = "UCaaaaaaaaaaaaaaaaaaaaaa";
+  const UC_B = "UCbbbbbbbbbbbbbbbbbbbbbb";
+
+  it("UC 형식 ID 배열을 파싱하고 중복을 제거한다", () => {
+    expect(getHiddenSourceIdsFromCookie(JSON.stringify([UC_A, UC_B, UC_A]))).toEqual([UC_A, UC_B]);
+  });
+
+  it("percent-encoded 값도 파싱한다", () => {
+    expect(getHiddenSourceIdsFromCookie(encodeURIComponent(JSON.stringify([UC_A])))).toEqual([
+      UC_A,
+    ]);
+  });
+
+  it("UC 형식이 아닌 값·비문자열은 걸러낸다", () => {
+    expect(getHiddenSourceIdsFromCookie(JSON.stringify([UC_A, "garbage", 42, null]))).toEqual([
+      UC_A,
+    ]);
+  });
+
+  it("빈 값·손상 JSON·배열 아님은 빈 목록", () => {
+    expect(getHiddenSourceIdsFromCookie(undefined)).toEqual([]);
+    expect(getHiddenSourceIdsFromCookie("{broken")).toEqual([]);
+    expect(getHiddenSourceIdsFromCookie(JSON.stringify({ a: 1 }))).toEqual([]);
   });
 });
 

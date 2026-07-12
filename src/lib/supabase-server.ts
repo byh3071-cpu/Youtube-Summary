@@ -186,6 +186,19 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["custom_sources"]["Row"]>;
       };
+      hidden_default_sources: {
+        Row: {
+          user_id: string;
+          source_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          source_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hidden_default_sources"]["Row"]>;
+      };
       content_states: {
         Row: {
           user_id: string;

@@ -6,9 +6,11 @@ import { X, Loader2, Plus } from "lucide-react";
 import { ModalTransition } from "@/components/ui/ModalTransition";
 import {
   CUSTOM_SOURCES_COOKIE_NAME,
+  HIDDEN_SOURCES_COOKIE_NAME,
   getCustomSourcesFromCookie,
+  getHiddenSourceIdsFromCookie,
 } from "@/lib/custom-sources-cookie";
-import { FEED_CATEGORIES } from "@/lib/sources";
+import { FEED_CATEGORIES, defaultSources } from "@/lib/sources";
 import type { FeedCategory } from "@/types/feed";
 
 function getCookie(name: string): string | undefined {
@@ -58,7 +60,12 @@ export default function AddChannelModal({
       };
       const customRaw = getCookie(CUSTOM_SOURCES_COOKIE_NAME);
       const existing = getCustomSourcesFromCookie(customRaw);
-      const already = existing.some((s) => s.id === channelId);
+      // 숨기지 않은 기본 채널도 "이미 있음" — 숨긴 기본 채널은 서버가 복원 처리
+      const hiddenIds = getHiddenSourceIdsFromCookie(getCookie(HIDDEN_SOURCES_COOKIE_NAME));
+      const isVisibleDefault =
+        defaultSources.some((s) => s.type === "YouTube" && s.id === channelId) &&
+        !hiddenIds.includes(channelId);
+      const already = existing.some((s) => s.id === channelId) || isVisibleDefault;
       if (already) {
         setError("이미 추가된 채널입니다.");
         return;

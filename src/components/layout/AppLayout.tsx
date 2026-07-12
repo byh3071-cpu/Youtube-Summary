@@ -15,7 +15,6 @@ interface LayoutProps {
     selectedSourceId?: string;
     selectedCategory?: string;
     youtubeSources?: FeedSource[];
-    customYouTubeSourceIds?: string[];
     latestVideoBySource?: Record<string, string>;
     authError?: string;
     authErrorHint?: string;
@@ -24,7 +23,7 @@ interface LayoutProps {
     reelMode?: boolean;
 }
 
-export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, customYouTubeSourceIds, latestVideoBySource, authError, authErrorHint, authSuccess, reelMode }: LayoutProps) {
+export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, latestVideoBySource, authError, authErrorHint, authSuccess, reelMode }: LayoutProps) {
     return (
         <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg)">
             <a
@@ -50,7 +49,6 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
                 selectedSourceId={selectedSourceId}
                 selectedCategory={selectedCategory}
                 youtubeSources={youtubeSources}
-                customYouTubeSourceIds={customYouTubeSourceIds}
                 latestVideoBySource={latestVideoBySource}
             />
 

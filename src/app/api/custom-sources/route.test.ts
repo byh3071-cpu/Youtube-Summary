@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { FeedSource } from "@/lib/sources";
+import { defaultSources, type FeedSource } from "@/lib/sources";
 
 const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
@@ -27,12 +27,19 @@ function makeCookieStore(initial?: Record<string, string>) {
   };
 }
 
-function makeSupabase() {
+/** 어떤 순서의 메서드 체인이든 마지막에 await하면 테이블별 결과를 돌려주는 thenable 빌더 */
+function chain(result: { error: unknown; data?: unknown }) {
+  const c: Record<string, unknown> = {};
+  for (const m of ["insert", "delete", "select", "eq", "order"]) {
+    c[m] = () => c;
+  }
+  c.then = (resolve: (v: unknown) => void) => resolve(result);
+  return c;
+}
+
+function makeSupabase(resultsByTable: Record<string, { error: unknown; data?: unknown }> = {}) {
   return {
-    from: () => ({
-      insert: async () => ({ error: null }),
-      delete: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) }),
-    }),
+    from: (table: string) => chain(resultsByTable[table] ?? { error: null, data: [] }),
   };
 }
 
@@ -157,5 +164,87 @@ describe("DELETE /api/custom-sources — 삭제 실패 무시 금지", () => {
     );
 
     expect(res.status).toBe(200);
+  });
+});
+
+describe("기본 채널 숨김/복원", () => {
+  const DEFAULT_ID = defaultSources.find((s) => s.type === "YouTube")!.id;
+
+  it("기본 채널 DELETE는 숨김 목록에 추가된다 (비로그인 쿠키)", async () => {
+    const store = makeCookieStore();
+    mocks.cookies.mockResolvedValue(store);
+
+    const res = await DELETE(
+      new Request(`https://x.test/api/custom-sources?sourceId=${DEFAULT_ID}`, {
+        method: "DELETE",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()) as { hidden?: boolean }).toMatchObject({ ok: true, hidden: true });
+    expect(JSON.parse(store.jar.get("focus_feed_hidden")!)).toEqual([DEFAULT_ID]);
+    // 커스텀 소스 쿠키는 건드리지 않는다
+    expect(store.jar.has("focus_feed_sources")).toBe(false);
+  });
+
+  it("보이는 기본 채널을 다시 추가하면 409", async () => {
+    const store = makeCookieStore();
+    mocks.cookies.mockResolvedValue(store);
+
+    const res = await POST(
+      makeRequest({ sourceId: DEFAULT_ID, name: "기본 채널", category: "기타" }),
+    );
+
+    expect(res.status).toBe(409);
+  });
+
+  it("숨긴 기본 채널을 다시 추가하면 커스텀 등록 대신 숨김 해제로 복원된다", async () => {
+    const store = makeCookieStore({ focus_feed_hidden: JSON.stringify([DEFAULT_ID]) });
+    mocks.cookies.mockResolvedValue(store);
+
+    const res = await POST(
+      makeRequest({ sourceId: DEFAULT_ID, name: "기본 채널", category: "기타" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()) as { restored?: boolean }).toMatchObject({ restored: true });
+    expect(JSON.parse(store.jar.get("focus_feed_hidden")!)).toEqual([]);
+    expect(store.jar.has("focus_feed_sources")).toBe(false);
+  });
+
+  it("DB에만 숨겨져 있던 기본 채널도 로그인 상태에서 복원된다", async () => {
+    const store = makeCookieStore();
+    mocks.cookies.mockResolvedValue(store);
+    mocks.getCurrentUserFromCookies.mockResolvedValue({ id: "user-a" });
+    mocks.createServerSupabaseFromCookies.mockReturnValue(
+      makeSupabase({
+        hidden_default_sources: { error: null, data: [{ source_id: DEFAULT_ID }] },
+      }),
+    );
+
+    const res = await POST(
+      makeRequest({ sourceId: DEFAULT_ID, name: "기본 채널", category: "기타" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()) as { restored?: boolean }).toMatchObject({ restored: true });
+    // 로그인 쓰기 경로는 소유자 마커를 남긴다
+    expect(store.jar.get("focus_feed_sync_owner")).toBe("user-a");
+  });
+
+  it("로그인 삭제(숨김)는 소유자 마커를 남긴다", async () => {
+    const store = makeCookieStore();
+    mocks.cookies.mockResolvedValue(store);
+    mocks.getCurrentUserFromCookies.mockResolvedValue({ id: "user-a" });
+
+    const res = await DELETE(
+      new Request(`https://x.test/api/custom-sources?sourceId=${DEFAULT_ID}`, {
+        method: "DELETE",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(JSON.parse(store.jar.get("focus_feed_hidden")!)).toEqual([DEFAULT_ID]);
+    expect(store.jar.get("focus_feed_sync_owner")).toBe("user-a");
   });
 });
