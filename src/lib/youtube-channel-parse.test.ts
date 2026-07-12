@@ -57,14 +57,47 @@ describe("parseYouTubeChannelInput — 핸들", () => {
   });
 });
 
-describe("parseYouTubeChannelInput — 현행 한계 (Phase 3에서 의도적으로 변경 예정)", () => {
-  it("영상 시청 URL은 현재 null (Phase 3에서 videoId 인식으로 변경)", () => {
-    expect(parseYouTubeChannelInput("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBeNull();
-    expect(parseYouTubeChannelInput("https://youtu.be/dQw4w9WgXcQ")).toBeNull();
-    expect(parseYouTubeChannelInput("https://www.youtube.com/shorts/dQw4w9WgXcQ")).toBeNull();
+describe("parseYouTubeChannelInput — 영상 URL", () => {
+  const VIDEO = { type: "videoId", videoId: "dQw4w9WgXcQ" };
+
+  it("watch·youtu.be·shorts·live·embed 링크에서 영상 ID를 추출한다", () => {
+    expect(parseYouTubeChannelInput("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toEqual(VIDEO);
+    expect(parseYouTubeChannelInput("https://youtu.be/dQw4w9WgXcQ")).toEqual(VIDEO);
+    expect(parseYouTubeChannelInput("https://www.youtube.com/shorts/dQw4w9WgXcQ")).toEqual(VIDEO);
+    expect(parseYouTubeChannelInput("https://www.youtube.com/live/dQw4w9WgXcQ")).toEqual(VIDEO);
+    expect(parseYouTubeChannelInput("https://www.youtube.com/embed/dQw4w9WgXcQ")).toEqual(VIDEO);
   });
 
-  it("슬래시 없는 watch?v= 조각은 현재 핸들로 오인된다 (문서화용 특성 테스트)", () => {
+  it("모바일·추가 파라미터·타임스탬프 붙은 링크도 처리한다", () => {
+    expect(
+      parseYouTubeChannelInput("https://m.youtube.com/watch?v=dQw4w9WgXcQ&list=PLx"),
+    ).toEqual(VIDEO);
+    expect(
+      parseYouTubeChannelInput("https://www.youtube.com/watch?app=desktop&v=dQw4w9WgXcQ"),
+    ).toEqual(VIDEO);
+    expect(parseYouTubeChannelInput("https://youtu.be/dQw4w9WgXcQ?t=42")).toEqual(VIDEO);
+  });
+
+  it("채널 URL이 영상보다 우선한다 — /channel/UC…/streams, /@handle/live는 채널", () => {
+    const UC = "UCUpJs89fSBXNolQGOYKn0YQ";
+    expect(parseYouTubeChannelInput(`https://www.youtube.com/channel/${UC}/streams`)).toEqual({
+      type: "channelId",
+      channelId: UC,
+    });
+    expect(parseYouTubeChannelInput("https://www.youtube.com/@jocoding/live")).toEqual({
+      type: "handle",
+      handle: "jocoding",
+    });
+  });
+
+  it("11자 ID 검증 — 잘못된 길이는 영상으로 취급하지 않는다", () => {
+    expect(parseYouTubeChannelInput("https://www.youtube.com/shorts/short")).toBeNull();
+    expect(parseYouTubeChannelInput("https://youtu.be/toolongvideoid00")).toBeNull();
+  });
+});
+
+describe("parseYouTubeChannelInput — 알려진 한계 (백로그)", () => {
+  it("슬래시 없는 watch?v= 조각은 핸들로 오인된다 (문서화용 특성 테스트)", () => {
     expect(parseYouTubeChannelInput("watch?v=dQw4w9WgXcQ")).toEqual({
       type: "handle",
       handle: "watch?v=dQw4w9WgXcQ",

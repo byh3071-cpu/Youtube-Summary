@@ -372,3 +372,25 @@ export async function getVideoSnippet(videoId: string): Promise<VideoSnippet | n
     return null;
   }
 }
+
+/** 영상 ID → 업로드 채널 ID (영상 URL로 채널 추가할 때 역해석용). 영상↔채널 매핑은 불변이라 길게 캐시 */
+export async function getVideoChannelId(videoId: string): Promise<string | null> {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    part: "snippet",
+    id: videoId,
+    key: YOUTUBE_API_KEY,
+  });
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { items?: Array<{ snippet?: { channelId?: string } }> };
+    return data.items?.[0]?.snippet?.channelId ?? null;
+  } catch {
+    return null;
+  }
+}
