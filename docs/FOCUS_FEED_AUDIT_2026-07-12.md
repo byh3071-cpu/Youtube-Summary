@@ -36,14 +36,14 @@
 | 6-1 | 라디오 | High | `components/player/FloatingRadioPlayer.tsx` | 이펙트 deps에 `isPlaying` → 재생/일시정지 토글마다 `loadVideoById` 재호출 → 영상이 처음부터 재생(시청 위치 유실). deps에서 제거, 재생 토글은 기존 별도 이펙트가 전담 | tsc·build. **⚠ 런타임 미검증**(env 정책 차단) — 정적 분석·빌드로만 확정. 배포 전 일시정지→재생 위치 유지 스팟체크 필요 |
 | 6-3 | 인프라 | Medium | `.github/workflows/ci.yml` | CI에 tsc 게이트 부재 → e2e/스크립트/테스트의 타입 오류가 main에 유입. `tsc --noEmit` 스텝 추가 | — |
 
-**철회한 수정 [1-2] revalidate origin/referer** (원복, 미수정): 처음엔 origin/referer 폴백 제거로 커밋했으나, 이 폴백이 유일한 호출부 `components/ui/RefreshButton.tsx:43`(헤더 없는 동일출처 POST)의 정상 인증 경로였다. 제거하면 prod에서 인앱 새로고침 버튼이 항상 401로 깨진다(회귀). 취약점 실피해는 저(캐시 무효화 DoS-lite)이므로 UX를 깨면서까지 고칠 가치가 낮다고 판단해 revert. 아래 백로그로 이관.
+**[1-2] revalidate origin/referer** → ✅ **해결**(후속): 인앱 새로고침을 서버 액션(`revalidateHomeAction`, Next 내장 same-origin CSRF)으로 옮기고, `/api/revalidate` 라우트는 외부 자동화 전용으로 남기되 origin/referer 폴백을 제거해 시크릿 인증만 남겼다(fail-closed). 인앱 버튼은 서버 액션을 쓰므로 이전 revert 사유(버튼 401)가 사라진다. 외부 크론 계약(`x-revalidate-secret`)은 그대로 유지.
 
 ## 백로그 (미수정 — 사유·권장)
 
 ### 보안 — 우선 검토 권장 (라벨보다 실질 위험 높음)
 - **[2-1] 팀 admin이 owner 제거 가능** (`api/teams/[teamId]/members/route.ts:90-122`): 유일-owner 보호가 자기제거에만 걸려, admin이 owner를 지우면 팀이 owner 없이 영구 락아웃. 대상이 owner면 요청자도 owner일 때만 허용 + 남은 owner 수 카운트 필요.
 - **[4-2] 무인증 트랜스크립트 액션** (`actions/digest.ts` `getVideoTranscriptAction`): 인증·rate-limit·비용가드 0. 익명이 임의 videoId 루프로 YouTube 아웃바운드 + 무제한 DB 적재. `takeToken` IP 리밋 + 자막 크기 상한 필요. → ✅ **해결**: IP 레이트리밋(30/분) + `clampTranscript` 크기 상한(6000줄/40만자) 적용. XFF 스푸핑 우회는 전역 [2-2]/[3-9]에 종속(별도).
-- **[1-2] revalidate 인가 위조 가능** (`api/revalidate/route.ts`, 저영향·우선순위 하): 시크릿 없이 origin/referer만으로 통과 가능하나 실피해는 캐시 무효화(DoS-lite). 올바른 수정은 route-only가 아니라 `RefreshButton`을 서버 액션(`'use server'` + `revalidatePath('/')`)으로 전환 — Next 내장 CSRF 검증으로 시크릿 불필요하고 인앱 버튼도 정상 유지. 이번 세션엔 route-only 폴백 제거가 버튼을 깨뜨려 revert함.
+- ~~[1-2] revalidate 인가 위조 가능~~ → 위 "수정 완료" 참조(서버 액션 전환 + 시크릿-only route로 해결).
 
 ### 사용량 한도 클러스터 (근본: 비원자적 read-modify-write)
 - **[1-5·4-1] check→increment TOCTOU**: 병렬 요청이 한도를 초과하고 증가분이 유실. 올바른 수정은 Postgres RPC 원자적 증가(마이그레이션 필요) → 스코프상 별도 작업.
