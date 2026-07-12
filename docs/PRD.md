@@ -1,6 +1,6 @@
 ---
 id: focus-feed-prd
-date: 2026-05-18
+date: 2026-07-12
 tags: [focus-feed, prd, product]
 ---
 
@@ -46,6 +46,7 @@ tags: [focus-feed, prd, product]
 10. **인증**: Supabase Google OAuth, `NEXT_PUBLIC_SITE_URL` 배포 시 필수.
 11. **PWA**: `public/app.webmanifest`(단일 manifest, 정사각 아이콘 192/512), 서비스 워커 `public/sw.js`·`PwaInstaller`. 캐시 정책: navigation은 network 우선·**HTML 미캐시**(stale chunk 방지), `/_next/static/` cache-first, 이미지 stale-while-revalidate, **API·RSC·인증 미캐시**, 오프라인은 정적 `/offline.html`.
 12. **테마**: 기본 라이트, 시스템 전환 가능(`ThemeProvider`).
+13. **탐색 UX**: 글로벌 피드는 검색→트렌드 키워드→콘텐츠 종류·상세 필터를 하나의 탐색 패널로 제공한다. `전체/유튜브/RSS` 전환은 이미 내려받은 피드를 클라이언트에서 즉시 필터링하고 URL만 History API로 동기화한다.
 
 ## 4.1 피드 Q&A (M5)
 
@@ -108,6 +109,7 @@ tags: [focus-feed, prd, product]
 | 성능 | 피드 대량 시 **가상 스크롤·소스별 페이지네이션**, YouTube 쿼터 추가 절감 | 남음 |
 | 성능 | 티커 아닌 단일 리스트 **더 보기** 절진 로드(`FeedList`) | 반영 |
 | 성능 | 병합 피드 **상한** `MAX_MERGED_FEED_ITEMS`(기본 500, `src/lib/feed.ts`) | 반영 |
+| 성능 | `전체/유튜브/RSS` 보기 전환 시 App Router 서버 재실행 제거(클라이언트 필터 + History API) | 반영 |
 | 품질 | Vitest·스모크·GitHub Actions·Playwright E2E(`e2e/`) | 부분 |
 | 품질 | 세그먼트별 `error` 경계 확대 | 남음 |
 | 제품 | 종합 트렌드(`TrendRadarBar` + `/trends`), 피드 Q&A 멀티턴·복사·Todoist 링크 — `docs/focus_feed_audit_report.md` | 부분 |
@@ -131,3 +133,5 @@ tags: [focus-feed, prd, product]
 | 2026-05-18 | 피드 Q&A(M5)·`usage_daily.feed_qa_count` 마이그레이션·UsageBadge·CI 워크플로 |
 | 2026-05-18 | `/trends` 대시보드·피드 Q&A 멀티턴·Playwright·모바일 QA 문서·피드 `content-visibility` |
 | 2026-06-11 | QA 후속(M7): 플레이리스트 로그인 전용 서버 저장, PWA 캐시 정책·manifest 단일화, 모바일 모달 잠금·44px·테마 토글, YouTube/Gemini 설정 오류 분류, RSS 엔티티 디코딩 |
+| 2026-07-12 | 글로벌 피드 상단을 검색 중심 탐색 패널로 통합(트렌드 칩·콘텐츠 종류·접힌 상세 필터), 글로벌 카운트/새로고침 헤더 제거, 보기 전환 즉시화, AI 요약 버튼 카드 하단 정렬 |
+| 2026-07-12 | 앱 테마 클래스와 Tailwind 다크 변형을 통일하고 RSS 항목을 단일 소스 아이콘 기반 플랫 리스트로 정리 |

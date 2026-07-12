@@ -66,8 +66,7 @@ function FeedClientContainerContent({
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const viewParam = searchParams?.get("view");
-    const view: ViewMode = viewParam === "youtube" || viewParam === "rss" ? viewParam : initialView;
+    const [view, setView] = useState<ViewMode>(initialView);
 
     const { keywords, addKeyword, removeKeyword, clearKeywords } = useKeywordFilter();
     const [selectedCategory, setSelectedCategory] = useState<FeedCategory | null>(initialCategory);
@@ -116,6 +115,18 @@ function FeedClientContainerContent({
         else params.delete("category");
         const q = params.toString();
         router.push(q ? `${pathname}?${q}` : pathname);
+    };
+
+    const handleViewChange = (nextView: ViewMode) => {
+        setView(nextView);
+
+        // 보기 전환은 이미 내려받은 피드를 클라이언트에서 즉시 필터링한다.
+        // 주소만 History API로 동기화해 App Router 서버 재실행과 전체 피드 재조회를 피한다.
+        const params = new URLSearchParams(window.location.search);
+        if (nextView === "all") params.delete("view");
+        else params.set("view", nextView);
+        const query = params.toString();
+        window.history.replaceState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
     };
 
     const trendFilter = useTrendFilter();
@@ -169,27 +180,46 @@ function FeedClientContainerContent({
         <>
             {/* 상단 정리: 검색 → 트렌딩 키워드 → 필터만 노출. 히어로/환영 배너 제거, MY FOCUS·사용량은 피드 아래로 이동(기능 유지). */}
             {isGlobalFeed && (
-                <div style={{ marginBottom: 12, padding: "0 4px" }}>
+                <section
+                    aria-label="피드 탐색"
+                    className="mb-4 overflow-hidden rounded-2xl border border-(--notion-border) bg-(--notion-bg) shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
+                >
+                  <div className="p-3 pb-2 sm:p-4 sm:pb-2.5">
                     <FeedSearch value={searchQuery} onChange={setSearchQuery} />
-                </div>
+                  </div>
+
+                  {/* 트렌딩 키워드와 보기/상세 필터를 검색의 보조 탐색 수단으로 한 패널에 묶는다. */}
+                  {children}
+
+                  <KeywordFilter
+                      keywords={keywords}
+                      onAddKeyword={addKeyword}
+                      onRemoveKeyword={removeKeyword}
+                      onClearKeywords={clearKeywords}
+                      selectedCategory={selectedCategory}
+                      onCategoryChange={handleCategoryChange}
+                      availableCategories={availableCategories}
+                      compact
+                      headerRight={<ViewSwitcher currentView={view} onChange={handleViewChange} />}
+                  />
+                </section>
             )}
 
-            {/* 트렌딩 키워드(TrendRadarBar)를 검색 바로 아래로 끌어올림 */}
-            {children}
-
-            <KeywordFilter
-                keywords={keywords}
-                onAddKeyword={addKeyword}
-                onRemoveKeyword={removeKeyword}
-                onClearKeywords={clearKeywords}
-                selectedCategory={selectedCategory}
-                onCategoryChange={handleCategoryChange}
-                availableCategories={availableCategories}
-                compact={showViewSwitcher}
-                headerRight={
-                    showViewSwitcher ? <ViewSwitcher currentView={view} /> : undefined
-                }
-            />
+            {!isGlobalFeed && (
+              <>
+                {children}
+                <KeywordFilter
+                    keywords={keywords}
+                    onAddKeyword={addKeyword}
+                    onRemoveKeyword={removeKeyword}
+                    onClearKeywords={clearKeywords}
+                    selectedCategory={selectedCategory}
+                    onCategoryChange={handleCategoryChange}
+                    availableCategories={availableCategories}
+                    compact={showViewSwitcher}
+                />
+              </>
+            )}
             {isGlobalFeed &&
                 (stateCounts.queued > 0 || stateCounts.dismissed > 0 || stateFilter !== "all") && (
                     <div className="mb-2 flex items-center gap-1.5 px-1">

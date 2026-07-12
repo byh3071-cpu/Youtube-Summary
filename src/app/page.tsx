@@ -129,7 +129,7 @@ export default async function Home({ searchParams }: HomeProps) {
       authSuccess={resolvedSearchParams?.auth_success === "1"}
       reelMode={isReelMode}
     >
-      {!viewMode && (
+      {!viewMode && selectedSource && (
         <FeedHeader
           selectedSource={selectedSource}
           visibleItemsCount={visibleItems.length}
@@ -149,7 +149,7 @@ export default async function Home({ searchParams }: HomeProps) {
         >
           {!viewMode && (
             <Suspense fallback={null}>
-              <TrendRadarBar attachToHeader={!!selectedSource} />
+              <TrendRadarBar attachToHeader={!!selectedSource} integratedWithSearch={!selectedSource} />
             </Suspense>
           )}
         </FeedClientContainer>

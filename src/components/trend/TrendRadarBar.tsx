@@ -4,14 +4,16 @@ import TrendRadarBarClient from "./TrendRadarBarClient";
 interface Props {
   /** 소스 선택 시 헤더 카드에 붙여서 표시 */
   attachToHeader?: boolean;
+  /** 글로벌 검색 패널 안에 들어갈 때 외곽 카드 스타일 제거 */
+  integratedWithSearch?: boolean;
 }
 
-export default async function TrendRadarBar({ attachToHeader }: Props = {}) {
+export default async function TrendRadarBar({ attachToHeader, integratedWithSearch }: Props = {}) {
   const result = await getTrendRadar(false);
 
   if (!result || !result.trends || result.trends.length === 0) {
     return (
-      <section className={attachToHeader ? "rounded-b-2xl border border-t-0 border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--notion-fg)/55 sm:px-5" : "mb-4 rounded-2xl border border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--notion-fg)/55 sm:px-5"}>
+      <section className={integratedWithSearch ? "bg-(--notion-bg) px-3 pb-3 pt-1 text-[11px] text-(--notion-fg)/55 sm:px-4" : attachToHeader ? "rounded-b-2xl border border-t-0 border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--notion-fg)/55 sm:px-5" : "mb-4 rounded-2xl border border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--notion-fg)/55 sm:px-5"}>
         <p className="font-semibold uppercase tracking-wide text-(--notion-fg)/55">
           요즘 뜨는 키워드
         </p>
@@ -22,6 +24,6 @@ export default async function TrendRadarBar({ attachToHeader }: Props = {}) {
     );
   }
 
-  return <TrendRadarBarClient trends={result.trends} generatedAt={result.generatedAt} attachToHeader={attachToHeader} />;
+  return <TrendRadarBarClient trends={result.trends} generatedAt={result.generatedAt} attachToHeader={attachToHeader} integratedWithSearch={integratedWithSearch} />;
 }
 

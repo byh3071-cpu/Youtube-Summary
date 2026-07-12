@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Focus Feed — UI/UX Direction 2026</title>
+  <style>
+    :root{--ink:#111217;--muted:#68707d;--line:#e6e8ec;--paper:#f5f6f8;--card:#fff;--violet:#7c3aed;--mint:#35e6a1;--blue:#4f8cff;--dark:#101218;--r:24px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}
+    a{color:inherit}.shell{max-width:1440px;margin:auto;padding:28px}.hero{position:relative;overflow:hidden;min-height:460px;padding:64px;border-radius:36px;background:var(--dark);color:white;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}.hero:before{content:"";position:absolute;width:500px;height:500px;right:-130px;top:-220px;border-radius:50%;background:radial-gradient(circle,var(--mint),transparent 65%);opacity:.5}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--mint)}h1{font-size:clamp(44px,6vw,86px);line-height:.98;letter-spacing:-.06em;margin:18px 0 24px}.hero p{max-width:580px;color:#c8cbd2;font-size:18px}.pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:30px}.pill{padding:9px 14px;border:1px solid #ffffff25;border-radius:999px;background:#ffffff0c;font-size:13px}.window{position:relative;background:#f8f8fa;color:#111;border:1px solid #ffffff40;border-radius:26px;padding:16px;box-shadow:0 36px 100px #0008;transform:rotate(1.5deg)}.dots{display:flex;gap:6px;margin:2px 0 14px}.dots i{width:8px;height:8px;border-radius:50%;background:#d6d7dc}.search{height:48px;border:1px solid #dedfe4;border-radius:16px;background:white;display:flex;align-items:center;padding:0 16px;color:#9297a0}.trends{display:flex;gap:7px;overflow:hidden;margin:12px 0}.chip{white-space:nowrap;padding:7px 11px;border-radius:999px;background:#eeeef2;font-size:11px}.seg{display:flex;gap:5px;border-top:1px solid #e5e5e8;padding-top:12px}.seg b{padding:7px 10px;border-radius:9px;background:white;font-size:11px}.feedrow{display:grid;grid-template-columns:40px 1fr 28px;gap:12px;margin-top:12px;padding:14px;background:white;border-radius:16px}.feedrow .icon{width:38px;height:38px;border-radius:12px;background:#edf4ff;color:var(--blue);display:grid;place-items:center;font-weight:800}.feedrow strong{display:block;font-size:13px}.feedrow small{color:#7d838d}.section{padding:84px 0 0}.section-head{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:28px}.section h2{font-size:clamp(32px,4vw,56px);letter-spacing:-.045em;line-height:1.05;margin:0}.section-head p{max-width:520px;color:var(--muted);margin:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:26px}.panel .num{font-size:12px;font-weight:800;color:var(--violet)}.panel h3{font-size:22px;letter-spacing:-.025em;margin:14px 0 8px}.panel p,.panel li{color:var(--muted);font-size:14px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}.brand{min-height:260px}.brand.apple{background:linear-gradient(145deg,#fff,#eef1f6)}.brand.spotify{background:linear-gradient(145deg,#17241e,#101512);color:white}.brand.spotify p{color:#b8c5bd}.brand-mark{font-size:32px;font-weight:850;letter-spacing:-.05em}.principle{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:13px}.brand.spotify .principle{border-color:#ffffff20}.mock-grid{display:grid;grid-template-columns:1.4fr .6fr;gap:18px}.desktop,.phone{background:#0e1015;color:white;border-radius:32px;padding:20px;box-shadow:0 28px 70px #15182125}.desktop-inner{background:#f7f7f9;color:#13151a;border-radius:20px;padding:18px}.toolbar{background:white;border:1px solid #e5e5e8;border-radius:18px;padding:12px}.toolbar .line{height:44px;border:1px solid #dddfe4;border-radius:14px;padding:12px;color:#9297a0}.mini-chips{display:flex;gap:7px;margin-top:10px;overflow:hidden}.mini-chips span{background:#f0f1f4;padding:6px 9px;border-radius:99px;font-size:10px;white-space:nowrap}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.video{background:white;border-radius:14px;padding:9px}.thumb{aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#191c24,#7857ff)}.video h4{font-size:11px;height:32px;margin:8px 0;color:#17181d}.cta{height:30px;border-radius:999px;background:var(--violet);color:white;display:grid;place-items:center;font-size:9px;font-weight:750}.phone{max-width:360px;margin:auto;padding:12px;border:8px solid #0a0b0e}.phone .desktop-inner{padding:10px}.phone .cards{grid-template-columns:1fr 1fr;gap:8px}.phone .toolbar{position:sticky;top:0}.roadmap{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.phase{position:relative;background:white;border:1px solid var(--line);border-radius:20px;padding:22px}.phase:before{content:attr(data-phase);display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--ink);color:white;font-size:12px;font-weight:800}.phase h3{margin:16px 0 8px}.tokens{display:flex;gap:12px;flex-wrap:wrap}.token{flex:1;min-width:150px;height:130px;border-radius:20px;padding:18px;display:flex;align-items:end;font-weight:700}.footer{margin-top:80px;padding:36px;border-radius:28px;background:#e9ebef;display:flex;justify-content:space-between;gap:24px;color:#525965}.footer strong{color:#111}
+    @media(max-width:900px){.shell{padding:14px}.hero{grid-template-columns:1fr;padding:34px;min-height:auto}.window{transform:none}.grid,.compare,.roadmap{grid-template-columns:1fr}.mock-grid{grid-template-columns:1fr}.section{padding-top:60px}.section-head{display:block}.section-head p{margin-top:14px}.cards{grid-template-columns:1fr 1fr}.footer{display:block}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Focus Feed · Product Design Direction</div>
+        <h1>Less chrome.<br>More focus.</h1>
+        <p>Apple의 명확한 계층과 Spotify의 콘텐츠 몰입감을 결합하되, 그대로 복제하지 않습니다. Focus Feed의 핵심 행동인 발견 → 선별 → 듣기 → 요약이 한 흐름으로 이어지는 제품 언어를 만듭니다.</p>
+        <div class="pills"><span class="pill">Search first</span><span class="pill">Content led</span><span class="pill">One accent</span><span class="pill">Instant feedback</span></div>
+      </div>
+      <div class="window" aria-label="Focus Feed 탐색 UI 목업">
+        <div class="dots"><i></i><i></i><i></i></div><div class="search">⌕ &nbsp; 제목, 채널, 키워드 검색</div>
+        <div class="trends"><span class="chip">1 AI 에이전트</span><span class="chip">2 앱 자동화</span><span class="chip">3 창업 전략</span></div>
+        <div class="seg"><b>전체</b><b>▶ 유튜브</b><b>◔ RSS</b></div>
+        <div class="feedrow"><span class="icon">◔</span><div><strong>GeekNews · 8분 전</strong><small>새로운 개발 도구가 바꾸는 팀의 업무 방식</small></div><span>↗</span></div>
+        <div class="feedrow"><span class="icon">◔</span><div><strong>요즘IT · 24분 전</strong><small>좋은 제품은 어떤 정보를 먼저 보여주는가</small></div><span>↗</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>두 레퍼런스에서<br>가져올 것</h2><p>시각 효과보다 원칙을 가져옵니다. 기능 레이어와 콘텐츠 레이어를 분리하고, 플랫폼 전체에서 토큰과 컴포넌트를 일관되게 유지합니다.</p></div>
+      <div class="compare">
+        <article class="panel brand apple"><div class="brand-mark"> Apple</div><h3>조용한 기능 레이어</h3><p>검색과 내비게이션은 콘텐츠 위에서 방향을 잡아주되 콘텐츠 자체를 압도하지 않습니다. 정렬, 여백, 읽기 순서로 계층을 만듭니다.</p><div class="principle">적용: 상단 탐색 패널만 가벼운 material, 피드 본문은 단색 surface와 선명한 대비.</div></article>
+        <article class="panel brand spotify"><div class="brand-mark">Spotify-inspired</div><h3>콘텐츠가 주인공</h3><p>일관된 토큰, 강한 단일 액센트, 지속되는 플레이어가 탐색과 재생을 하나의 경험으로 연결합니다.</p><div class="principle">적용: 보라는 AI 행동, 민트는 재생 상태에만 사용. 기능별 색의 의미를 고정.</div></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Focus Feed<br>디자인 원칙</h2><p>새 기능을 추가할 때도 판단 기준이 흔들리지 않도록 네 가지 제품 원칙으로 압축합니다.</p></div>
+      <div class="grid">
+        <article class="panel"><span class="num">01</span><h3>발견은 한곳에서</h3><p>검색, 트렌드, 소스 전환을 하나의 탐색 패널에 유지합니다. 상세 필터는 필요할 때만 펼칩니다.</p></article>
+        <article class="panel"><span class="num">02</span><h3>콘텐츠는 평평하게</h3><p>카드 안의 카드를 줄입니다. RSS는 스캔이 빠른 행, YouTube는 썸네일 그리드라는 콘텐츠 특성을 존중합니다.</p></article>
+        <article class="panel"><span class="num">03</span><h3>행동 색은 하나씩</h3><p>AI=보라, 재생=민트, 정보 소스=파랑/빨강. 장식용 그라데이션은 핵심 기능 레이어에만 제한합니다.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>제안 화면</h2><p>데스크톱은 넓은 스캔, 모바일은 엄지 이동과 지속 재생을 우선합니다. 같은 토큰을 쓰되 밀도는 기기에 맞춥니다.</p></div>
+      <div class="mock-grid">
+        <div class="desktop"><div class="desktop-inner"><div class="toolbar"><div class="line">⌕ &nbsp; 피드 검색</div><div class="mini-chips"><span>AI 모델</span><span>생산성</span><span>앱 전환</span><span>상세 필터</span></div></div><div class="cards"><div class="video"><div class="thumb"></div><h4>사용자가 선택하는 AI 도구</h4><div class="cta">✦ AI 3줄 요약</div></div><div class="video"><div class="thumb"></div><h4>팀 생산성을 높이는 설계</h4><div class="cta">✦ AI 3줄 요약</div></div><div class="video"><div class="thumb"></div><h4>새로운 창업 전략</h4><div class="cta">✦ AI 3줄 요약</div></div></div></div></div>
+        <div class="phone"><div class="desktop-inner"><div class="toolbar"><div class="line">⌕ &nbsp; 검색</div><div class="mini-chips"><span>전체</span><span>유튜브</span><span>RSS</span></div></div><div class="cards"><div class="video"><div class="thumb"></div><h4>AI 도구</h4><div class="cta">✦ 요약</div></div><div class="video"><div class="thumb"></div><h4>생산성</h4><div class="cta">✦ 요약</div></div></div></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>컬러 역할</h2><p>브랜드 컬러가 많아 보이지 않도록 기능 의미에 따라 제한합니다.</p></div>
+      <div class="tokens"><div class="token" style="background:#111217;color:white">Ink · 구조/텍스트</div><div class="token" style="background:#7c3aed;color:white">Violet · AI</div><div class="token" style="background:#35e6a1">Mint · 재생/활성</div><div class="token" style="background:#f5f6f8">Mist · 배경/분리</div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>적용 로드맵</h2><p>미관만 바꾸는 대규모 리디자인 대신 사용성 위험이 낮은 순서로 적용합니다.</p></div>
+      <div class="roadmap">
+        <article class="phase" data-phase="P0"><h3>대비·중복</h3><p>테마 변형 통일, RSS 중복 배지 제거, 텍스트 대비 회귀 테스트.</p></article>
+        <article class="phase" data-phase="P1"><h3>Surface 정리</h3><p>RSS 플랫 행, YouTube CTA 정렬, 불필요한 외곽 카드 축소.</p></article>
+        <article class="phase" data-phase="P2"><h3>Player 연결</h3><p>현재 재생 문맥을 탐색과 연결하고 모바일 플레이어 높이·safe area 재정리.</p></article>
+        <article class="phase" data-phase="P3"><h3>토큰 시스템</h3><p>색·간격·radius·motion을 공통 토큰화하고 접근성·감소 모션 검증.</p></article>
+      </div>
+    </section>
+
+    <footer class="footer"><strong>Focus Feed UI/UX Direction · 2026-07-12</strong><span>Reference: <a href="https://developer.apple.com/design/human-interface-guidelines/design-principles">Apple HIG</a> · <a href="https://spotify.design/article/reimagining-design-systems-at-spotify">Spotify Encore</a></span></footer>
+  </main>
+</body>
+</html>

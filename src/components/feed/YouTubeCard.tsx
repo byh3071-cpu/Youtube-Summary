@@ -114,7 +114,7 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
   }, [baseDuration]);
 
   return (
-    <article className="group flex flex-col bg-transparent px-2 sm:px-3">
+    <article className="group flex h-full flex-col bg-transparent px-2 sm:px-3">
       <a
         href={resumeHref ?? undefined}
         target={resumeHref ? "_blank" : undefined}
@@ -231,7 +231,7 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
         </div>
       )}
       {item.id && (
-        <div className="px-0 pb-1.5">
+        <div className="mt-auto px-0 pb-1.5">
           <SummarizeButton videoId={item.id} fullWidth />
           {menuOpen && (
             <div id={`card-more-${item.id}`} className="mt-1.5 space-y-2.5 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-2.5 py-2 text-xs text-(--notion-fg) shadow-sm">
