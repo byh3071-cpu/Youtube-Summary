@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getServerSupabaseClient, getMutationTable } from "@/lib/supabase-server";
 
+/**
+ * 구독 갱신 만료 시각(Unix seconds)을 꺼낸다.
+ * Stripe API 2025 라인(SDK 20.x 기본)부터 `current_period_end`가 Subscription 객체 본체에서
+ * 빠지고 각 subscription item으로 이동했다. item 값을 우선 쓰고, 대시보드에서 구버전 API 버전을
+ * 고정한 경우를 대비해 최상위 값도 폴백으로 본다. 둘 다 없으면 null.
+ */
+export function getSubscriptionPeriodEnd(sub: Stripe.Subscription): number | null {
+  const itemEnd = sub.items?.data?.[0]?.current_period_end;
+  if (typeof itemEnd === "number") return itemEnd;
+  const topEnd = (sub as { current_period_end?: number }).current_period_end;
+  return typeof topEnd === "number" ? topEnd : null;
+}
+
 export async function POST(req: NextRequest) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   const stripeSecret = process.env.STRIPE_SECRET_KEY;
@@ -51,9 +64,10 @@ export async function POST(req: NextRequest) {
 
       let expiresAt: string | null = null;
       if (subId) {
-        const sub = await stripe.subscriptions.retrieve(subId) as { current_period_end?: number };
-        if (sub.current_period_end) {
-          expiresAt = new Date(sub.current_period_end * 1000).toISOString();
+        const sub = await stripe.subscriptions.retrieve(subId);
+        const periodEnd = getSubscriptionPeriodEnd(sub);
+        if (periodEnd) {
+          expiresAt = new Date(periodEnd * 1000).toISOString();
         }
       }
 
@@ -74,7 +88,7 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object as Stripe.Subscription;
       const { data: rows } = await supabase.from("user_plan").select("user_id").eq("stripe_subscription_id", sub.id);
       const row = Array.isArray(rows) ? rows[0] : (rows as { user_id: string }[] | null)?.[0];
-      const periodEnd = (sub as { current_period_end?: number }).current_period_end;
+      const periodEnd = getSubscriptionPeriodEnd(sub);
       if (row?.user_id) {
         const expiresAt = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
         const planMut = getMutationTable("user_plan");
