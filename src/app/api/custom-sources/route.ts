@@ -16,8 +16,13 @@ import type { FeedSource } from "@/lib/sources";
 
 export const dynamic = "force-dynamic";
 
-/** 쿠키 1개 한도(~4KB)를 넘기지 않기 위한 직렬화 길이 예산 */
-const COOKIE_BYTE_BUDGET = 3800;
+/**
+ * 브라우저 쿠키 1개 한도(이름+값 4096B)를 넘기지 않기 위한 저장 크기 예산.
+ * Set-Cookie는 값을 percent-encoding해 저장하므로(한글은 글자당 최대 9B로 팽창)
+ * 직렬화 문자열 길이가 아니라 인코딩 후 바이트 기준으로 판정해야 한다 —
+ * 한도를 넘긴 Set-Cookie는 브라우저가 통째로 버려 조용한 유실이 된다.
+ */
+const COOKIE_NAME_PLUS_VALUE_BYTE_LIMIT = 4000;
 
 type MutableCookieStore = Awaited<ReturnType<typeof cookies>>;
 
@@ -29,7 +34,8 @@ type MutableCookieStore = Awaited<ReturnType<typeof cookies>>;
  */
 function setCustomSourcesCookie(cookieStore: MutableCookieStore, sources: FeedSource[]): boolean {
   const value = JSON.stringify(compactCustomSources(sources));
-  if (value.length > COOKIE_BYTE_BUDGET) return false;
+  const storedBytes = CUSTOM_SOURCES_COOKIE_NAME.length + encodeURIComponent(value).length;
+  if (storedBytes > COOKIE_NAME_PLUS_VALUE_BYTE_LIMIT) return false;
   cookieStore.set(CUSTOM_SOURCES_COOKIE_NAME, value, {
     path: "/",
     maxAge: CUSTOM_SOURCES_MAX_AGE,
@@ -200,7 +206,10 @@ export async function DELETE(request: Request) {
   }
 
   const existing = readCookieSources(cookieStore);
-  setCustomSourcesCookie(cookieStore, existing.filter((s) => s.id !== sourceId));
+  const cookieStored = setCustomSourcesCookie(
+    cookieStore,
+    existing.filter((s) => s.id !== sourceId),
+  );
 
   const user = await getCurrentUserFromCookies(cookieStore);
   if (user) {
@@ -216,6 +225,14 @@ export async function DELETE(request: Request) {
         return Response.json({ error: error.message }, { status: 500 });
       }
     }
+  }
+  // 남은 목록이 여전히 예산 초과라 쿠키를 못 구우면(기존 초과 쿠키), 비로그인은 삭제가
+  // 어디에도 반영되지 않은 것 — 거짓 성공 금지
+  if (!cookieStored && !user) {
+    return Response.json(
+      { ok: false, error: "기기 저장 한도 때문에 삭제를 반영하지 못했습니다. 로그인하면 계정에 안전하게 보관됩니다." },
+      { status: 413 },
+    );
   }
   return Response.json({ ok: true });
 }
