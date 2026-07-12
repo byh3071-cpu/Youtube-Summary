@@ -19,6 +19,7 @@ jobs:
       - run: npm run vhk -- check
       - run: npm run security:secrets
       - run: npm run lint
+      - run: npx tsc --noEmit --incremental false
       - run: npm run build
       - run: npm run test:unit
       - run: npx playwright install --with-deps chromium
