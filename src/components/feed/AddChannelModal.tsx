@@ -79,6 +79,15 @@ export default function AddChannelModal({
         setError(failed?.error ?? "채널 저장에 실패했습니다. 다시 시도해 주세요.");
         return;
       }
+      const saveResult = (await syncRes.json().catch(() => null)) as
+        | { saved?: boolean; cookieStored?: boolean }
+        | null;
+      // 쿠키 한도 초과로 계정(DB)에만 저장된 경우 — 다른 기기·비로그인에서 안 보이는 이유를 알린다
+      if (saveResult?.cookieStored === false && saveResult.saved) {
+        window.alert(
+          "이 기기의 저장 한도가 가득 차 채널이 계정에만 보관됐어요. 로그인 상태에서는 정상 표시됩니다.",
+        );
+      }
       onAdded?.();
       onClose();
       setInput("");

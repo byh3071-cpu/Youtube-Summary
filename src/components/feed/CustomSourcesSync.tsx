@@ -131,6 +131,21 @@ export default function CustomSourcesSync() {
         }
         void runSync(true);
       }
+      if (event === "SIGNED_OUT") {
+        // 계정 전환 오염 방지: 이 흔적이 남으면 같은 브라우저에서 다음에 로그인한
+        // 다른 계정의 동기화가 이전 계정의 채널을 자기 DB로 push해 버린다.
+        document.cookie = `${CUSTOM_SOURCES_COOKIE_NAME}=; path=/; max-age=0`;
+        try {
+          localStorage.removeItem(BACKUP_KEY);
+        } catch {
+          // ignore
+        }
+        try {
+          sessionStorage.removeItem(SYNCED_FLAG_KEY);
+        } catch {
+          // ignore
+        }
+      }
     });
     return () => subscription?.data.subscription.unsubscribe();
   }, [router]);
