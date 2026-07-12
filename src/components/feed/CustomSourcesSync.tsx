@@ -52,9 +52,12 @@ export default function CustomSourcesSync() {
       }
       runningRef.current = true;
       try {
-        let baseSources = getCustomSourcesFromCookie(getCookie(CUSTOM_SOURCES_COOKIE_NAME));
+        const rawSourcesCookie = getCookie(CUSTOM_SOURCES_COOKIE_NAME);
+        let baseSources = getCustomSourcesFromCookie(rawSourcesCookie);
         let restoredFromBackup = false;
-        if (baseSources.length === 0) {
+        // 백업 복원은 쿠키가 "아예 없을 때"만 — 값이 빈 배열("[]")인 건 사용자가
+        // 마지막 채널까지 의도적으로 삭제한 상태라, 복원하면 삭제가 되돌아간다.
+        if (rawSourcesCookie === undefined && baseSources.length === 0) {
           try {
             const backupRaw = localStorage.getItem(BACKUP_KEY);
             if (backupRaw) {
@@ -102,9 +105,8 @@ export default function CustomSourcesSync() {
             router.refresh();
           }
           try {
-            if (baseSources.length > 0) {
-              localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(baseSources)));
-            }
+            // 빈 목록도 그대로 백업 — 낡은 백업이 "전부 삭제"를 되돌리지 않도록
+            localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(baseSources)));
           } catch {
             // ignore
           }
@@ -129,9 +131,8 @@ export default function CustomSourcesSync() {
           // ignore
         }
         try {
-          if (data.sources.length > 0) {
-            localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(data.sources)));
-          }
+          // 빈 목록도 그대로 백업 — 낡은 백업이 "전부 삭제"를 되돌리지 않도록
+          localStorage.setItem(BACKUP_KEY, JSON.stringify(compactCustomSources(data.sources)));
         } catch {
           // ignore
         }
