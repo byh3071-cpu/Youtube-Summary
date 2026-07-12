@@ -10,7 +10,10 @@
 // - PRECACHE: 오프라인 fallback·아이콘. 절대 트림하지 않음(offline.html이 evict되면 안 됨).
 // - STATIC : /_next/static 해시 청크. 배포가 쌓일수록 누적되므로 항목 수 상한으로 트림.
 // - IMG    : 이미지·/_next/image 변형. 상한으로 트림.
-const VERSION = "v3";
+// v4: app.webmanifest를 캐시 대상에서 제외. 프리캐시는 SW 버전이 바뀔 때만 갱신되는데
+// manifest는 배포로 바뀔 수 있어(share_target 추가 등), 캐시에 얼리면 기존 방문자의
+// PWA 설치가 영원히 옛 manifest를 읽는다. manifest는 항상 네트워크 직행.
+const VERSION = "v4";
 const PRECACHE = `focus-feed-precache-${VERSION}`;
 const STATIC_CACHE = `focus-feed-static-${VERSION}`;
 const IMG_CACHE = `focus-feed-img-${VERSION}`;
@@ -20,7 +23,7 @@ const MAX_STATIC_ENTRIES = 100; // 해시 청크 (여러 배포분 일부 보존
 const MAX_IMG_ENTRIES = 150; // 채널 아바타·썸네일 등
 
 const OFFLINE_URL = "/offline.html";
-const PRECACHE_URLS = [OFFLINE_URL, "/app.webmanifest", "/icon-192.png", "/icon-512.png"];
+const PRECACHE_URLS = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -53,7 +56,8 @@ async function putAndTrim(cacheName, request, response, maxEntries) {
   }
 }
 
-const STATIC_ASSET_RE = /\.(?:png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|ttf|otf|webmanifest)$/;
+// webmanifest는 의도적으로 제외 — 상단 v4 주석 참조
+const STATIC_ASSET_RE = /\.(?:png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|ttf|otf)$/;
 
 function shouldBypass(request, url) {
   if (request.method !== "GET") return true;
