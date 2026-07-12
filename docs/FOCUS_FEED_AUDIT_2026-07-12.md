@@ -42,7 +42,7 @@
 
 ### 보안 — 우선 검토 권장 (라벨보다 실질 위험 높음)
 - **[2-1] 팀 admin이 owner 제거 가능** (`api/teams/[teamId]/members/route.ts:90-122`): 유일-owner 보호가 자기제거에만 걸려, admin이 owner를 지우면 팀이 owner 없이 영구 락아웃. 대상이 owner면 요청자도 owner일 때만 허용 + 남은 owner 수 카운트 필요.
-- **[4-2] 무인증 트랜스크립트 액션** (`actions/digest.ts` `getVideoTranscriptAction`): 인증·rate-limit·비용가드 0. 익명이 임의 videoId 루프로 YouTube 아웃바운드 + 무제한 DB 적재. `takeToken` IP 리밋 + 자막 크기 상한 필요. → ✅ **해결**: IP 레이트리밋(30/분) + `clampTranscript` 크기 상한(6000줄/40만자) 적용. XFF 스푸핑 우회는 전역 [2-2]/[3-9]에 종속(별도).
+- **[4-2] 무인증 트랜스크립트 액션** (`actions/digest.ts` `getVideoTranscriptAction`): 인증·rate-limit·비용가드 0. 익명이 임의 videoId 루프로 YouTube 아웃바운드 + 무제한 DB 적재. `takeToken` IP 리밋 + 자막 크기 상한 필요. → ✅ **해결**: IP 레이트리밋(30/분) + `clampTranscript` 크기 상한(6000줄/40만자) 적용. (Vercel이 XFF 스푸핑을 막으므로 IP 키는 신뢰 가능. 다중 인스턴스 우회는 인메모리 한계 [1-3]에 종속.)
 - ~~[1-2] revalidate 인가 위조 가능~~ → 위 "수정 완료" 참조(서버 액션 전환 + 시크릿-only route로 해결).
 
 ### 사용량 한도 클러스터 (근본: 비원자적 read-modify-write)
@@ -51,7 +51,8 @@
 - **[1-1 연장] plan.ts fail-open + 백필**: `if(!expires_at) return "pro"`라 웹훅 수정은 신규 구독만 커버. 기존 `expires_at=null` 행은 그대로 무기한 Pro. plan.ts를 조이려면 결제중 사용자 백필이 선행돼야 하므로 분리 처리.
 
 ### 네트워크 복원력
-- [3-3] 자막 fetch 타임아웃, [3-4] Innertube rejected-promise 영구 캐시(최초 실패가 폴백을 영구 차단), [4-4] 영상이해 호출 타임아웃, [3-7] channels.list 파라미터 순서 차이로 캐시 키 분리 → 동일 채널 2회 fetch, [3-8] channelId 미검증(가짜 소스가 매 SSR마다 실패 API 콜), [3-10] 기본 피드 1개 평문 HTTP, [2-2]/[3-9] XFF 최좌측 스푸핑으로 IP rate-limit 우회.
+- [3-3] 자막 fetch 타임아웃, [3-4] Innertube rejected-promise 영구 캐시(최초 실패가 폴백을 영구 차단), [4-4] 영상이해 호출 타임아웃, [3-7] channels.list 파라미터 순서 차이로 캐시 키 분리 → 동일 채널 2회 fetch, [3-8] channelId 미검증(가짜 소스가 매 SSR마다 실패 API 콜), [3-10] 기본 피드 1개 평문 HTTP.
+- ~~[2-2]/[3-9] XFF 최좌측 스푸핑~~ → **정정(false-positive, Vercel 배포)**: Vercel edge가 `x-forwarded-for`를 덮어써 외부 위조 IP를 전달하지 않는다(스푸핑 방지, [문서](https://vercel.com/docs/headers/request-headers)). 따라서 현재 최좌측 추출은 이미 안전하고 코드 수정 불필요. 남은 실제 rate-limit 갭은 인메모리→공유 저장소([1-3])뿐 — Vercel 앞에 커스텀 프록시를 두거나 셀프호스트로 이전할 때 재검토.
 
 ### 프론트 성능·버그
 - [5-1] ReelView YT.Player 미destroy 누수, [5-2] 필터 체인 비메모·키워드 RegExp 매 렌더 재컴파일, [5-3] 카드마다 매 렌더 localStorage 파싱, [5-4] 소스 전환 시 Q&A 스레드 컨텍스트 오염, [6-2] 큐 인덱스 이중 보정으로 재생 곡 변경, [6-4] 재생 위치 broadcast가 큐 컨텍스트 통째 갱신 → 소비자 매초 재렌더, [6-5] 플레이리스트 items 검증·rate-limit 부재, [5-5] `FeedItem` 요약 재살균 정규식이 `x < 10` 리터럴 꺾쇠 파괴.
