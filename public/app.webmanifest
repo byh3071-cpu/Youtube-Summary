@@ -4,6 +4,15 @@
   "description": "유튜브와 RSS를 한 곳에서 정리해 듣는 텍스트 중심 라디오 피드",
   "start_url": "/",
   "display": "standalone",
+  "share_target": {
+    "action": "/add",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "background_color": "#f6f5f0",
   "theme_color": "#111827",
   "icons": [
