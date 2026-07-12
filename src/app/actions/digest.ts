@@ -1,9 +1,10 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { geminiFailureMessage } from "@/lib/gemini";
 import { checkUsageLimit, incrementUsage } from "@/lib/plan";
 import { guardGeminiActionRateLimit } from "@/lib/gemini-rate-limit";
+import { takeToken } from "@/lib/rate-limit";
 import { generateVideoDigest } from "@/lib/digest/generate";
 import {
   getCachedDigest,
@@ -195,6 +196,14 @@ export type TranscriptActionResult =
 export async function getVideoTranscriptAction(videoId: string): Promise<TranscriptActionResult> {
   if (!videoId || !VIDEO_ID_PATTERN.test(videoId)) {
     return { ok: false, error: "올바르지 않은 영상 ID입니다." };
+  }
+  // 이 액션은 무인증이고 클라이언트 번들에 노출되므로, 익명 남용(임의 videoId 반복 →
+  // YouTube 자막 아웃바운드 + video_transcripts 무제한 적재)을 IP 레이트리밋으로 막는다.
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+  const rl = takeToken(`transcript:${ip}`, 30, 60_000);
+  if (!rl.ok) {
+    return { ok: false, error: "자막 요청이 많습니다. 잠시 후 다시 시도해 주세요." };
   }
   const context = await getStructuredVideoContextCached(videoId);
   if ("error" in context) {

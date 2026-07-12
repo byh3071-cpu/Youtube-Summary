@@ -21,6 +21,22 @@ function isValidLine(v: unknown): v is TranscriptLine {
   );
 }
 
+/** 자막 크기 상한 — 무제한 DB 적재·클라 전송 방지. 초과분은 잘라낸다(truncate). */
+export const MAX_TRANSCRIPT_LINES = 6000;
+export const MAX_TRANSCRIPT_CHARS = 400_000;
+
+export function clampTranscript(lines: TranscriptLine[]): { lines: TranscriptLine[]; joined: string } {
+  const out: TranscriptLine[] = [];
+  let chars = 0;
+  for (const line of lines) {
+    const len = line.text.length;
+    if (out.length >= MAX_TRANSCRIPT_LINES || chars + len > MAX_TRANSCRIPT_CHARS) break;
+    out.push(line);
+    chars += len;
+  }
+  return { lines: out, joined: out.map((l) => l.text).join(" ").trim() };
+}
+
 export async function getCachedTranscript(
   videoId: string,
 ): Promise<StructuredVideoContext | null> {
@@ -86,10 +102,12 @@ export async function getStructuredVideoContextCached(
   const cached = await getCachedTranscript(videoId);
   if (cached) return cached;
   const fresh = await getStructuredVideoContext(videoId);
-  if (!("error" in fresh)) {
-    await saveTranscript(videoId, fresh);
-  }
-  return fresh;
+  if ("error" in fresh) return fresh;
+  // 저장·반환 전 크기 상한 적용 (무제한 적재/전송 방지). snippet은 이미 상한이 있어 그대로.
+  const clamped: StructuredVideoContext =
+    fresh.mode === "transcript" ? { ...fresh, ...clampTranscript(fresh.lines) } : fresh;
+  await saveTranscript(videoId, clamped);
+  return clamped;
 }
 
 export interface CachedDigest {

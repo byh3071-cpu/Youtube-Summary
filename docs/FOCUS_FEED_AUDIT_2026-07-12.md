@@ -42,7 +42,7 @@
 
 ### 보안 — 우선 검토 권장 (라벨보다 실질 위험 높음)
 - **[2-1] 팀 admin이 owner 제거 가능** (`api/teams/[teamId]/members/route.ts:90-122`): 유일-owner 보호가 자기제거에만 걸려, admin이 owner를 지우면 팀이 owner 없이 영구 락아웃. 대상이 owner면 요청자도 owner일 때만 허용 + 남은 owner 수 카운트 필요.
-- **[4-2] 무인증 트랜스크립트 액션** (`actions/digest.ts:195` `getVideoTranscriptAction`): 인증·rate-limit·비용가드 0. 익명이 임의 videoId 루프로 YouTube 아웃바운드 + 무제한 DB 적재. `takeToken` IP 리밋 + 자막 크기 상한 필요.
+- **[4-2] 무인증 트랜스크립트 액션** (`actions/digest.ts` `getVideoTranscriptAction`): 인증·rate-limit·비용가드 0. 익명이 임의 videoId 루프로 YouTube 아웃바운드 + 무제한 DB 적재. `takeToken` IP 리밋 + 자막 크기 상한 필요. → ✅ **해결**: IP 레이트리밋(30/분) + `clampTranscript` 크기 상한(6000줄/40만자) 적용. XFF 스푸핑 우회는 전역 [2-2]/[3-9]에 종속(별도).
 - **[1-2] revalidate 인가 위조 가능** (`api/revalidate/route.ts`, 저영향·우선순위 하): 시크릿 없이 origin/referer만으로 통과 가능하나 실피해는 캐시 무효화(DoS-lite). 올바른 수정은 route-only가 아니라 `RefreshButton`을 서버 액션(`'use server'` + `revalidatePath('/')`)으로 전환 — Next 내장 CSRF 검증으로 시크릿 불필요하고 인앱 버튼도 정상 유지. 이번 세션엔 route-only 폴백 제거가 버튼을 깨뜨려 revert함.
 
 ### 사용량 한도 클러스터 (근본: 비원자적 read-modify-write)
