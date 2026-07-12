@@ -47,7 +47,7 @@
 
 ### 사용량 한도 클러스터 (근본: 비원자적 read-modify-write)
 - **[1-5·4-1] check→increment TOCTOU**: 병렬 요청이 한도를 초과하고 증가분이 유실. 올바른 수정은 Postgres RPC 원자적 증가(마이그레이션 필요) → 스코프상 별도 작업.
-- **[1-4·4-14] fail-open**: service-role 클라이언트 null 또는 DB select 오류 시 `{allowed:true}`. 인프라 부재 시 fail-closed로 전환 + `SUPABASE_SERVICE_ROLE_KEY` required 승격 검토.
+- **[1-4·4-14] fail-open** → ✅ **해결**: DB select 오류 시 `evaluateUsageLimit`가 fail-closed로 차단, null 클라이언트는 prod에서 차단(dev 허용). `incrementUsage`는 조회 실패 시 카운터 리셋(클로버)을 막고 증가를 건너뛰며 실패를 로깅. (TOCTOU·upsert 실패 복구는 [1-5·4-1]로 별도.)
 - **[1-1 연장] plan.ts fail-open + 백필**: `if(!expires_at) return "pro"`라 웹훅 수정은 신규 구독만 커버. 기존 `expires_at=null` 행은 그대로 무기한 Pro. plan.ts를 조이려면 결제중 사용자 백필이 선행돼야 하므로 분리 처리.
 
 ### 네트워크 복원력
