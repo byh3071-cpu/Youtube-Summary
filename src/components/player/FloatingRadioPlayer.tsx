@@ -153,8 +153,11 @@ export default function FloatingRadioPlayer() {
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- player 인스턴스 재생성 비용 때문에 videoId·ready·재생 상태만 동기화
-  }, [apiReady, radio?.currentItem?.videoId, playerReady, radio?.isPlaying]);
+    // radio.isPlaying은 의존성에서 제외한다. 재생/일시정지 토글마다 이 이펙트가 재실행되면
+    // else 분기의 loadVideoById가 매번 호출돼 영상이 처음부터 다시 로드된다(시청 위치 유실).
+    // 재생/일시정지는 아래 별도 이펙트가 전담하고, 여기서는 videoId 변경 시에만 로드한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- player 인스턴스 재생성 비용 때문에 videoId·ready만 동기화
+  }, [apiReady, radio?.currentItem?.videoId, playerReady]);
 
   useEffect(() => {
     if (!playerRef.current || !radioRef.current || !playerReady) return;
