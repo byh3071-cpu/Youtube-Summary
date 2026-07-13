@@ -1,70 +1,55 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-async function openDiscovery(page: Page) {
-  // 트렌드 서버 컴포넌트는 외부 분석 결과를 스트리밍할 수 있어 전체 load 이벤트를 기다리지 않는다.
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("region", { name: "피드 탐색" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByLabel("피드 검색")).toBeVisible();
-}
-
-async function capture(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
-}
-
-test.describe("search-first discovery toolbar", () => {
-  test("desktop keeps search, trends and filters in one ordered panel", async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    await openDiscovery(page);
-
-    const panel = page.getByRole("region", { name: "피드 탐색" });
-    const search = page.getByLabel("피드 검색");
-    const trends = page.getByText("요즘 뜨는 키워드", { exact: true });
-    const sourceSwitch = page.getByRole("button", { name: "전체(최신순)" });
-
-    const [panelBox, searchBox, sourceBox] = await Promise.all([
-      panel.boundingBox(),
-      search.boundingBox(),
-      sourceSwitch.boundingBox(),
-    ]);
-    expect(panelBox).not.toBeNull();
-    expect(searchBox).not.toBeNull();
-    expect(sourceBox).not.toBeNull();
-    expect(searchBox!.y).toBeLessThan(sourceBox!.y);
-    expect(searchBox!.x).toBeGreaterThanOrEqual(panelBox!.x);
-    expect(searchBox!.x + searchBox!.width).toBeLessThanOrEqual(panelBox!.x + panelBox!.width);
-
-    // 트렌드는 외부 분석 스트림이라 늦게 도착할 수 있다. 렌더된 경우 검색과 보기 전환 사이인지 확인한다.
-    if (await trends.count()) {
-      const trendsBox = await trends.boundingBox();
-      expect(trendsBox).not.toBeNull();
-      expect(searchBox!.y).toBeLessThan(trendsBox!.y);
-      expect(trendsBox!.y).toBeLessThan(sourceBox!.y);
-    }
-
-    // 삭제 요청된 글로벌 카운트·수동 새로고침 헤더는 더 이상 노출하지 않는다.
-    await expect(page.getByText(/^총 \d+개$/)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "새로고침" })).toHaveCount(0);
-
-    const startedAt = Date.now();
-    await page.getByRole("button", { name: "유튜브", exact: true }).click();
-    await expect(page.getByRole("button", { name: "유튜브", exact: true })).toHaveAttribute("aria-pressed", "true");
-    expect(Date.now() - startedAt).toBeLessThan(1_000);
-
-    await capture(page, testInfo, "discovery-desktop");
+test.describe("discovery toolbar", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const toolbar = page.getByTestId("discovery-toolbar");
+    await expect(toolbar).toBeVisible({ timeout: 30_000 });
+    await expect(toolbar).toHaveAttribute("data-hydrated", "true", { timeout: 30_000 });
   });
 
-  test("393px mobile has no page-level horizontal overflow", async ({ page }, testInfo) => {
+  test("switches cached source views without a document navigation", async ({ page }) => {
+    let documentRequests = 0;
+    page.on("request", (request) => {
+      if (request.resourceType() === "document") documentRequests += 1;
+    });
+
+    for (const view of ["rss", "youtube", "all"] as const) {
+      const startedAt = performance.now();
+      await page.getByTestId(`view-${view}`).click();
+      await expect(page.getByTestId(`view-${view}`)).toHaveAttribute("aria-pressed", "true");
+      expect(performance.now() - startedAt).toBeLessThan(1_000);
+    }
+
+    expect(documentRequests).toBe(0);
+  });
+
+  test("opens a responsive filter surface", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
-    await openDiscovery(page);
+    await page.getByTestId("discovery-filter-trigger").click();
+    const sheet = page.getByTestId("discovery-filter-panel");
+    await expect(sheet).toBeVisible();
+    const mobileBox = await sheet.boundingBox();
+    expect(mobileBox).not.toBeNull();
+    expect(mobileBox!.width).toBeCloseTo(393, 0);
+    expect(mobileBox!.y + mobileBox!.height).toBeCloseTo(852, 0);
 
-    const dimensions = await page.evaluate(() => ({
-      viewport: window.innerWidth,
-      documentWidth: document.documentElement.scrollWidth,
-    }));
-    expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewport);
+    await page.getByRole("button", { name: "닫기" }).click();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByTestId("discovery-filter-trigger").click();
+    const panel = page.getByTestId("discovery-filter-panel");
+    const desktopBox = await panel.boundingBox();
+    expect(desktopBox).not.toBeNull();
+    expect(desktopBox!.width).toBeCloseTo(400, 0);
+    expect(desktopBox!.x + desktopBox!.width).toBeCloseTo(1440, 0);
+  });
 
-    await expect(page.getByRole("button", { name: "전체(최신순)" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "필터 패널 열기" })).toBeVisible();
-    await capture(page, testInfo, "discovery-mobile-393");
+  test("filters search results without horizontal overflow", async ({ page }) => {
+    const cards = page.getByTestId("youtube-card");
+    const initialCount = await cards.count();
+    await page.getByTestId("feed-search-input").fill("Cloudflare");
+    await expect.poll(() => cards.count()).toBeLessThan(initialCount);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 });

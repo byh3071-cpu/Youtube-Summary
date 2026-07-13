@@ -130,12 +130,12 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
         <section className="space-y-6">
             {showYoutube && (
                 <div>
-                    <div className="mb-4 flex items-end justify-between gap-3 px-1 text-(--notion-fg)">
+                    <div className="mb-3 flex items-end justify-between gap-3 px-1 text-(--notion-fg)">
                         <div className="flex items-center gap-2">
                             <Youtube className="h-4 w-4 text-red-500" />
                             <div>
-                                <h2 className="text-lg font-bold tracking-[-0.02em]">최신 동영상</h2>
-                                <p className="mt-0.5 text-xs text-(--text-secondary)">구독한 채널에서 놓치면 아쉬운 영상</p>
+                                <h2 className="m-0! text-[22px]! font-bold leading-[1.25]! tracking-[-0.025em]">최신 동영상</h2>
+                                <p className="mt-1 text-xs leading-4 text-(--text-secondary)">구독한 채널에서 놓치면 아쉬운 영상</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-[12px] text-(--notion-fg)/55">

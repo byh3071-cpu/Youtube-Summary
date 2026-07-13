@@ -16,11 +16,11 @@ export default function FeedSearch({ value, onChange }: FeedSearchProps) {
     setInput(value);
   }, [value]);
 
-  // Debounce: propagate after 300ms of inactivity
+  // 짧은 지연으로 빠른 타이핑 중 불필요한 재필터링만 합친다.
   useEffect(() => {
     const timer = setTimeout(() => {
       onChange(input);
-    }, 300);
+    }, 50);
     return () => clearTimeout(timer);
   }, [input, onChange]);
 
@@ -32,11 +32,12 @@ export default function FeedSearch({ value, onChange }: FeedSearchProps) {
       />
       <input
         type="text"
+        data-testid="feed-search-input"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="제목, 채널, 키워드 검색"
         aria-label="피드 검색"
-        className="h-12 w-full rounded-2xl border border-(--notion-border) bg-(--notion-bg) py-3 pl-11 pr-11 text-sm text-(--notion-fg) shadow-[0_1px_2px_rgba(15,23,42,0.03)] outline-none transition-[border-color,box-shadow] placeholder:text-(--notion-fg)/40 focus:border-(--notion-fg)/30 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.10)]"
+        className="h-12 w-full rounded-xl border border-(--border-subtle) bg-(--surface-raised) py-3 pl-11 pr-11 text-sm text-(--text-primary) shadow-[var(--shadow-xs)] outline-none transition-[border-color,box-shadow] placeholder:text-(--text-secondary)/65 focus:border-(--ai-accent)/40 focus:shadow-[0_0_0_3px_var(--ai-accent-muted)]"
       />
       {input && (
         <button

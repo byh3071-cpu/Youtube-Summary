@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { FeedItem } from "@/types/feed";
 import type { FeedCategory } from "@/types/feed";
 import { filterFeedByKeywords, filterFeedByCategory, filterFeedByTrendKeyword, filterFeedBySearch } from "@/lib/filter";
@@ -13,10 +13,12 @@ import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
 import MyFocusSection from "./MyFocusSection";
 import UsageBadge from "./UsageBadge";
 import FeedQADrawer from "./FeedQADrawer";
+import DiscoveryFilterPanel from "./DiscoveryFilterPanel";
 import { TrendFilterProvider, useTrendFilter } from "@/contexts/TrendFilterContext";
 import { FEED_CATEGORIES } from "@/lib/sources";
 import { getContentStatesAction, type ContentStateInfo } from "@/app/actions/content-state";
 import { isItemVisibleUnderStateFilter } from "@/types/content-state";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 export type BookmarkEntry = {
   id: string;
@@ -63,9 +65,7 @@ function FeedClientContainerContent({
     viewMode = null,
     children,
 }: FeedClientContainerProps) {
-    const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [view, setView] = useState<ViewMode>(initialView);
 
     const { keywords, addKeyword, removeKeyword, clearKeywords } = useKeywordFilter();
@@ -74,6 +74,7 @@ function FeedClientContainerContent({
     const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
     const [contentStates, setContentStates] = useState<Record<string, ContentStateInfo>>({});
     const [stateFilter, setStateFilter] = useState<"all" | "queued" | "dismissed">("all");
+    const isHydrated = useIsHydrated();
 
     const fetchBookmarks = useCallback(async () => {
         try {
@@ -110,11 +111,11 @@ function FeedClientContainerContent({
 
     const handleCategoryChange = (category: FeedCategory | null) => {
         setSelectedCategory(category);
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        const params = new URLSearchParams(window.location.search);
         if (category) params.set("category", category);
         else params.delete("category");
         const q = params.toString();
-        router.push(q ? `${pathname}?${q}` : pathname);
+        window.history.replaceState(window.history.state, "", q ? `${pathname}?${q}` : pathname);
     };
 
     const handleViewChange = (nextView: ViewMode) => {
@@ -180,18 +181,12 @@ function FeedClientContainerContent({
         <>
             {/* 상단 정리: 검색 → 트렌딩 키워드 → 필터만 노출. 히어로/환영 배너 제거, MY FOCUS·사용량은 피드 아래로 이동(기능 유지). */}
             {isGlobalFeed && (
-                <section
-                    aria-label="피드 탐색"
-                    className="mb-4 overflow-hidden rounded-2xl border border-(--notion-border) bg-(--notion-bg) shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-                >
-                  <div className="p-3 pb-2 sm:p-4 sm:pb-2.5">
-                    <FeedSearch value={searchQuery} onChange={setSearchQuery} />
-                  </div>
-
-                  {/* 트렌딩 키워드와 보기/상세 필터를 검색의 보조 탐색 수단으로 한 패널에 묶는다. */}
-                  {children}
-
-                  <KeywordFilter
+                <section data-testid="discovery-toolbar" data-hydrated={isHydrated ? "true" : "false"} aria-label="피드 탐색" className="-mx-2 mb-3 bg-(--surface-raised)/95 px-2 pb-1 pt-1 backdrop-blur-xl sm:-mx-4 sm:px-4 md:sticky md:top-0 md:z-40 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+                  <div className="flex items-center gap-2 py-2">
+                    <div className="min-w-0 flex-1">
+                      <FeedSearch value={searchQuery} onChange={setSearchQuery} />
+                    </div>
+                    <DiscoveryFilterPanel
                       keywords={keywords}
                       onAddKeyword={addKeyword}
                       onRemoveKeyword={removeKeyword}
@@ -199,9 +194,13 @@ function FeedClientContainerContent({
                       selectedCategory={selectedCategory}
                       onCategoryChange={handleCategoryChange}
                       availableCategories={availableCategories}
-                      compact
-                      headerRight={<ViewSwitcher currentView={view} onChange={handleViewChange} />}
-                  />
+                    />
+                  </div>
+
+                  {children}
+                  <div className="flex items-center justify-between py-1">
+                    <ViewSwitcher currentView={view} onChange={handleViewChange} />
+                  </div>
                 </section>
             )}
 
