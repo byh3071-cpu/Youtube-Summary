@@ -129,27 +129,33 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
     return (
         <section className="space-y-6">
             {showYoutube && (
-                <div className="overflow-hidden rounded-2xl border border-(--notion-border) bg-(--notion-bg)">
-                    <div className="flex items-center justify-between gap-2 border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-[13px] text-(--notion-fg)/70 sm:px-5">
+                <div>
+                    <div className="mb-4 flex items-end justify-between gap-3 px-1 text-(--notion-fg)">
                         <div className="flex items-center gap-2">
                             <Youtube className="h-4 w-4 text-red-500" />
-                            <span className="font-semibold">유튜브</span>
+                            <div>
+                                <h2 className="text-lg font-bold tracking-[-0.02em]">최신 동영상</h2>
+                                <p className="mt-0.5 text-xs text-(--text-secondary)">구독한 채널에서 놓치면 아쉬운 영상</p>
+                            </div>
                         </div>
                         <div className="flex items-center gap-2 text-[12px] text-(--notion-fg)/55">
                             {typeof totalCount === "number" && <span>총 {totalCount}개</span>}
-                            <span>최신순 정렬</span>
+                            <span className="rounded-full bg-(--surface-subtle) px-2.5 py-1">최신순</span>
                         </div>
                     </div>
-                    <div className="px-3 py-3 sm:px-4 sm:py-4">
+                    <div>
                         {youtubeItems.length === 0 ? (
                             <EmptyBlock message="이번 필터에 해당하는 유튜브 영상이 없습니다." />
                         ) : (
                             <>
-                                <AutoAnimateList as="ul" className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                                <AutoAnimateList
+                                    as="ul"
+                                    className="grid gap-x-4 gap-y-8 [grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))]"
+                                >
                                     {visibleYoutubeItems.map((item) => {
                                         const b = item.id ? bookmarks.find((x) => x.video_id === item.id) : null;
                                         return (
-                                            <li key={`${item.source}:${item.sourceId}:${item.id}`}>
+                                            <li key={`${item.source}:${item.sourceId}:${item.id}`} className="min-w-0">
                                                 <YouTubeCard
                                                     item={item}
                                                     bookmark={b}

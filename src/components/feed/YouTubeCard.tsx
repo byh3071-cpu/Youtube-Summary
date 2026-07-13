@@ -114,7 +114,10 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
   }, [baseDuration]);
 
   return (
-    <article className="group flex h-full flex-col bg-transparent px-2 sm:px-3">
+    <article
+      data-testid="youtube-card"
+      className="group relative flex h-full min-w-0 flex-col bg-transparent"
+    >
       <a
         href={resumeHref ?? undefined}
         target={resumeHref ? "_blank" : undefined}
@@ -123,14 +126,17 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
         aria-label={`${item.sourceName} - ${item.title}`}
         tabIndex={resumeHref ? undefined : -1}
       >
-        <div className="relative w-full shrink-0 overflow-hidden rounded-lg bg-(--notion-gray)" style={{ aspectRatio: "16 / 9" }}>
+        <div
+          data-testid="youtube-card-thumbnail"
+          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-(--surface-subtle)"
+        >
           {item.thumbnail ? (
             <Image
               src={item.thumbnail}
               alt=""
               fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className="object-cover transition-transform group-hover:scale-[1.02]"
+              sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, (max-width: 1535px) 25vw, 20vw"
+              className="object-cover transition-transform duration-[var(--motion-standard)] group-hover:scale-[1.02] motion-reduce:transition-none"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-(--notion-fg)/30">
@@ -160,81 +166,100 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
             </span>
           )}
         </div>
-        <div className="flex flex-1 flex-col gap-0.5 px-0 pb-1.5 pt-0.5">
-          <div className="min-h-[2.75rem] sm:min-h-[3.25rem]">
-            <h3 className="line-clamp-2 text-sm font-medium leading-snug tracking-tight text-(--notion-fg) group-hover:text-(--notion-fg)/90 sm:text-base">
-              {item.title}
-            </h3>
+        <div className="flex flex-1 gap-3 pb-1 pt-3">
+          <div className="shrink-0" data-testid="youtube-card-channel">
+            {item.sourceAvatarUrl ? (
+              <div className="relative h-9 w-9 overflow-hidden rounded-full bg-(--surface-subtle)">
+                <Image src={item.sourceAvatarUrl} alt={item.sourceName} fill sizes="36px" className="object-cover" />
+              </div>
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-(--surface-subtle)">
+                <span className="text-[13px] font-semibold text-(--text-primary)/80">{item.sourceName.charAt(0)}</span>
+              </div>
+            )}
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex min-w-0 shrink items-center gap-2">
-              {item.sourceAvatarUrl ? (
-                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-(--notion-gray)">
-                  <Image
-                    src={item.sourceAvatarUrl}
-                    alt={item.sourceName}
-                    fill
-                    sizes="32px"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-(--notion-gray)">
-                  <span className="text-xs font-semibold text-(--notion-fg)/80 sm:text-[13px]">
-                    {item.sourceName.charAt(0)}
-                  </span>
-                </div>
-              )}
-              <p className="min-w-0 truncate text-xs font-medium text-(--notion-fg)/75 sm:text-[13px]">
-                {item.sourceName}
-              </p>
+          <div className="min-w-0 flex-1">
+            <div className="min-h-[2.55rem] sm:min-h-[2.7rem]">
+              <h3
+                data-testid="youtube-card-title"
+                className="m-0! line-clamp-2 text-[15px]! font-semibold leading-[1.35] tracking-[-0.015em] text-(--text-primary) group-hover:text-(--text-primary)/90 sm:text-base!"
+              >
+                {item.title}
+              </h3>
             </div>
+            <p className="mt-1 truncate text-xs font-medium text-(--text-secondary) sm:text-[13px]">{item.sourceName}</p>
+            <p
+              data-testid="youtube-card-meta"
+              className="mt-0.5 min-h-[1.125rem] text-xs leading-[1.125rem] text-(--text-secondary)"
+              suppressHydrationWarning
+            >
+              {formLabel ? `${formLabel} · ${timeAgo}` : timeAgo}
+            </p>
           </div>
-
-          <p className="text-[11px] text-(--notion-fg)/55 sm:text-xs" suppressHydrationWarning>
-            {formLabel ? `${formLabel} · ${timeAgo}` : timeAgo}
-          </p>
         </div>
       </a>
       {item.id && (
-        // 액션행: 같은 36px 원형 아이콘 4개를 좌우 균등 배치(라벨은 tooltip). 모바일 2열에서도 안 잘림
-        <div className="flex shrink-0 items-center justify-between gap-1 px-0 pb-1 pt-0.5">
-          <DeepDiveButton
-            videoId={item.id}
-            title={item.title}
-            channel={item.sourceName}
-            durationSeconds={item.durationSeconds ?? null}
-            compact
-          />
-          {onBookmarkChange && (
-            <BookmarkButton
-              videoId={item.id}
-              videoTitle={item.title}
-              isBookmarked={!!bookmark}
-              bookmarkId={bookmark?.id ?? null}
-              onBookmarkChange={onBookmarkChange}
-              className={`h-9 w-9 ${HIT_AREA_44}`}
-            />
-          )}
-          <AddToRadioButton videoId={item.id} title={item.title} iconOnly />
-          <button
-            type="button"
-            onClick={() => setMenuOpen((prev) => !prev)}
-            className={`${ICON_ACTION_BTN} text-(--notion-fg)/60 hover:text-(--notion-fg)`}
-            aria-label="더보기"
-            aria-expanded={menuOpen}
-            aria-controls={`card-more-${item.id}`}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-      {item.id && (
-        <div className="mt-auto px-0 pb-1.5">
-          <SummarizeButton videoId={item.id} fullWidth />
+        <div
+          data-testid="youtube-card-actions"
+          className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1 py-1.5 pr-12 sm:pr-0"
+        >
+          <SummarizeButton videoId={item.id} compact />
+          <div className="flex items-center justify-end gap-0.5">
+            <div data-testid="youtube-card-hover-actions" className="hidden items-center opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100 group-focus-within:opacity-100 sm:flex">
+              {onBookmarkChange && (
+                <BookmarkButton
+                  videoId={item.id}
+                  videoTitle={item.title}
+                  isBookmarked={!!bookmark}
+                  bookmarkId={bookmark?.id ?? null}
+                  onBookmarkChange={onBookmarkChange}
+                  className={`h-9 w-9 ${HIT_AREA_44}`}
+                />
+              )}
+              <AddToRadioButton videoId={item.id} title={item.title} iconOnly />
+            </div>
+            <div data-testid="youtube-card-mobile-radio" className="sm:hidden">
+              <AddToRadioButton videoId={item.id} title={item.title} iconOnly />
+            </div>
+            <button
+              type="button"
+              data-testid="youtube-card-more-action"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className={`${ICON_ACTION_BTN} text-(--notion-fg)/60 hover:text-(--notion-fg)`}
+              aria-label="더보기"
+              aria-expanded={menuOpen}
+              aria-controls={`card-more-${item.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
           {menuOpen && (
-            <div id={`card-more-${item.id}`} className="mt-1.5 space-y-2.5 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-2.5 py-2 text-xs text-(--notion-fg) shadow-sm">
+            <div id={`card-more-${item.id}`} className="col-span-full mt-1.5 space-y-2.5 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-2.5 py-2 text-xs text-(--notion-fg) shadow-sm">
+              {onBookmarkChange && (
+                <div className="flex items-center justify-between sm:hidden">
+                  <span className="font-medium">북마크</span>
+                  <BookmarkButton
+                    videoId={item.id}
+                    videoTitle={item.title}
+                    isBookmarked={!!bookmark}
+                    bookmarkId={bookmark?.id ?? null}
+                    onBookmarkChange={onBookmarkChange}
+                    className={`h-9 w-9 ${HIT_AREA_44}`}
+                  />
+                </div>
+              )}
+              <div>
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-(--notion-fg)/55 sm:text-xs">
+                  더 알아보기
+                </p>
+                <DeepDiveButton
+                  videoId={item.id}
+                  title={item.title}
+                  channel={item.sourceName}
+                  durationSeconds={item.durationSeconds ?? null}
+                  compact
+                />
+              </div>
               {onContentStateChange && (
                 <div>
                   <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-(--notion-fg)/55 sm:text-xs">
