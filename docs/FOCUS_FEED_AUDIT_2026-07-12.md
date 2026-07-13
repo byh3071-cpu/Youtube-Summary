@@ -46,8 +46,11 @@
 - ~~[1-2] revalidate 인가 위조 가능~~ → 위 "수정 완료" 참조(서버 액션 전환 + 시크릿-only route로 해결).
 
 ### 사용량 한도 클러스터 (근본: 비원자적 read-modify-write)
-- **[1-5·4-1] check→increment TOCTOU**: 병렬 요청이 한도를 초과하고 증가분이 유실. 올바른 수정은 Postgres RPC 원자적 증가(마이그레이션 필요) → 스코프상 별도 작업.
-- **[1-4·4-14] fail-open** → ✅ **해결**: DB select 오류 시 `evaluateUsageLimit`가 fail-closed로 차단, null 클라이언트는 prod에서 차단(dev 허용). `incrementUsage`는 조회 실패 시 카운터 리셋(클로버)을 막고 증가를 건너뛰며 실패를 로깅. (TOCTOU·upsert 실패 복구는 [1-5·4-1]로 별도.)
+- **[1-5·4-1] check→increment TOCTOU — 부분 해결** (두 문제로 나뉨):
+  - (a) **increment lost update → ✅ 해결**: `increment_usage` RPC(마이그레이션 011, INSERT ON CONFLICT DO UPDATE)로 원자화. 로컬 부하 검증에서 100회 병렬 증가 시 구 방식은 6까지만(94회 유실), RPC는 정확히 100.
+  - (b) **check→increment 병렬 창 → ❌ 미해결**: 동시 요청이 check를 모두 통과해 한도를 초과하는 문제는 선차감(increment-then-check) 재설계로 호출부 3곳(summarize/digest/feed-qa)을 바꿔야 해 별도.
+  - 배포 주의: 011을 코드보다 **먼저** 적용하고, 적용 후 PostgREST 스키마 캐시 리로드(`NOTIFY pgrst, 'reload schema'`)를 확인해야 rpc가 함수-없음(PGRST202)으로 잠시 실패하지 않는다.
+- **[1-4·4-14] fail-open** → ✅ **해결**: DB select 오류 시 `evaluateUsageLimit`가 fail-closed로 차단, null 클라이언트는 prod에서 차단(dev 허용). (`incrementUsage`의 조회-후-쓰기 경로는 이후 [1-5·4-1]에서 원자적 RPC로 교체돼 클로버·upsert 실패 문제 자체가 사라짐.)
 - **[1-1 연장] plan.ts fail-open + 백필**: `if(!expires_at) return "pro"`라 웹훅 수정은 신규 구독만 커버. 기존 `expires_at=null` 행은 그대로 무기한 Pro. plan.ts를 조이려면 결제중 사용자 백필이 선행돼야 하므로 분리 처리.
 
 ### 네트워크 복원력

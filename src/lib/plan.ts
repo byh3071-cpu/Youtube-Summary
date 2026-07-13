@@ -181,42 +181,14 @@ export async function incrementUsage(
   }
 
   const today = getKstDateString();
-  const table = supabase.from("usage_daily");
 
-  const { data: row, error: selErr } = (await table
-    .select("summary_count, insight_count, briefing_count, feed_qa_count")
-    .eq("user_id", user.id)
-    .eq("date", today)
-    .maybeSingle()) as {
-    data: {
-      summary_count: number;
-      insight_count: number;
-      briefing_count: number;
-      feed_qa_count: number;
-    } | null;
-    error: unknown;
-  };
-  if (selErr) {
-    // 조회 실패 시 증가를 포기한다. 그대로 upsert하면 기존 누적 카운트를
-    // (row=null 기준으로) 덮어써 리셋되므로(=쿼터 되돌림), 값 보존이 낫다.
-    console.error("[usage] increment 조회 실패 — 카운터 보존 위해 증가 건너뜀", selErr);
-    return;
-  }
-
-  const next = {
-    user_id: user.id,
-    date: today,
-    summary_count: row ? row.summary_count + (kind === "summary" ? 1 : 0) : kind === "summary" ? 1 : 0,
-    insight_count: row ? row.insight_count + (kind === "insight" ? 1 : 0) : kind === "insight" ? 1 : 0,
-    briefing_count: row ? row.briefing_count + (kind === "briefing" ? 1 : 0) : kind === "briefing" ? 1 : 0,
-    feed_qa_count: row ? (row.feed_qa_count ?? 0) + (kind === "feed_qa" ? 1 : 0) : kind === "feed_qa" ? 1 : 0,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { error: upErr } = await (
-    table as unknown as {
-      upsert: (row: typeof next, opts: { onConflict: string }) => Promise<{ error: unknown }>;
+  // 원자적 증가 RPC(마이그레이션 011). 앱에서 select→계산→upsert하면 동시 요청에
+  // lost update가 나 카운트가 실제보다 적게 올라가(무료 한도 우회) 문제였다.
+  // INSERT ... ON CONFLICT DO UPDATE 단일 문장으로 DB가 원자적으로 증가시킨다.
+  const { error } = await (
+    supabase as unknown as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: unknown }>;
     }
-  ).upsert(next, { onConflict: "user_id,date" });
-  if (upErr) console.error("[usage] increment upsert 실패", upErr);
+  ).rpc("increment_usage", { p_user_id: user.id, p_date: today, p_kind: kind });
+  if (error) console.error("[usage] increment rpc 실패", error);
 }
