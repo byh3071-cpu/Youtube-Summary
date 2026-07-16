@@ -29,6 +29,12 @@ interface ModalTransitionProps {
   /** "center" | "bottom" | "left" - center: scale+opacity, bottom: slide from bottom, left: slide from left */
   variant?: "center" | "bottom" | "left";
   panelClassName?: string;
+  panelRole?: "dialog";
+  panelAriaLabel?: string;
+  panelId?: string;
+  panelTestId?: string;
+  transitionDuration?: number;
+  exitDuration?: number;
 }
 
 /** 모달/팝업 오버레이 + 패널 등장/퇴장 (Framer Motion) + 포커스 트랩 */
@@ -41,6 +47,12 @@ export function ModalTransition({
   children,
   variant = "center",
   panelClassName,
+  panelRole,
+  panelAriaLabel,
+  panelId,
+  panelTestId,
+  transitionDuration,
+  exitDuration,
 }: ModalTransitionProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previousActiveRef = useRef<HTMLElement | null>(null);
@@ -111,8 +123,11 @@ export function ModalTransition({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={overlayTransition}
+            exit={{
+              opacity: 0,
+              ...(exitDuration == null ? {} : { transition: { duration: exitDuration } }),
+            }}
+            transition={transitionDuration == null ? overlayTransition : { duration: transitionDuration }}
             className={overlayClassName}
             style={{ zIndex: overlayZ }}
             aria-hidden
@@ -120,7 +135,12 @@ export function ModalTransition({
           />
           <motion.div
             ref={panelRef}
+            id={panelId}
+            data-testid={panelTestId}
             tabIndex={-1}
+            role={panelRole}
+            aria-modal={panelRole === "dialog" ? true : undefined}
+            aria-label={panelAriaLabel}
             initial={
               variant === "bottom"
                 ? { opacity: 0, y: "100%" }
@@ -137,12 +157,12 @@ export function ModalTransition({
             }
             exit={
               variant === "bottom"
-                ? { opacity: 0, y: "100%" }
+                ? { opacity: 0, y: "100%", ...(exitDuration == null ? {} : { transition: { ...panelTransition, duration: exitDuration } }) }
                 : variant === "left"
-                  ? { opacity: 0, x: "-100%" }
-                  : { opacity: 0, scale: 0.98 }
+                  ? { opacity: 0, x: "-100%", ...(exitDuration == null ? {} : { transition: { ...panelTransition, duration: exitDuration } }) }
+                  : { opacity: 0, scale: 0.98, ...(exitDuration == null ? {} : { transition: { ...panelTransition, duration: exitDuration } }) }
             }
-            transition={panelTransition}
+            transition={transitionDuration == null ? panelTransition : { ...panelTransition, duration: transitionDuration }}
             className={panelClassName}
             style={{ zIndex: panelZ }}
             onClick={(e) => e.stopPropagation()}

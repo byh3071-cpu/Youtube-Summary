@@ -24,7 +24,7 @@ export default function TrendRadarBarClient({ trends, generatedAt, attachToHeade
   return (
     <section className={integratedWithSearch ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 py-1" : attachToHeader ? "rounded-b-2xl border border-t-0 border-(--notion-border) bg-(--notion-bg) px-4 py-2.5 sm:px-5" : "mb-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-2.5 sm:px-5"}>
       <div className={integratedWithSearch ? "flex items-center gap-1" : "mb-1.5 flex items-center justify-between gap-2"}>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-(--notion-fg)/55">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-(--text-secondary)">
           {integratedWithSearch ? "🔥 트렌드" : "🔥 요즘 뜨는 키워드"}
         </p>
         {selectedTrendKeyword ? (
@@ -37,7 +37,7 @@ export default function TrendRadarBarClient({ trends, generatedAt, attachToHeade
             전체 보기
           </button>
         ) : (
-          <p className={`${integratedWithSearch ? "hidden" : "hidden sm:block"} shrink-0 text-[11px] text-(--notion-fg)/40`}>
+          <p className={`${integratedWithSearch ? "hidden" : "hidden sm:block"} shrink-0 text-[11px] text-(--text-secondary)`}>
             {new Date(generatedAt).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}기준
           </p>
         )}
@@ -58,7 +58,7 @@ export default function TrendRadarBarClient({ trends, generatedAt, attachToHeade
               }`}
               aria-label={isSelected ? `${trend.keyword} 선택 해제` : `${trend.keyword} 관련만 보기`}
             >
-              <span className="text-[10px] opacity-80">{index + 1}</span>
+              <span className="text-[10px]">{index + 1}</span>
               <span>{trend.keyword}</span>
             </button>
           );

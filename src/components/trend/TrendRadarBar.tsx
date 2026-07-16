@@ -13,8 +13,8 @@ export default async function TrendRadarBar({ attachToHeader, integratedWithSear
 
   if (!result || !result.trends || result.trends.length === 0) {
     return (
-      <section className={integratedWithSearch ? "py-2 text-[11px] text-(--notion-fg)/55" : attachToHeader ? "rounded-b-2xl border border-t-0 border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--notion-fg)/55 sm:px-5" : "mb-4 rounded-2xl border border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--notion-fg)/55 sm:px-5"}>
-        <p className="font-semibold uppercase tracking-wide text-(--notion-fg)/55">
+      <section className={integratedWithSearch ? "py-2 text-[11px] text-(--text-secondary)" : attachToHeader ? "rounded-b-2xl border border-t-0 border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--text-secondary) sm:px-5" : "mb-4 rounded-2xl border border-dashed border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-[11px] text-(--text-secondary) sm:px-5"}>
+        <p className="font-semibold uppercase tracking-wide text-(--text-secondary)">
           요즘 뜨는 키워드
         </p>
         <p className="mt-1">

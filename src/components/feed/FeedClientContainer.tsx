@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { FeedItem } from "@/types/feed";
 import type { FeedCategory } from "@/types/feed";
 import { filterFeedByKeywords, filterFeedByCategory, filterFeedByTrendKeyword, filterFeedBySearch } from "@/lib/filter";
 import FeedList from "./FeedList";
 import FeedReelView from "./FeedReelView";
+import LongformFeedView from "./LongformFeedView";
 import FeedSearch from "./FeedSearch";
 import KeywordFilter, { useKeywordFilter } from "./KeywordFilter";
 import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
@@ -28,6 +29,8 @@ export type BookmarkEntry = {
   created_at: string;
 };
 
+const HOME_SCROLL_STORAGE_KEY = "focus-feed:home-scroll-y";
+
 function filterByView(items: FeedItem[], view: ViewMode): FeedItem[] {
   if (view === "youtube") return items.filter((i) => i.source === "YouTube");
   if (view === "rss") return items.filter((i) => i.source === "RSS");
@@ -44,6 +47,7 @@ type FeedClientContainerProps = {
     initialView?: ViewMode;
     showViewSwitcher?: boolean;
     viewMode?: "longform" | "shortform" | "live" | null;
+    initialWatchVideoId?: string | null;
     children?: ReactNode;
 };
 
@@ -63,9 +67,11 @@ function FeedClientContainerContent({
     initialView = "all",
     showViewSwitcher = false,
     viewMode = null,
+    initialWatchVideoId = null,
     children,
 }: FeedClientContainerProps) {
     const pathname = usePathname();
+    const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
     const [view, setView] = useState<ViewMode>(initialView);
 
     const { keywords, addKeyword, removeKeyword, clearKeywords } = useKeywordFilter();
@@ -75,6 +81,38 @@ function FeedClientContainerContent({
     const [contentStates, setContentStates] = useState<Record<string, ContentStateInfo>>({});
     const [stateFilter, setStateFilter] = useState<"all" | "queued" | "dismissed">("all");
     const isHydrated = useIsHydrated();
+
+    useLayoutEffect(() => {
+        if (isReelMode) return;
+        let firstFrame = 0;
+        let secondFrame = 0;
+        try {
+            const stored = Number(sessionStorage.getItem(HOME_SCROLL_STORAGE_KEY));
+            if (!Number.isFinite(stored) || stored <= 0) return;
+            firstFrame = requestAnimationFrame(() => {
+                secondFrame = requestAnimationFrame(() => window.scrollTo({ top: stored, behavior: "auto" }));
+            });
+        } catch {
+            return;
+        }
+        return () => {
+            if (firstFrame) cancelAnimationFrame(firstFrame);
+            if (secondFrame) cancelAnimationFrame(secondFrame);
+        };
+    }, [isReelMode, pathname]);
+
+    useEffect(() => {
+        if (isReelMode) return;
+        const saveScroll = () => {
+            try {
+                sessionStorage.setItem(HOME_SCROLL_STORAGE_KEY, String(Math.max(0, Math.round(window.scrollY))));
+            } catch {}
+        };
+        window.addEventListener("scroll", saveScroll, { passive: true });
+        return () => {
+            window.removeEventListener("scroll", saveScroll);
+        };
+    }, [isReelMode]);
 
     const fetchBookmarks = useCallback(async () => {
         try {
@@ -164,9 +202,18 @@ function FeedClientContainerContent({
     );
 
     const isGlobalFeed = !selectedSourceName;
-    const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
+    if (viewMode === "longform") {
+        return (
+            <LongformFeedView
+                items={visibleItems}
+                initialWatchVideoId={initialWatchVideoId}
+                bookmarks={bookmarks}
+                onBookmarkChange={fetchBookmarks}
+            />
+        );
+    }
 
-    if (isReelMode && viewMode) {
+    if ((viewMode === "shortform" || viewMode === "live") && viewMode) {
         return (
             <FeedReelView
                 items={visibleItems}
@@ -179,6 +226,9 @@ function FeedClientContainerContent({
 
     return (
         <>
+            <h1 className="sr-only">
+                {selectedSourceName ? `${selectedSourceName} 피드` : "Focus Feed 홈"}
+            </h1>
             {/* 상단 정리: 검색 → 트렌딩 키워드 → 필터만 노출. 히어로/환영 배너 제거, MY FOCUS·사용량은 피드 아래로 이동(기능 유지). */}
             {isGlobalFeed && (
                 <section data-testid="discovery-toolbar" data-hydrated={isHydrated ? "true" : "false"} aria-label="피드 탐색" className="-mx-2 mb-3 bg-(--surface-raised)/95 px-2 pb-1 pt-1 backdrop-blur-xl sm:-mx-4 sm:px-4 md:sticky md:top-0 md:z-40 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">

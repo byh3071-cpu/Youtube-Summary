@@ -58,7 +58,7 @@ export default function FeedItem({ item, bookmark, onBookmarkChange, contentStat
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--notion-fg)/55">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--text-secondary)">
                         <span className="truncate font-semibold text-(--notion-fg)/75">{item.sourceName}</span>
                         <span aria-hidden="true">·</span>
                         <span>{formattedDate}</span>
@@ -98,12 +98,12 @@ export default function FeedItem({ item, bookmark, onBookmarkChange, contentStat
                     </h3>
 
                     {item.source === 'RSS' && cleanSummary && (
-                        <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-(--notion-fg)/65">
+                        <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-(--text-secondary)">
                             {cleanSummary}
                         </p>
                     )}
 
-                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-(--notion-fg)/55 transition-colors group-hover:text-(--notion-fg)/80">
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-(--text-secondary) transition-colors group-hover:text-(--text-primary)">
                         원문 보기
                         <ExternalLink size={12} />
                     </span>

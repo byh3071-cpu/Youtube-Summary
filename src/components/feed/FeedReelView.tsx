@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { ExternalLink, ChevronDown } from "lucide-react";
 import type { FeedItem } from "@/types/feed";
@@ -9,23 +9,30 @@ import BookmarkButton from "./BookmarkButton";
 import ReelContextBar from "./ReelContextBar";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import type { BookmarkEntry } from "./FeedClientContainer";
+import {
+  REEL_PLAYBACK_POLICY,
+  parseStoredReelPosition,
+  reelPositionStorageKey,
+  resolveStoredReelIndex,
+  type ReelViewMode,
+} from "@/lib/reel-playback-policy";
 
 const RSS_BOOKMARK_PREFIX = "rss:";
 
-/** iframe용 (YT API 미사용 시). mute=0으로 소리 시도 */
-const EMBED_PARAMS = "autoplay=1&mute=0&rel=0&modestbranding=1";
+const reelItemKey = (item: FeedItem) => `${item.source}:${item.sourceId}:${item.id ?? item.link}`;
 
 /** Window.YT 타입은 FloatingRadioPlayer의 전역 선언 사용 */
 
 interface Props {
   items: FeedItem[];
-  viewMode: "longform" | "shortform" | "live";
+  viewMode: ReelViewMode;
   bookmarks?: BookmarkEntry[];
   onBookmarkChange?: () => void;
 }
 
 function ReelSlide({
   item,
+  viewMode,
   index,
   total,
   bookmark,
@@ -35,6 +42,7 @@ function ReelSlide({
   ytReady,
 }: {
   item: FeedItem;
+  viewMode: ReelViewMode;
   index: number;
   total: number;
   bookmark?: BookmarkEntry | null;
@@ -50,6 +58,9 @@ function ReelSlide({
   // 좌/우 북마크 버튼 공용 (44px 터치 타깃)
   const bookmarkBtnClass = "h-11 w-11 min-h-[44px] min-w-[44px] shrink-0";
   const isYoutube = item.source === "YouTube";
+  const isShortform = viewMode === "shortform";
+  const isLive = viewMode === "live";
+  const playbackPolicy = REEL_PLAYBACK_POLICY[viewMode];
   const videoId = isYoutube && item.id ? item.id : null;
   // 폴백은 16:9 무레터박스 소스(maxresdefault). hqdefault(4:3)는 검은띠가 구워져 있어 contain 시 이중 레터박스가 생김.
   const thumbUrl = item.thumbnail ?? (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
@@ -83,10 +94,10 @@ function ReelSlide({
         height: "100%",
         width: "100%",
         videoId,
-        playerVars: { autoplay: 1, mute: 0, rel: 0, modestbranding: 1 },
+        playerVars: { autoplay: playbackPolicy.autoplay ? 1 : 0, mute: 0, rel: 0, modestbranding: 1 },
         events: {
           onStateChange(ev: { data: number }) {
-            if (ev.data === YT.PlayerState?.ENDED) onVideoEnd?.();
+            if (playbackPolicy.advanceOnEnd && ev.data === YT.PlayerState?.ENDED) onVideoEnd?.();
           },
         },
       });
@@ -102,113 +113,183 @@ function ReelSlide({
       // YouTube player.destroy() mutates DOM and can trigger React "removeChild" errors;
       // skip destroy and let React unmount the container normally.
     };
-  }, [inView, videoId, playerId, onVideoEnd, ytReady]);
+  }, [inView, videoId, playerId, onVideoEnd, playbackPolicy.advanceOnEnd, playbackPolicy.autoplay, ytReady]);
 
   const showPlayer = inView && videoId;
   const useApiPlayer = showPlayer && ytReady;
+
+  const renderMedia = () => (
+    <>
+      {videoId && ytReady ? (
+        <div
+          id={playerId}
+          className="h-full w-full"
+          style={{ display: useApiPlayer ? "block" : "none" }}
+          aria-hidden={!useApiPlayer}
+        />
+      ) : null}
+      {!useApiPlayer ? (
+        showPlayer ? (
+          <iframe
+            title={item.title}
+            className="absolute inset-0 h-full w-full border-0"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=${playbackPolicy.autoplay ? 1 : 0}&mute=0&rel=0&modestbranding=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        ) : (
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative block h-full w-full bg-black"
+          >
+            {thumbUrl ? (
+              <Image
+                src={thumbUrl}
+                alt={item.title}
+                fill
+                sizes={isShortform ? "(max-width: 768px) 100vw, 550px" : "(max-width: 1024px) 100vw, 1152px"}
+                className="object-contain"
+                priority={index < 3}
+              />
+            ) : (
+              <div className="flex h-full min-h-[12rem] w-full items-center justify-center text-sm text-white/40">
+                썸네일 없음
+              </div>
+            )}
+          </a>
+        )
+      ) : null}
+    </>
+  );
+
+  const bookmarkControl = item.source === "RSS" && onBookmarkChange ? (
+    <BookmarkButton
+      videoId={`${RSS_BOOKMARK_PREFIX}${item.link}`}
+      videoTitle={item.title}
+      highlight={item.summary ?? item.title}
+      isBookmarked={!!bookmark}
+      bookmarkId={bookmark?.id ?? null}
+      onBookmarkChange={onBookmarkChange}
+      className={bookmarkBtnClass}
+      iconSize={24}
+    />
+  ) : isYoutube && item.id && onBookmarkChange ? (
+    <BookmarkButton
+      videoId={item.id}
+      videoTitle={item.title}
+      highlight={item.title}
+      isBookmarked={!!bookmark}
+      bookmarkId={bookmark?.id ?? null}
+      onBookmarkChange={onBookmarkChange}
+      className={bookmarkBtnClass}
+      iconSize={24}
+    />
+  ) : null;
 
   return (
     <section
       ref={sectionRef}
       className="relative flex h-full min-h-0 w-full shrink-0 snap-start snap-always flex-col items-center justify-start bg-black px-0 py-0"
       aria-label={`${index + 1} / ${total}`}
+      data-testid="reel-slide"
+      data-reel-mode={viewMode}
+      data-item-key={reelItemKey(item)}
     >
-      <div className="flex h-full min-h-0 w-full flex-col">
-        <div className="relative flex min-h-0 w-full flex-1 items-stretch justify-center bg-black">
-          <div className="relative h-full w-full max-w-6xl">
-            {videoId && ytReady ? (
-              <div
-                id={playerId}
-                className="h-full w-full"
-                style={{ display: useApiPlayer ? "block" : "none" }}
-                aria-hidden={!useApiPlayer}
-              />
-            ) : null}
-            {!useApiPlayer ? (
-              showPlayer ? (
-                <iframe
-                  title={item.title}
-                  className="absolute inset-0 h-full w-full border-0"
-                  src={`https://www.youtube.com/embed/${videoId}?${EMBED_PARAMS}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              ) : (
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative block h-full w-full bg-black"
-                >
-                  {thumbUrl ? (
-                    <Image
-                      src={thumbUrl}
-                      alt={item.title}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 896px"
-                      className="object-contain"
-                      priority={index < 3}
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[50vh] w-full items-center justify-center text-white/40 text-sm">
-                      썸네일 없음
-                    </div>
-                  )}
-                </a>
-              )
-            ) : null}
+      {isShortform ? (
+        <div
+          className={`relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-black ${
+            radioActive ? "pb-[calc(6rem+env(safe-area-inset-bottom,0px))]" : ""
+          }`}
+        >
+          <div className="flex min-h-0 w-full flex-1 items-center justify-center bg-black">
+            <div
+              data-testid="reel-media"
+              className="relative max-h-full max-w-full overflow-hidden bg-black sm:rounded-2xl"
+              style={{ height: "min(100%, calc(100vw * 16 / 9))", aspectRatio: "9 / 16" }}
+            >
+              {renderMedia()}
+            </div>
           </div>
-          <span className="absolute bottom-3 right-3 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">
-            {item.sourceName}
-          </span>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 bg-(--notion-bg) px-4 py-3.5 min-h-[3.5rem] sm:grid sm:grid-cols-3 sm:gap-4">
-          <a
-            href={item.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-(--notion-border) bg-(--notion-bg) px-4 py-2.5 text-sm font-medium text-(--notion-fg)/80 hover:bg-(--notion-hover)"
+          <div
+            data-testid="reel-actions"
+            aria-label="Focus Feed 영상 작업"
+            className="flex h-14 w-full shrink-0 items-center justify-center gap-3 border-t border-white/10 bg-black px-4"
           >
-            <ExternalLink size={18} />
-            원문 보기
-          </a>
-          <div className="flex justify-center items-center">
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="원문 보기"
+              title="원문 보기"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 !text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <ExternalLink size={20} />
+            </a>
             {isYoutube && item.id && (
-              <AddToRadioButton videoId={item.id} title={item.title} className="px-4 py-2.5 text-sm rounded-full border border-(--notion-border) bg-(--notion-gray)/50 font-medium gap-2 [&_svg]:size-5" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white [&_button]:!text-white [&_button]:hover:!bg-white/15">
+                <AddToRadioButton videoId={item.id} title={item.title} iconOnly className="!h-11 !w-11" />
+              </span>
             )}
-          </div>
-          <div className="flex justify-end items-center">
-            {item.source === "RSS" && onBookmarkChange && (
-              <BookmarkButton
-                videoId={`${RSS_BOOKMARK_PREFIX}${item.link}`}
-                videoTitle={item.title}
-                highlight={item.summary ?? item.title}
-                isBookmarked={!!bookmark}
-                bookmarkId={bookmark?.id ?? null}
-                onBookmarkChange={onBookmarkChange}
-                className={bookmarkBtnClass}
-                iconSize={24}
-              />
-            )}
-            {isYoutube && item.id && onBookmarkChange && (
-              <BookmarkButton
-                videoId={item.id}
-                videoTitle={item.title}
-                highlight={item.title}
-                isBookmarked={!!bookmark}
-                bookmarkId={bookmark?.id ?? null}
-                onBookmarkChange={onBookmarkChange}
-                className={bookmarkBtnClass}
-                iconSize={24}
-              />
+            {bookmarkControl && (
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white [&_button]:!text-white [&_button]:hover:!bg-white/15">
+                {bookmarkControl}
+              </span>
             )}
           </div>
         </div>
-        {/* 버튼 바 아래 여백. 라디오 플레이어 떠 있으면 그 높이만큼 더 확보해 버튼바가 안 가리게 */}
-        <div className={`shrink-0 bg-(--notion-bg) ${radioActive ? "min-h-[9rem]" : "min-h-[5rem]"}`} aria-hidden />
-      </div>
-      {index < total - 1 && (
-        <div className={`absolute left-1/2 -translate-x-1/2 text-white/60 ${radioActive ? "bottom-32" : "bottom-20"}`}>
+      ) : (
+        <div className={`flex h-full min-h-0 w-full flex-col ${isLive ? "bg-(--notion-bg)" : ""}`}>
+          <div className={`relative flex min-h-0 w-full items-stretch justify-center bg-black ${isLive ? "shrink-0" : "flex-1"}`}>
+            <div
+              data-testid="reel-media"
+              className={`relative w-full max-w-6xl overflow-hidden bg-black ${isLive ? "aspect-video sm:mt-4 sm:rounded-2xl" : "h-full"}`}
+            >
+              {renderMedia()}
+            </div>
+            {!isLive && (
+              <span className="absolute bottom-3 right-3 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">
+                {item.sourceName}
+              </span>
+            )}
+          </div>
+          {isLive && (
+            <div className="w-full max-w-6xl shrink-0 bg-(--notion-bg) px-4 pb-1 pt-4 sm:px-6">
+              <div className="flex items-center gap-2 text-xs font-semibold text-red-700 dark:text-red-400">
+                <span className="inline-block size-2 rounded-full bg-red-700 dark:bg-red-400" aria-hidden />
+                LIVE
+              </div>
+              <h2 className="mt-2 line-clamp-2 text-base font-semibold leading-snug text-(--notion-fg) sm:text-lg">
+                {item.title}
+              </h2>
+              <p className="mt-1 truncate text-sm text-(--notion-fg)/70">{item.sourceName}</p>
+            </div>
+          )}
+          <div data-testid="reel-actions" className="flex min-h-[3.5rem] shrink-0 flex-wrap items-center justify-between gap-2 bg-(--notion-bg) px-4 py-3.5 sm:grid sm:grid-cols-3 sm:gap-4">
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-(--notion-border) bg-(--notion-bg) px-4 py-2.5 text-sm font-medium text-(--notion-fg)/80 hover:bg-(--notion-hover)"
+            >
+              <ExternalLink size={18} />
+              원문 보기
+            </a>
+            <div className="flex items-center justify-center">
+              {isYoutube && item.id && (
+                <AddToRadioButton videoId={item.id} title={item.title} className="gap-2 rounded-full border border-(--notion-border) bg-(--notion-gray)/50 px-4 py-2.5 text-sm font-medium [&_svg]:size-5" />
+              )}
+            </div>
+            <div className="flex items-center justify-end">{bookmarkControl}</div>
+          </div>
+          {radioActive && (
+            <div className="h-[calc(5rem+env(safe-area-inset-bottom,0px))] shrink-0 bg-(--notion-bg)" aria-hidden />
+          )}
+        </div>
+      )}
+      {!isShortform && index < total - 1 && (
+        <div className={`absolute left-1/2 -translate-x-1/2 ${isLive ? "text-(--notion-fg)/35" : "text-white/60"} ${radioActive ? "bottom-32" : "bottom-20"}`}>
           <ChevronDown size={28} className="animate-bounce" aria-hidden />
         </div>
       )}
@@ -218,9 +299,8 @@ function ReelSlide({
 
 export default function FeedReelView({ items, viewMode, bookmarks = [], onBookmarkChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [ytReady, setYtReady] = useState(() =>
-    typeof window !== "undefined" ? !!window.YT?.Player : false,
-  );
+  const playbackPolicy = REEL_PLAYBACK_POLICY[viewMode];
+  const [ytReady, setYtReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -252,6 +332,55 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
     }
   }, [items.length]);
 
+  useLayoutEffect(() => {
+    const root = containerRef.current;
+    if (!root || items.length === 0) return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(reelPositionStorageKey(viewMode));
+    } catch {}
+    const stored = parseStoredReelPosition(raw);
+    const index = resolveStoredReelIndex(stored, items.map(reelItemKey));
+    const restore = () => {
+      const previousBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      root.scrollTop = index * root.clientHeight;
+      root.style.scrollBehavior = previousBehavior;
+    };
+    restore();
+    const frame = requestAnimationFrame(restore);
+    return () => cancelAnimationFrame(frame);
+  }, [items, viewMode]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root || items.length === 0) return;
+    let frame = 0;
+
+    const savePosition = () => {
+      frame = 0;
+      const index = Math.max(0, Math.min(items.length - 1, Math.round(root.scrollTop / root.clientHeight)));
+      const item = items[index];
+      if (!item) return;
+      try {
+        sessionStorage.setItem(
+          reelPositionStorageKey(viewMode),
+          JSON.stringify({ itemKey: reelItemKey(item), index }),
+        );
+      } catch {}
+    };
+    const handleScroll = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(savePosition);
+    };
+
+    root.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      root.removeEventListener("scroll", handleScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [items, viewMode]);
+
   if (items.length === 0) {
     const emptyLabel =
       viewMode === "live"
@@ -262,7 +391,7 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
     return (
       <div className="flex h-[100dvh] min-h-0 w-full flex-col">
         <ReelContextBar viewMode={viewMode} />
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-(--notion-border) px-4 py-16 text-center">
+        <div data-testid="reel-content" className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-(--notion-border) px-4 py-16 text-center">
           <p className="text-(--notion-fg)/70">{emptyLabel} 영상이 없습니다.</p>
           <p className="mt-1 text-sm text-(--notion-fg)/50">
             {viewMode === "live"
@@ -279,6 +408,9 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
       <ReelContextBar viewMode={viewMode} />
       <div
         ref={containerRef}
+        data-testid="reel-content"
+        data-autoplay={playbackPolicy.autoplay ? "true" : "false"}
+        data-advance-on-end={playbackPolicy.advanceOnEnd ? "true" : "false"}
         className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain snap-y snap-mandatory"
         style={{ scrollBehavior: "smooth" }}
       >
@@ -290,13 +422,14 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
             : null;
         return (
           <ReelSlide
-            key={`${item.source}:${item.sourceId}:${item.id ?? item.link}`}
+            key={reelItemKey(item)}
             item={item}
+            viewMode={viewMode}
             index={index}
             total={items.length}
             bookmark={bookmark ?? null}
             onBookmarkChange={onBookmarkChange}
-            onVideoEnd={() => scrollToNext(index)}
+            onVideoEnd={playbackPolicy.advanceOnEnd ? () => scrollToNext(index) : undefined}
             scrollRoot={containerRef}
             ytReady={ytReady}
           />

@@ -3,9 +3,8 @@ import { expect, test } from "@playwright/test";
 test.describe("discovery toolbar", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const toolbar = page.getByTestId("discovery-toolbar");
+    const toolbar = page.locator('[data-testid="discovery-toolbar"][data-hydrated="true"]');
     await expect(toolbar).toBeVisible({ timeout: 30_000 });
-    await expect(toolbar).toHaveAttribute("data-hydrated", "true", { timeout: 30_000 });
   });
 
   test("switches cached source views without a document navigation", async ({ page }) => {
@@ -29,12 +28,23 @@ test.describe("discovery toolbar", () => {
     await page.getByTestId("discovery-filter-trigger").click();
     const sheet = page.getByTestId("discovery-filter-panel");
     await expect(sheet).toBeVisible();
+    await expect.poll(() => page.evaluate(() => {
+      const panel = document.querySelector('[data-testid="discovery-filter-panel"]');
+      return !!panel?.contains(document.activeElement);
+    })).toBe(true);
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => {
+      const panel = document.querySelector('[data-testid="discovery-filter-panel"]');
+      return !!panel?.contains(document.activeElement);
+    })).toBe(true);
     const mobileBox = await sheet.boundingBox();
     expect(mobileBox).not.toBeNull();
     expect(mobileBox!.width).toBeCloseTo(393, 0);
     expect(mobileBox!.y + mobileBox!.height).toBeCloseTo(852, 0);
 
-    await page.getByRole("button", { name: "닫기" }).click();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page.getByTestId("discovery-filter-trigger")).toBeFocused();
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByTestId("discovery-filter-trigger").click();
     const panel = page.getByTestId("discovery-filter-panel");

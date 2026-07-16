@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Plus, SlidersHorizontal, X } from "lucide-react";
+import { ModalTransition } from "@/components/ui/ModalTransition";
 import type { FeedCategory } from "@/types/feed";
 
 interface Props {
@@ -28,15 +29,6 @@ export default function DiscoveryFilterPanel({
   const [newKeyword, setNewKeyword] = useState("");
   const activeCount = keywords.length + (selectedCategory ? 1 : 0);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
-
   const submitKeyword = (event: React.FormEvent) => {
     event.preventDefault();
     const value = newKeyword.trim();
@@ -45,22 +37,23 @@ export default function DiscoveryFilterPanel({
     setNewKeyword("");
   };
 
-  const panel = open && typeof document !== "undefined"
+  const panel = typeof document !== "undefined"
     ? createPortal(
-        <div className="pointer-events-none fixed inset-0 z-[90]" data-testid="discovery-filter-panel-root">
-          <button
-            type="button"
-            aria-label="필터 패널 닫기"
-            onClick={() => setOpen(false)}
-            className="pointer-events-auto absolute inset-0 bg-black/35 backdrop-blur-[2px] sm:hidden"
-          />
-          <aside
-            id="discovery-filter-panel"
-            role="dialog"
-            aria-label="상세 필터"
-            data-testid="discovery-filter-panel"
-            className="pointer-events-auto fixed inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-[24px] border border-(--border-subtle) bg-(--surface-raised) p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.18)] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:border-y-0 sm:border-r-0 sm:p-6 sm:shadow-[-18px_0_60px_rgba(0,0,0,0.14)]"
-          >
+        <ModalTransition
+          open={open}
+          onClose={() => setOpen(false)}
+          overlayClassName="fixed inset-0 bg-black/25 backdrop-blur-[1px]"
+          overlayZ={90}
+          panelZ={91}
+          variant="center"
+          panelId="discovery-filter-panel"
+          panelTestId="discovery-filter-panel"
+          transitionDuration={0.12}
+          exitDuration={0.06}
+          panelRole="dialog"
+          panelAriaLabel="상세 필터"
+          panelClassName="fixed inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-[24px] border border-(--border-subtle) bg-(--surface-raised) p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.18)] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:border-y-0 sm:border-r-0 sm:p-6 sm:shadow-[-18px_0_60px_rgba(0,0,0,0.14)]"
+        >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-(--text-secondary)/25 sm:hidden" aria-hidden />
             <header className="flex items-start justify-between gap-4 border-b border-(--border-subtle) pb-4">
               <div>
@@ -142,8 +135,7 @@ export default function DiscoveryFilterPanel({
                 </form>
               </section>
             </div>
-          </aside>
-        </div>,
+        </ModalTransition>,
         document.body,
       )
     : null;
@@ -153,6 +145,7 @@ export default function DiscoveryFilterPanel({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-label="필터 열기"
         aria-expanded={open}
         aria-controls="discovery-filter-panel"
         data-testid="discovery-filter-trigger"

@@ -43,7 +43,7 @@ function FeedListFlat({ items }: { items: FeedItemType[] }) {
     const flatRemaining = items.length - flatVisible.length;
     return (
         <section className="overflow-hidden rounded-2xl border border-(--notion-border) bg-(--notion-bg)">
-            <div className="border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-sm text-(--notion-fg)/60 sm:px-5">
+            <div className="border-b border-(--notion-border) bg-(--notion-gray) px-4 py-3 text-sm text-(--text-secondary) sm:px-5">
                 최신순으로 정렬된 피드입니다. 항목을 클릭하면 원문으로 이동합니다.
             </div>
             <div className="flex flex-col">
@@ -61,7 +61,7 @@ function FeedListFlat({ items }: { items: FeedItemType[] }) {
                     <button
                         type="button"
                         onClick={() => setFlatLimit((p) => p + FLAT_LIST_PAGE_SIZE)}
-                        className="min-h-[44px] rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--notion-fg)/60 touch-manipulation hover:bg-(--notion-hover) sm:min-h-0"
+                        className="min-h-[44px] rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--text-secondary) touch-manipulation hover:bg-(--notion-hover) hover:text-(--text-primary) sm:min-h-0"
                     >
                         더 보기 ({flatRemaining}개 남음)
                     </button>
@@ -138,7 +138,7 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                                 <p className="mt-1 text-xs leading-4 text-(--text-secondary)">구독한 채널에서 놓치면 아쉬운 영상</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 text-[12px] text-(--notion-fg)/55">
+                        <div className="flex items-center gap-2 text-[12px] text-(--text-secondary)">
                             {typeof totalCount === "number" && <span>총 {totalCount}개</span>}
                             <span className="rounded-full bg-(--surface-subtle) px-2.5 py-1">최신순</span>
                         </div>
@@ -172,7 +172,7 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                                         <button
                                             type="button"
                                             onClick={() => setYtLimit(prev => prev + YOUTUBE_PAGE_SIZE)}
-                                            className="min-h-[44px] rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--notion-fg)/60 touch-manipulation hover:bg-(--notion-hover) sm:min-h-0"
+                                            className="min-h-[44px] rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--text-secondary) touch-manipulation hover:bg-(--notion-hover) hover:text-(--text-primary) sm:min-h-0"
                                         >
                                             더 보기 ({youtubeItems.length - ytLimit}개 남음)
                                         </button>
@@ -191,7 +191,7 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                             <Rss className="h-4 w-4 text-blue-500" />
                             <span className="font-semibold">RSS·뉴스</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[12px] text-(--notion-fg)/55">
+                        <div className="flex items-center gap-2 text-[12px] text-(--text-secondary)">
                             {typeof totalCount === "number" && <span>총 {totalCount}개</span>}
                             <span>최신순 정렬</span>
                         </div>
@@ -221,7 +221,7 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                                         <button
                                             type="button"
                                             onClick={() => setRssLimit(prev => prev + RSS_PAGE_SIZE)}
-                                            className="min-h-[44px] rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--notion-fg)/60 touch-manipulation hover:bg-(--notion-hover) sm:min-h-0"
+                                            className="min-h-[44px] rounded-full border border-(--notion-border) px-4 py-2 text-xs font-semibold text-(--text-secondary) touch-manipulation hover:bg-(--notion-hover) hover:text-(--text-primary) sm:min-h-0"
                                         >
                                             더 보기 ({rssItems.length - rssLimit}개 남음)
                                         </button>

@@ -29,6 +29,7 @@ interface HomeProps {
     category?: string;
     view?: string;
     viewMode?: string;
+    watch?: string;
     auth_error?: string;
     auth_success?: string;
     auth_error_hint?: string;
@@ -112,7 +113,7 @@ export default async function Home({ searchParams }: HomeProps) {
   });
   const latestVideoBySource = Object.fromEntries(latestMap);
 
-  const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
+  const isReelMode = viewMode === "shortform" || viewMode === "live";
 
   return (
     <AppLayout
@@ -146,6 +147,7 @@ export default async function Home({ searchParams }: HomeProps) {
           initialView={initialView}
           showViewSwitcher={showViewSwitcher}
           viewMode={viewMode}
+          initialWatchVideoId={resolvedSearchParams?.watch ?? null}
         >
           {!viewMode && (
             <Suspense fallback={null}>

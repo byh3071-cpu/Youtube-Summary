@@ -41,7 +41,7 @@ export default function AddToRadioButton({ videoId, title, className, iconOnly }
         title={label}
         className={`${ICON_ACTION_BTN} ${
           inQueue ? "text-(--focus-accent)" : "text-(--notion-fg)/60 hover:text-(--notion-fg)"
-        }`}
+        } ${className ?? ""}`}
       >
         <ThemeIcon name="Play_the_radio" alt="" size={20} />
       </button>

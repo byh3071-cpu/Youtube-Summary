@@ -274,7 +274,7 @@ export default function MyFocusSection() {
     <section className="mb-3 rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-3 text-sm sm:px-5 sm:py-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/60">
+          <p className="text-xs font-semibold uppercase tracking-wide text-(--text-secondary)">
             My Focus
           </p>
           <p className="mt-1 whitespace-pre-wrap text-[11px] leading-snug text-(--notion-fg)/70 sm:text-[12px]">
@@ -286,13 +286,13 @@ export default function MyFocusSection() {
             <button
               type="button"
               onClick={() => setGoalsPreviewExpanded((prev) => !prev)}
-              className="mt-0.5 inline-flex min-h-[44px] items-center text-[10px] font-semibold text-(--notion-fg)/55 touch-manipulation hover:text-(--notion-fg)/80 sm:min-h-0"
+              className="mt-0.5 inline-flex min-h-[44px] items-center text-[10px] font-semibold text-(--text-secondary) touch-manipulation hover:text-(--text-primary) sm:min-h-0"
             >
               {goalsPreviewExpanded ? "접기" : "더 보기"}
             </button>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-(--notion-fg)/65">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-(--text-secondary)">
           {hydrated && (
             <button
               type="button"
