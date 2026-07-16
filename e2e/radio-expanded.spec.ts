@@ -197,14 +197,20 @@ test.describe("expanded radio player", () => {
     const queuePreview = page.getByTestId("expanded-queue-preview");
     await expect(queuePreview).toBeVisible();
     await expect(queuePreview).toHaveCSS("opacity", "1");
-    await expect(queuePreview.getByRole("button")).toHaveCount(2);
+    const previewItems = queuePreview.getByTestId("expanded-queue-preview-item");
+    await expect(previewItems).toHaveCount(2);
+
+    await previewItems.nth(1).click();
+    await expect(previewItems).toHaveCount(2);
+    await expect(previewItems.nth(0)).toContainText("이전 1번째");
+    await expect(previewItems.nth(1)).toHaveAttribute("aria-current", "true");
 
     await page.mouse.move(1, 1);
     await expect(queuePreview).toHaveCSS("opacity", "0");
     await media.hover();
     await expect(queuePreview).toHaveCSS("opacity", "1");
 
-    await queuePreview.getByRole("button").first().click();
+    await previewItems.first().click();
     await page.mouse.move(1, 1);
     await expect(queuePreview).toHaveCSS("opacity", "0");
   });

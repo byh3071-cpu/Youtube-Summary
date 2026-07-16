@@ -55,7 +55,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | VIDEO-02 | 롱폼 외부 AI 패널 상태 연결 | browser-verified | idle/loading/auth/error/success/cache, Preview 실생성 남음 |
 | VIDEO-03 | 숏폼 9:16·라이브 16:9 정책 분리 | browser-verified | 숏폼 자동 다음, 라이브 자동 다음 없음, 자막 충돌 수정 |
 | RADIO-01 | 미니·확장 플레이어·큐·AI 외부 패널 | browser-verified | 393/768/1440px safe area·hover chrome 확인 |
-| RADIO-02 | 큐 재정렬과 currentIndex 불변식 | browser-verified | drag·44px 이동 버튼·동일 현재 항목·overflow 검증 완료 |
+| RADIO-02 | 큐 재정렬과 currentIndex 불변식 | browser-verified | drag·44px 이동 버튼·동일 현재 항목·확장 미리보기의 이전/현재/다음 탐색·overflow 검증 완료 |
 | RADIO-03 | 미니↔확장 전환 재생 인스턴스 유지 | browser-verified | 동일 iframe `isSameNode`·src·320px↔100% 전환 통과 |
 | RADIO-04 | 미니 영상 오류 복구·반응형 경계 | browser-verified | 직접 닫기·44px·393/768/1440px·16:9 통과 |
 | SHELL-01 | Apple식 사이드바·모바일 드로어·고정 챗봇 | browser-verified | 드로어 전후 카드·챗봇 위치 검증 완료 |
@@ -76,6 +76,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | 2026-07-16 | 라디오 재생 인스턴스 | 확장 플레이어 E2E 8개, 동일 iframe 노드·src·크기 전환, hover/focus 회귀 통과 |
 | 2026-07-16 | 미니 복구·fixed UI | 라디오 E2E 16개, 3개 viewport 직접 닫기·16:9, 대기열·AI·필터 좌표·전체화면 폭 통과 |
 | 2026-07-17 | 셸 최종 감사·채널 상세 | 홈 360/393/768/1024/1440px, 라이트·다크 393/1440px, 롱폼·숏폼·라이브 360/1440px overflow 0·핵심 44px 통과. 채널 상세 360/1440px 시각 검수 |
+| 2026-07-17 | 확장 대기열 탐색 | 마지막 항목 2/2 재생 후에도 이전 항목 노출·재선택, 현재 항목 표시, 자동 숨김 유지 확인 |
 
 ## 현재 blocker와 다음 Task
 

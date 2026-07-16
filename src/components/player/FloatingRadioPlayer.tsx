@@ -693,6 +693,14 @@ export default function FloatingRadioPlayer() {
     return null;
   }
 
+  // 확장 플레이어의 작은 대기열도 현재 항목 이후만 보여주지 않고,
+  // 현재 항목을 중심으로 이전·다음 항목을 최대 5개까지 유지한다.
+  const queuePreviewStart = Math.max(
+    0,
+    Math.min(radio.currentIndex - 2, Math.max(0, radio.queue.length - 5)),
+  );
+  const queuePreviewItems = radio.queue.slice(queuePreviewStart, queuePreviewStart + 5);
+
   return (
     <>
       {/* 미니: 우하단 320x180 / 전체: 모달 중앙 큰 영상 / 숨김: 1px */}
@@ -851,13 +859,18 @@ export default function FloatingRadioPlayer() {
                     </span>
                   </div>
                   <div className="min-h-0 overflow-y-auto px-2 pb-2">
-                    {radio.queue.slice(radio.currentIndex, radio.currentIndex + 5).map((item, offset) => {
-                      const itemIndex = radio.currentIndex + offset;
-                      const current = offset === 0;
+                    {queuePreviewItems.map((item, offset) => {
+                      const itemIndex = queuePreviewStart + offset;
+                      const current = itemIndex === radio.currentIndex;
+                      const relativeLabel = itemIndex < radio.currentIndex
+                        ? `이전 ${radio.currentIndex - itemIndex}번째`
+                        : `다음 ${itemIndex - radio.currentIndex}번째`;
                       return (
                         <button
                           key={`${item.videoId}-${itemIndex}`}
                           type="button"
+                          data-testid="expanded-queue-preview-item"
+                          data-queue-index={itemIndex}
                           onClick={() => radio.setCurrentIndex(itemIndex)}
                           className={`flex min-h-[68px] w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 ${current ? "bg-white/14" : "hover:bg-white/9"}`}
                           aria-current={current ? "true" : undefined}
@@ -874,7 +887,7 @@ export default function FloatingRadioPlayer() {
                           <span className="min-w-0 flex-1">
                             <span className="line-clamp-2 text-xs font-semibold leading-4">{item.title}</span>
                             <span className={`mt-1 block text-[10px] ${current ? "font-bold text-emerald-300" : "text-white/55"}`}>
-                              {current ? (radio.isPlaying ? "재생 중" : "일시정지") : `다음 ${offset}번째`}
+                              {current ? (radio.isPlaying ? "재생 중" : "일시정지") : relativeLabel}
                             </span>
                           </span>
                         </button>
