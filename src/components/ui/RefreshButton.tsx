@@ -3,6 +3,7 @@
 import { RefreshCcw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { revalidateHomeAction } from "@/app/actions/revalidate";
 
 const LAST_REFRESH_KEY = "focus_feed_last_refresh";
 
@@ -40,10 +41,10 @@ export default function RefreshButton() {
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/revalidate", { method: "POST" });
+      const result = await revalidateHomeAction();
 
-      if (!response.ok) {
-        throw new Error("Revalidation request failed");
+      if (!result.ok) {
+        throw new Error("Revalidation failed");
       }
 
       router.refresh();
