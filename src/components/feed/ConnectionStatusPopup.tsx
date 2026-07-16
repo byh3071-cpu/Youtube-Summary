@@ -76,7 +76,7 @@ export default function ConnectionStatusPopup({
         overlayClassName="fixed inset-0 z-[90] bg-(--notion-fg)/20"
         overlayZ={90}
         panelZ={91}
-        panelClassName="fixed left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+        panelClassName="scroll-lock-stable-center fixed left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
       >
           <div
             role="dialog"

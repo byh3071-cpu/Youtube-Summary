@@ -52,7 +52,7 @@ export default function DiscoveryFilterPanel({
           exitDuration={0.06}
           panelRole="dialog"
           panelAriaLabel="상세 필터"
-          panelClassName="fixed inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-[24px] border border-(--border-subtle) bg-(--surface-raised) p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.18)] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:border-y-0 sm:border-r-0 sm:p-6 sm:shadow-[-18px_0_60px_rgba(0,0,0,0.14)]"
+          panelClassName="scroll-lock-stable-right fixed inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-[24px] border border-(--border-subtle) bg-(--surface-raised) p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.18)] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:border-y-0 sm:border-r-0 sm:p-6 sm:shadow-[-18px_0_60px_rgba(0,0,0,0.14)]"
         >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-(--text-secondary)/25 sm:hidden" aria-hidden />
             <header className="flex items-start justify-between gap-4 border-b border-(--border-subtle) pb-4">

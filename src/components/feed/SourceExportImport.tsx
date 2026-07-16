@@ -140,7 +140,7 @@ export default function SourceExportImport() {
         }}
         overlayZ={100}
         panelZ={101}
-        panelClassName="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+        panelClassName="scroll-lock-stable-center fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
       >
           <div
             role="dialog"

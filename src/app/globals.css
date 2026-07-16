@@ -4,6 +4,26 @@
    시스템이 다크여도 html.dark가 없으면 dark:* 스타일이 섞이지 않는다. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* body scroll-lock은 일반 콘텐츠 폭을 padding으로 보존하지만 fixed 요소에는 적용되지 않는다.
+   아래 보정은 실제 Windows scrollbar gap만 받아 full/right/center 고정 UI의 위치를 유지한다. */
+.scroll-lock-stable-full {
+  padding-right: var(--scrollbar-lock-gap, 0px);
+}
+
+.scroll-lock-stable-right {
+  margin-right: var(--scrollbar-lock-gap, 0px);
+}
+
+.scroll-lock-stable-center {
+  margin-left: calc(var(--scrollbar-lock-gap, 0px) / -2);
+}
+
+@media (min-width: 768px) {
+  .scroll-lock-stable-center-md {
+    margin-left: calc(var(--scrollbar-lock-gap, 0px) / -2);
+  }
+}
+
 @theme {
   /* 신규 코드는 아래 의미 기반 토큰을 우선 사용한다. */
   --color-surface-canvas: var(--surface-canvas);

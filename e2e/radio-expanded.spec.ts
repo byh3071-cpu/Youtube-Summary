@@ -19,7 +19,49 @@ async function openExpandedPlayer(page: Page, mobile: boolean) {
   }
 }
 
+async function openMiniPlayer(page: Page, mobile: boolean) {
+  if (mobile) {
+    await page.getByRole("button", { name: "플레이어 더보기" }).click();
+    await page.getByRole("menuitem", { name: "미니 영상" }).click();
+  } else {
+    await page.getByRole("button", { name: "미니 영상 켜기" }).click();
+  }
+}
+
 test.describe("expanded radio player", () => {
+  for (const viewport of [
+    { width: 393, height: 852 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 },
+  ]) {
+    test(`${viewport.width}px mini player stays recoverable and inside the viewport`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await addFirstItemToRadio(page);
+      await openMiniPlayer(page, viewport.width < 768);
+
+      const wrapper = page.locator("#yt-radio-player-wrapper");
+      const close = page.getByTestId("mini-video-close");
+      await expect(close).toBeVisible();
+      const wrapperBox = await wrapper.boundingBox();
+      const closeBox = await close.boundingBox();
+      expect(wrapperBox).not.toBeNull();
+      expect(closeBox).not.toBeNull();
+      expect(wrapperBox!.x).toBeGreaterThanOrEqual(0);
+      expect(wrapperBox!.x + wrapperBox!.width).toBeLessThanOrEqual(viewport.width);
+      expect(wrapperBox!.width / wrapperBox!.height).toBeCloseTo(16 / 9, 2);
+      expect(closeBox!.width).toBeGreaterThanOrEqual(44);
+      expect(closeBox!.height).toBeGreaterThanOrEqual(44);
+      if (process.env.CAPTURE_UI === "1") {
+        await wrapper.screenshot({ path: `test-results/mini-radio-player-${viewport.width}.png` });
+      }
+
+      await close.click();
+      await expect(close).toHaveCount(0);
+      await expect(wrapper).toHaveAttribute("aria-hidden", "true");
+      await expect(wrapper.locator("iframe")).toHaveCSS("width", "1px");
+    });
+  }
+
   for (const viewport of [
     { width: 393, height: 852 },
     { width: 768, height: 1024 },
@@ -172,9 +214,14 @@ test.describe("expanded radio player", () => {
     await addFirstItemToRadio(page);
 
     const iframe = page.locator("#yt-radio-player-wrapper iframe");
+    const wrapper = page.locator("#yt-radio-player-wrapper");
     await expect(iframe).toHaveCount(1, { timeout: 30_000 });
     await page.getByRole("button", { name: "미니 영상 켜기" }).click();
-    await expect(iframe).toHaveCSS("width", "320px");
+    expect(await iframe.evaluate((element) => element.style.width)).toBe("100%");
+    expect((await iframe.boundingBox())!.width).toBeCloseTo(
+      await wrapper.evaluate((element) => element.clientWidth),
+      0
+    );
 
     const initialSrc = await iframe.getAttribute("src");
     await page.evaluate(() => {
@@ -201,7 +248,11 @@ test.describe("expanded radio player", () => {
 
     await page.getByRole("button", { name: "확장 플레이어 닫기" }).click();
     await expect(page.getByRole("dialog", { name: "확장 라디오 플레이어" })).toHaveCount(0);
-    await expect(iframe).toHaveCSS("width", "320px");
+    expect(await iframe.evaluate((element) => element.style.width)).toBe("100%");
+    expect((await iframe.boundingBox())!.width).toBeCloseTo(
+      await wrapper.evaluate((element) => element.clientWidth),
+      0
+    );
     expect(await iframe.getAttribute("src")).toBe(initialSrc);
     expect(
       await page.evaluate(() => {

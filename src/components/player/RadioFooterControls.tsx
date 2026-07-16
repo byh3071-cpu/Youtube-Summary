@@ -220,7 +220,7 @@ export function RadioFooterControls({
   return (
     <footer
       data-testid="radio-player"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-(--border-subtle) bg-(--surface-raised)/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+      className="scroll-lock-stable-full fixed inset-x-0 bottom-0 z-50 border-t border-(--border-subtle) bg-(--surface-raised)/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(15,23,42,0.08)] backdrop-blur-xl"
       aria-label="라디오 플레이어"
     >
       <div className="relative md:hidden">

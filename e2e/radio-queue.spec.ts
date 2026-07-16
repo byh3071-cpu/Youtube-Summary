@@ -26,6 +26,60 @@ async function openQueue(page: Page, mobile = false) {
 }
 
 test.describe("radio queue", () => {
+  test("opening the queue does not shift fixed player controls", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupQueue(page, 1);
+    const labels = ["이전 곡", "일시정지", "다음 곡", "재생 목록", "AI 요약 보기", "미니 영상 켜기", "전체 화면 영상", "플레이어 닫기"];
+    const controls = labels.map((label) => page.getByRole("button", { name: label, exact: true }));
+    const centers = async () =>
+      Promise.all(
+        controls.map(async (control) => {
+          const box = await control.boundingBox();
+          expect(box).not.toBeNull();
+          return { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
+        })
+      );
+
+    const before = await centers();
+    const beforeScrollbarGap = await page.evaluate(
+      () => Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+    );
+    await openQueue(page);
+    const after = await centers();
+
+    const lockMetrics = await page.evaluate(() => ({
+      bodyPaddingRight: document.body.style.paddingRight,
+      fixedGap: getComputedStyle(document.body).getPropertyValue("--scrollbar-lock-gap").trim(),
+    }));
+    expect(lockMetrics.bodyPaddingRight).toBe(`${beforeScrollbarGap}px`);
+    expect(lockMetrics.fixedGap).toBe(`${beforeScrollbarGap}px`);
+
+    after.forEach((center, index) => {
+      expect(center.x).toBeCloseTo(before[index].x, 0);
+      expect(center.y).toBeCloseTo(before[index].y, 0);
+    });
+
+    await page.getByRole("button", { name: "대기열 닫기" }).click();
+    await expect(page.getByTestId("radio-queue-panel")).toHaveCount(0);
+    await page.getByRole("button", { name: "AI 요약 보기" }).click();
+    await expect(page.getByRole("dialog", { name: "AI 요약" })).toBeVisible();
+    const afterSummary = await centers();
+    afterSummary.forEach((center, index) => {
+      expect(center.x).toBeCloseTo(before[index].x, 0);
+      expect(center.y).toBeCloseTo(before[index].y, 0);
+    });
+
+    await page.getByRole("dialog", { name: "AI 요약" }).getByRole("button", { name: "닫기" }).click();
+    await expect(page.getByRole("dialog", { name: "AI 요약" })).toHaveCount(0);
+    await page.getByRole("button", { name: "필터 열기" }).click();
+    await expect(page.getByRole("dialog", { name: "상세 필터" })).toBeVisible();
+    const afterFilter = await centers();
+    afterFilter.forEach((center, index) => {
+      expect(center.x).toBeCloseTo(before[index].x, 0);
+      expect(center.y).toBeCloseTo(before[index].y, 0);
+    });
+  });
+
   test("mobile sheet stays above the player and inside the viewport", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await setupQueue(page);

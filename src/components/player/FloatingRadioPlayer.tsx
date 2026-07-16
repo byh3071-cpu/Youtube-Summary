@@ -410,7 +410,6 @@ export default function FloatingRadioPlayer() {
 
   // 미니/전체 영상: YT가 1x1로 만든 iframe을 모드에 맞게 리사이즈
   const MINI_VIDEO_W = 320;
-  const MINI_VIDEO_H = 180;
   const videoVisible = videoExpanded || fullPlayerOpen;
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -424,10 +423,10 @@ export default function FloatingRadioPlayer() {
         iframe.style.width = "100%";
         iframe.style.height = "100%";
       } else if (videoExpanded) {
-        iframe.setAttribute("width", String(MINI_VIDEO_W));
-        iframe.setAttribute("height", String(MINI_VIDEO_H));
-        iframe.style.width = `${MINI_VIDEO_W}px`;
-        iframe.style.height = `${MINI_VIDEO_H}px`;
+        iframe.removeAttribute("width");
+        iframe.removeAttribute("height");
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
       } else {
         iframe.setAttribute("width", "1");
         iframe.setAttribute("height", "1");
@@ -708,14 +707,14 @@ export default function FloatingRadioPlayer() {
           fullPlayerOpen
             ? "pointer-events-auto fixed inset-0 z-60 overflow-y-auto bg-(--surface-canvas) text-(--text-primary)"
             : videoExpanded
-              ? "fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] right-3 z-60 overflow-hidden rounded-xl border border-(--notion-border) bg-black shadow-lg transition-all duration-300 pointer-events-auto md:bottom-24 md:right-4"
+              ? "scroll-lock-stable-right pointer-events-auto fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] right-3 z-60 overflow-hidden rounded-xl border border-(--notion-border) bg-black shadow-lg transition-[box-shadow] duration-[180ms] md:bottom-24 md:right-4"
               : "pointer-events-none fixed bottom-0 left-0 h-px w-px overflow-hidden opacity-0"
         }
         style={
           fullPlayerOpen
             ? undefined
             : videoExpanded
-              ? { width: MINI_VIDEO_W, height: MINI_VIDEO_H }
+              ? { width: `min(${MINI_VIDEO_W}px, calc(100vw - 1.5rem))`, aspectRatio: "16 / 9" }
               : undefined
         }
         aria-hidden={!videoVisible}
@@ -785,6 +784,21 @@ export default function FloatingRadioPlayer() {
                 style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}
                 aria-hidden={!videoVisible}
               />
+
+              {videoExpanded && !fullPlayerOpen && (
+                <button
+                  type="button"
+                  data-testid="mini-video-close"
+                  onClick={() => {
+                    setVideoExpanded(false);
+                    qaLog.radio.videoExpandOff();
+                  }}
+                  className="absolute right-2 top-2 z-80 inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                  aria-label="미니 영상 닫기"
+                >
+                  <X size={20} aria-hidden />
+                </button>
+              )}
 
               {fullPlayerOpen && radio.currentItem && resumeSeconds != null && (
                 <div
