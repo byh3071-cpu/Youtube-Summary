@@ -38,7 +38,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | P1 | 영구 Phase/Task 관리 정상화 | approved | 본 문서·MILESTONES·PRD 동기화 커밋 |
 | P2 | 롱폼·숏폼·라이브·AI 상태 완료 | browser-verified | Preview 로그인·Gemini 실생성 제외 로컬 수용 기준 통과 |
 | P3 | Preview 인증·Gemini 실검증 | blocked | Google OAuth, 상세 복귀, 실제 요약·사용량·캐시 확인 |
-| P4 | 라디오 큐 재정렬·재생 인스턴스 검증 | planned | 재정렬 불변식, 동일 iframe 노드, 반응형 검증 |
+| P4 | 라디오 큐 재정렬·재생 인스턴스 검증 | active | 재정렬 불변식, 동일 iframe 노드, 반응형 검증 |
 | P5 | 홈·앱 셸·전 화면 접근성 완료 | planned | 5개 viewport·라이트/다크·핵심 라우트 감사 |
 | P6 | 다중 검수·병합 준비 | planned | 디자인·기능·코드 검수와 전체 게이트 완료 |
 
@@ -55,7 +55,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | VIDEO-02 | 롱폼 외부 AI 패널 상태 연결 | browser-verified | idle/loading/auth/error/success/cache, Preview 실생성 남음 |
 | VIDEO-03 | 숏폼 9:16·라이브 16:9 정책 분리 | browser-verified | 숏폼 자동 다음, 라이브 자동 다음 없음, 자막 충돌 수정 |
 | RADIO-01 | 미니·확장 플레이어·큐·AI 외부 패널 | browser-verified | 393/768/1440px safe area·hover chrome 확인 |
-| RADIO-02 | 큐 재정렬과 currentIndex 불변식 | planned | context API·데스크톱 drag·모바일/키보드 이동 필요 |
+| RADIO-02 | 큐 재정렬과 currentIndex 불변식 | browser-verified | drag·44px 이동 버튼·동일 현재 항목·overflow 검증 완료 |
 | RADIO-03 | 미니↔확장 전환 재생 인스턴스 유지 | planned | 동일 iframe `isSameNode`·동일 src 자동 검증 필요 |
 | SHELL-01 | Apple식 사이드바·모바일 드로어·고정 챗봇 | browser-verified | 드로어 전후 카드·챗봇 위치 검증 완료 |
 | SHELL-02 | 전 화면 반응형·접근성 최종 감사 | planned | 360/393/768/1024/1440, 익명·인증 핵심 라우트 필요 |
@@ -69,11 +69,12 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | 2026-07-16 | M11 기준선 | lint 오류 0(기존 경고 1), unit 174, build, secret scan, VHK 통과 |
 | 2026-07-16 | main 병합 후 | lint 오류 0(기존 경고 1), unit 178, build, secret scan, VHK 통과 |
 | 2026-07-16 | 롱폼 AI | 393/1440px 라이트·다크 Axe 0, overflow 0, 로그인 복귀 URL·캐시 복원 확인 |
+| 2026-07-16 | 라디오 큐 재정렬 | 순수 함수 5개, E2E 4개, 393/1440px 시각 검수, 현재 항목·44px·overflow 통과 |
 
 ## 현재 blocker와 다음 Task
 
 - Preview: Vercel CLI, 로그인 세션, project link가 아직 없다. production으로 우회하지 않는다.
 - 로컬 Playwright test runner: Windows 프로세스 종료 문제가 재현될 수 있어 직접 Chromium
   검증을 병행한다. push 승인 후 CI Playwright를 release-ready 게이트로 사용한다.
-- 외부 blocker가 해소되기 전 다음 구현 Task는 `RADIO-02`다. 이후 `RADIO-03`, `SHELL-02`를
-  진행하고, Preview 준비가 완료되는 즉시 `PREVIEW-01`을 재개한다.
+- 외부 blocker가 해소되기 전 다음 구현 Task는 `RADIO-03`이다. 이후 `SHELL-02`를 진행하고,
+  Preview 준비가 완료되는 즉시 `PREVIEW-01`을 재개한다.

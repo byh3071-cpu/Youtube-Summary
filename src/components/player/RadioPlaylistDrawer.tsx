@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ListMusic, Save, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical, ListMusic, Save, Trash2, X } from "lucide-react";
 import { useRadioQueueOptional, type RadioQueueItem } from "@/contexts/RadioQueueContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { qaLog } from "@/lib/qa-log";
@@ -38,6 +38,8 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -105,12 +107,72 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
     .map((item, index) => ({ item, index }))
     .filter(({ index }) => index < radio.currentIndex);
 
+  const moveItem = (fromIndex: number, toIndex: number) => {
+    radio.moveQueueItem(fromIndex, toIndex);
+    setDraggedIndex(null);
+    setDropTargetIndex(null);
+  };
+
+  const dragProps = (index: number) => ({
+    draggable: radio.queue.length > 1,
+    onDragStart: (event: DragEvent<HTMLElement>) => {
+      setDraggedIndex(index);
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+    },
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      setDropTargetIndex(index);
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      const parsedIndex = Number(event.dataTransfer.getData("text/plain"));
+      const fromIndex = Number.isInteger(parsedIndex) ? parsedIndex : draggedIndex;
+      if (fromIndex !== null) moveItem(fromIndex, index);
+    },
+    onDragEnd: () => {
+      setDraggedIndex(null);
+      setDropTargetIndex(null);
+    },
+  });
+
+  const renderOrderControls = (item: RadioQueueItem, index: number) => (
+    <div className="flex shrink-0 items-center gap-0.5" aria-label={`${item.title} 순서 변경`} role="group">
+      <button
+        type="button"
+        onClick={() => moveItem(index, index - 1)}
+        disabled={index === 0}
+        className="inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full text-(--text-secondary) transition-colors hover:bg-(--surface-subtle) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35 disabled:cursor-not-allowed disabled:opacity-25"
+        aria-label={`${item.title} 한 칸 앞으로 이동`}
+      >
+        <ChevronUp size={16} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={() => moveItem(index, index + 1)}
+        disabled={index === radio.queue.length - 1}
+        className="inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full text-(--text-secondary) transition-colors hover:bg-(--surface-subtle) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35 disabled:cursor-not-allowed disabled:opacity-25"
+        aria-label={`${item.title} 한 칸 뒤로 이동`}
+      >
+        <ChevronDown size={16} aria-hidden />
+      </button>
+    </div>
+  );
+
   const renderQueueRow = ({ item, index }: { item: RadioQueueItem; index: number }) => (
     <li
-      key={`${item.videoId}-${index}`}
+      key={item.videoId}
       data-testid="queue-item"
-      className="group flex min-h-[68px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-(--surface-subtle)"
+      data-queue-index={index}
+      className={`group flex min-h-[68px] items-center gap-2 rounded-xl px-2 py-2 transition-[background-color,box-shadow,opacity] hover:bg-(--surface-subtle) ${
+        dropTargetIndex === index && draggedIndex !== index
+          ? "bg-(--playback-accent-muted) ring-2 ring-inset ring-(--playback-accent)/45"
+          : ""
+      } ${draggedIndex === index ? "opacity-50" : ""}`}
+      {...dragProps(index)}
     >
+      <GripVertical size={18} className="hidden shrink-0 cursor-grab text-(--text-secondary) md:block" aria-hidden />
       <button
         type="button"
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35"
@@ -126,6 +188,7 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
           <span className="mt-0.5 block text-[11px] text-(--text-secondary)">대기열 {index + 1}번째</span>
         </span>
       </button>
+      {renderOrderControls(item, index)}
       <button
         type="button"
         onClick={() => {
@@ -212,7 +275,17 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 md:px-4">
         <section aria-labelledby="current-radio-item">
           <h3 id="current-radio-item" className="m-0! px-1 text-xs! font-bold leading-5! text-(--text-secondary)">현재 재생</h3>
-          <div data-testid="current-queue-item" className="mt-2 flex items-center gap-3 rounded-2xl bg-(--playback-accent-muted) p-3 ring-1 ring-inset ring-(--playback-accent)/25">
+          <div
+            data-testid="current-queue-item"
+            data-queue-index={radio.currentIndex}
+            className={`mt-2 flex items-center gap-3 rounded-2xl bg-(--playback-accent-muted) p-3 ring-1 ring-inset ring-(--playback-accent)/25 transition-[box-shadow,opacity] ${
+              dropTargetIndex === radio.currentIndex && draggedIndex !== radio.currentIndex
+                ? "ring-2 ring-(--playback-accent)/55"
+                : ""
+            } ${draggedIndex === radio.currentIndex ? "opacity-50" : ""}`}
+            {...dragProps(radio.currentIndex)}
+          >
+            <GripVertical size={18} className="hidden shrink-0 cursor-grab text-(--text-secondary) md:block" aria-hidden />
             <QueueThumbnail item={radio.currentItem} size={56} />
             <div className="min-w-0 flex-1">
               <p className="line-clamp-2 text-sm font-bold leading-5 text-(--text-primary)">{radio.currentItem.title}</p>
@@ -225,6 +298,7 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
                 {radio.isPlaying ? "재생 중" : "일시정지"}
               </div>
             </div>
+            {renderOrderControls(radio.currentItem, radio.currentIndex)}
             <button
               type="button"
               onClick={() => {

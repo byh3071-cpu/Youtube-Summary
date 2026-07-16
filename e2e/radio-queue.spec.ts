@@ -14,6 +14,14 @@ async function openQueue(page: Page, mobile = false) {
   await player.locator(`button[aria-label="${mobile ? "재생 대기열 열기" : "재생 목록"}"]:visible`).first().click();
   const panel = page.getByTestId("radio-queue-panel");
   await expect(panel).toBeVisible();
+  await expect
+    .poll(() =>
+      panel.evaluate((element) => {
+        const transform = getComputedStyle(element).transform;
+        return transform === "none" ? 0 : Math.abs(new DOMMatrix(transform).m42);
+      })
+    )
+    .toBeLessThan(1);
   return panel;
 }
 
@@ -32,6 +40,9 @@ test.describe("radio queue", () => {
     expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(playerBox!.y);
     await expect(panel.getByTestId("current-queue-item")).toBeVisible();
     await expect(panel.getByTestId("queue-item")).toHaveCount(2);
+    if (process.env.CAPTURE_UI === "1") {
+      await panel.screenshot({ path: "test-results/radio-queue-panel-393.png" });
+    }
   });
 
   test("selection, current removal and clear keep queue state consistent", async ({ page }) => {
@@ -45,11 +56,57 @@ test.describe("radio queue", () => {
     await expect(panel.locator('[aria-labelledby="next-radio-items"] [data-testid="queue-item"]')).toHaveCount(1);
     await expect(panel.locator('[aria-labelledby="previous-radio-items"] [data-testid="queue-item"]')).toHaveCount(1);
 
-    await panel.getByTestId("current-queue-item").locator("button").click();
+    await panel
+      .getByTestId("current-queue-item")
+      .getByRole("button", { name: /목록에서 제거/ })
+      .click();
     await expect(panel.getByTestId("queue-item")).toHaveCount(1);
 
     await panel.getByRole("button", { name: "전체 비우기" }).click();
     await expect(page.getByTestId("radio-player")).toHaveCount(0);
     await expect(page.getByTestId("radio-queue-panel")).toHaveCount(0);
+  });
+
+  test("desktop drag reorders the queue without changing the playing item", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupQueue(page, 4);
+    const panel = await openQueue(page);
+    const current = panel.getByTestId("current-queue-item");
+    const currentTitle = (await current.locator("p").textContent())?.trim();
+    const firstNext = panel
+      .locator('[aria-labelledby="next-radio-items"] [data-testid="queue-item"]')
+      .first();
+
+    await expect(current).toHaveAttribute("data-queue-index", "0");
+    await firstNext.dragTo(current);
+
+    await expect(current).toHaveAttribute("data-queue-index", "1");
+    await expect(current.locator("p")).toHaveText(currentTitle ?? "");
+    await expect(panel).toContainText("현재 2번째");
+    if (process.env.CAPTURE_UI === "1") {
+      await panel.screenshot({ path: "test-results/radio-queue-panel-1440.png" });
+    }
+  });
+
+  test("move buttons preserve the current item and expose 44px mobile targets", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await setupQueue(page, 4);
+    const panel = await openQueue(page, true);
+    const current = panel.getByTestId("current-queue-item");
+    const currentTitle = (await current.locator("p").textContent())?.trim();
+    const moveBack = current.getByRole("button", { name: /한 칸 뒤로 이동/ });
+
+    const targetBox = await moveBack.boundingBox();
+    expect(targetBox).not.toBeNull();
+    expect(targetBox!.width).toBeGreaterThanOrEqual(44);
+    expect(targetBox!.height).toBeGreaterThanOrEqual(44);
+
+    await moveBack.click();
+    await expect(current).toHaveAttribute("data-queue-index", "1");
+    await expect(current.locator("p")).toHaveText(currentTitle ?? "");
+    await expect(panel).toContainText("현재 2번째");
+
+    const overflow = await panel.evaluate((element) => element.scrollWidth - element.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 });
