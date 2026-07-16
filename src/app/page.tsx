@@ -90,7 +90,6 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const selectedSource = selectedSourceId ? hydratedSources.find((s) => s.id === selectedSourceId) : undefined;
   const initialCategory = parseCategory(resolvedSearchParams?.category);
-  const showViewSwitcher = !selectedSource;
 
   const { items, sourceStatus } = await getMergedFeed(hydratedSources);
   let visibleItems = selectedSource
@@ -145,13 +144,12 @@ export default async function Home({ searchParams }: HomeProps) {
           selectedSourceId={selectedSource?.id}
           initialCategory={initialCategory}
           initialView={initialView}
-          showViewSwitcher={showViewSwitcher}
           viewMode={viewMode}
           initialWatchVideoId={resolvedSearchParams?.watch ?? null}
         >
           {!viewMode && (
             <Suspense fallback={null}>
-              <TrendRadarBar attachToHeader={!!selectedSource} integratedWithSearch={!selectedSource} />
+              <TrendRadarBar integratedWithSearch />
             </Suspense>
           )}
         </FeedClientContainer>

@@ -39,7 +39,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | P2 | 롱폼·숏폼·라이브·AI 상태 완료 | browser-verified | Preview 로그인·Gemini 실생성 제외 로컬 수용 기준 통과 |
 | P3 | Preview 인증·Gemini 실검증 | blocked | Google OAuth, 상세 복귀, 실제 요약·사용량·캐시 확인 |
 | P4 | 라디오 큐 재정렬·재생 인스턴스 검증 | browser-verified | 재정렬 불변식, 동일 iframe 노드, 반응형 검증 |
-| P5 | 홈·앱 셸·전 화면 접근성 완료 | active | 5개 viewport·라이트/다크·핵심 라우트 감사 |
+| P5 | 홈·앱 셸·전 화면 접근성 완료 | browser-verified | 5개 viewport·라이트/다크·핵심 라우트 감사 통과 |
 | P6 | 다중 검수·병합 준비 | planned | 디자인·기능·코드 검수와 전체 게이트 완료 |
 
 ## Task 현황
@@ -59,8 +59,9 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | RADIO-03 | 미니↔확장 전환 재생 인스턴스 유지 | browser-verified | 동일 iframe `isSameNode`·src·320px↔100% 전환 통과 |
 | RADIO-04 | 미니 영상 오류 복구·반응형 경계 | browser-verified | 직접 닫기·44px·393/768/1440px·16:9 통과 |
 | SHELL-01 | Apple식 사이드바·모바일 드로어·고정 챗봇 | browser-verified | 드로어 전후 카드·챗봇 위치 검증 완료 |
-| SHELL-02 | 전 화면 반응형·접근성 최종 감사 | planned | 360/393/768/1024/1440, 익명·인증 핵심 라우트 필요 |
+| SHELL-02 | 전 화면 반응형·접근성 최종 감사 | browser-verified | 360/393/768/1024/1440, 라이트·다크, 익명 핵심 라우트 통과. 인증 화면은 PREVIEW-01에서 검증 |
 | SHELL-03 | 모달 scroll-lock fixed UI 위치 유지 | browser-verified | 대기열·AI·필터 전후 하단 버튼 좌표·전체화면 폭 통과 |
+| SHELL-04 | 채널 상세 상단을 홈 탐색 계층과 통일 | browser-verified | 새로고침·중복 필터 카드 제거, 아바타형 채널 헤더와 검색·트렌드·필터 통합, 360/1440px overflow 0 |
 | PREVIEW-01 | Vercel Preview OAuth·Gemini 실검증 | blocked | Vercel CLI·인증·프로젝트 link와 Supabase redirect 필요 |
 | QA-01 | 디자인·기능·코드 3단계 검수 | planned | CI Playwright는 push 승인 이후 최종 병합 게이트 |
 
@@ -74,11 +75,12 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | 2026-07-16 | 라디오 큐 재정렬 | 순수 함수 5개, E2E 4개, 393/1440px 시각 검수, 현재 항목·44px·overflow 통과 |
 | 2026-07-16 | 라디오 재생 인스턴스 | 확장 플레이어 E2E 8개, 동일 iframe 노드·src·크기 전환, hover/focus 회귀 통과 |
 | 2026-07-16 | 미니 복구·fixed UI | 라디오 E2E 16개, 3개 viewport 직접 닫기·16:9, 대기열·AI·필터 좌표·전체화면 폭 통과 |
+| 2026-07-17 | 셸 최종 감사·채널 상세 | 홈 360/393/768/1024/1440px, 라이트·다크 393/1440px, 롱폼·숏폼·라이브 360/1440px overflow 0·핵심 44px 통과. 채널 상세 360/1440px 시각 검수 |
 
 ## 현재 blocker와 다음 Task
 
 - Preview: Vercel CLI, 로그인 세션, project link가 아직 없다. production으로 우회하지 않는다.
 - 로컬 Playwright test runner: Windows 프로세스 종료 문제가 재현될 수 있어 직접 Chromium
   검증을 병행한다. push 승인 후 CI Playwright를 release-ready 게이트로 사용한다.
-- 외부 blocker가 해소되기 전 다음 구현 Task는 `SHELL-02`다. Preview 준비가 완료되는 즉시
-  `PREVIEW-01`을 재개한다.
+- 외부 blocker가 해소되기 전 다음 Task는 `QA-01`의 로컬 디자인·기능·코드 검수다. push 승인 후
+  CI Playwright를 실행하고, Preview 준비가 완료되는 즉시 `PREVIEW-01`을 재개한다.

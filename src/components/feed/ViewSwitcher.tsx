@@ -28,7 +28,7 @@ export default function ViewSwitcher({ currentView, onChange }: Props) {
             data-testid={`view-${id}`}
             onClick={() => onChange(id)}
             aria-pressed={currentView === id}
-            className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] touch-manipulation sm:min-h-10 ${
+            className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] touch-manipulation ${
               currentView === id
                 ? "bg-(--text-primary) text-(--surface-raised) shadow-sm"
                 : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"

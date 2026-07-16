@@ -50,8 +50,9 @@ export default function TrendRadarBarClient({ trends, generatedAt, attachToHeade
             <button
               key={trend.keyword}
               type="button"
+              data-testid="trend-chip"
               onClick={() => toggleTrendKeyword(trend.keyword, trend.sampleTitles ?? [])}
-              className={`inline-flex min-h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--focus-accent)/60 ${
+              className={`inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--focus-accent)/60 ${
                 isSelected
                   ? "bg-(--focus-accent) text-black"
                   : "bg-(--notion-gray)/40 text-(--notion-fg)/80 hover:bg-(--notion-gray)"

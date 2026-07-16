@@ -9,7 +9,7 @@ import FeedList from "./FeedList";
 import FeedReelView from "./FeedReelView";
 import LongformFeedView from "./LongformFeedView";
 import FeedSearch from "./FeedSearch";
-import KeywordFilter, { useKeywordFilter } from "./KeywordFilter";
+import { useKeywordFilter } from "./KeywordFilter";
 import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
 import MyFocusSection from "./MyFocusSection";
 import UsageBadge from "./UsageBadge";
@@ -45,7 +45,6 @@ type FeedClientContainerProps = {
     selectedSourceId?: string;
     initialCategory?: FeedCategory | null;
     initialView?: ViewMode;
-    showViewSwitcher?: boolean;
     viewMode?: "longform" | "shortform" | "live" | null;
     initialWatchVideoId?: string | null;
     children?: ReactNode;
@@ -65,7 +64,6 @@ function FeedClientContainerContent({
     selectedSourceId,
     initialCategory = null,
     initialView = "all",
-    showViewSwitcher = false,
     viewMode = null,
     initialWatchVideoId = null,
     children,
@@ -229,9 +227,8 @@ function FeedClientContainerContent({
             <h1 className="sr-only">
                 {selectedSourceName ? `${selectedSourceName} 피드` : "Focus Feed 홈"}
             </h1>
-            {/* 상단 정리: 검색 → 트렌딩 키워드 → 필터만 노출. 히어로/환영 배너 제거, MY FOCUS·사용량은 피드 아래로 이동(기능 유지). */}
-            {isGlobalFeed && (
-                <section data-testid="discovery-toolbar" data-hydrated={isHydrated ? "true" : "false"} aria-label="피드 탐색" className="-mx-2 mb-3 bg-(--surface-raised)/95 px-2 pb-1 pt-1 backdrop-blur-xl sm:-mx-4 sm:px-4 md:sticky md:top-0 md:z-40 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+            {/* 홈과 소스 상세이 같은 탐색 구조를 공유한다: 검색 → 트렌드 → 소스 전환(홈만). */}
+            <section data-testid="discovery-toolbar" data-hydrated={isHydrated ? "true" : "false"} aria-label="피드 탐색" className="-mx-2 mb-3 bg-(--surface-raised)/95 px-2 pb-1 pt-1 backdrop-blur-xl sm:-mx-4 sm:px-4 md:sticky md:top-16 md:z-40 md:-mx-6 md:px-6 lg:top-0 lg:-mx-8 lg:px-8">
                   <div className="flex items-center gap-2 py-2">
                     <div className="min-w-0 flex-1">
                       <FeedSearch value={searchQuery} onChange={setSearchQuery} />
@@ -248,27 +245,12 @@ function FeedClientContainerContent({
                   </div>
 
                   {children}
-                  <div className="flex items-center justify-between py-1">
-                    <ViewSwitcher currentView={view} onChange={handleViewChange} />
-                  </div>
-                </section>
-            )}
-
-            {!isGlobalFeed && (
-              <>
-                {children}
-                <KeywordFilter
-                    keywords={keywords}
-                    onAddKeyword={addKeyword}
-                    onRemoveKeyword={removeKeyword}
-                    onClearKeywords={clearKeywords}
-                    selectedCategory={selectedCategory}
-                    onCategoryChange={handleCategoryChange}
-                    availableCategories={availableCategories}
-                    compact={showViewSwitcher}
-                />
-              </>
-            )}
+                  {isGlobalFeed && (
+                    <div className="flex items-center justify-between py-1">
+                      <ViewSwitcher currentView={view} onChange={handleViewChange} />
+                    </div>
+                  )}
+            </section>
             {isGlobalFeed &&
                 (stateCounts.queued > 0 || stateCounts.dismissed > 0 || stateFilter !== "all") && (
                     <div className="mb-2 flex items-center gap-1.5 px-1">
