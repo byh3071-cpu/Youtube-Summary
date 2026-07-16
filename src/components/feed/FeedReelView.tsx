@@ -67,6 +67,7 @@ function ReelSlide({
   const sectionRef = useRef<HTMLElement>(null);
   const playerRef = useRef<{ destroy: () => void; pauseVideo?: () => void } | null>(null);
   const [inView, setInView] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
   const playerId = `reel-yt-${index}`;
 
   useEffect(() => {
@@ -96,7 +97,11 @@ function ReelSlide({
         videoId,
         playerVars: { autoplay: playbackPolicy.autoplay ? 1 : 0, mute: 0, rel: 0, modestbranding: 1 },
         events: {
+          onError() {
+            setPlayerReady(false);
+          },
           onStateChange(ev: { data: number }) {
+            if (ev.data === YT.PlayerState?.PLAYING) setPlayerReady(true);
             if (playbackPolicy.advanceOnEnd && ev.data === YT.PlayerState?.ENDED) onVideoEnd?.();
           },
         },
@@ -110,6 +115,7 @@ function ReelSlide({
         playerRef.current?.pauseVideo?.();
       } catch {}
       playerRef.current = null;
+      setPlayerReady(false);
       // YouTube player.destroy() mutates DOM and can trigger React "removeChild" errors;
       // skip destroy and let React unmount the container normally.
     };
@@ -120,11 +126,21 @@ function ReelSlide({
 
   const renderMedia = () => (
     <>
+      {thumbUrl ? (
+        <Image
+          src={thumbUrl}
+          alt=""
+          fill
+          sizes={isShortform ? "(max-width: 768px) 100vw, 550px" : "(max-width: 1024px) 100vw, 1152px"}
+          className={`z-0 object-contain transition-opacity duration-200 motion-reduce:transition-none ${useApiPlayer && playerReady ? "opacity-0" : "opacity-100"}`}
+          priority={index < 3}
+        />
+      ) : null}
       {videoId && ytReady ? (
         <div
           id={playerId}
-          className="h-full w-full"
-          style={{ display: useApiPlayer ? "block" : "none" }}
+          className="relative z-10 h-full w-full transition-opacity duration-200 motion-reduce:transition-none"
+          style={{ display: useApiPlayer ? "block" : "none", opacity: playerReady ? 1 : 0 }}
           aria-hidden={!useApiPlayer}
         />
       ) : null}
@@ -132,7 +148,7 @@ function ReelSlide({
         showPlayer ? (
           <iframe
             title={item.title}
-            className="absolute inset-0 h-full w-full border-0"
+            className="absolute inset-0 z-10 h-full w-full border-0"
             src={`https://www.youtube.com/embed/${videoId}?autoplay=${playbackPolicy.autoplay ? 1 : 0}&mute=0&rel=0&modestbranding=1`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
@@ -142,22 +158,14 @@ function ReelSlide({
             href={item.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative block h-full w-full bg-black"
+            className="relative z-10 block h-full w-full"
+            aria-label={`${item.title} 원문 보기`}
           >
-            {thumbUrl ? (
-              <Image
-                src={thumbUrl}
-                alt={item.title}
-                fill
-                sizes={isShortform ? "(max-width: 768px) 100vw, 550px" : "(max-width: 1024px) 100vw, 1152px"}
-                className="object-contain"
-                priority={index < 3}
-              />
-            ) : (
+            {!thumbUrl ? (
               <div className="flex h-full min-h-[12rem] w-full items-center justify-center text-sm text-white/40">
                 썸네일 없음
               </div>
-            )}
+            ) : null}
           </a>
         )
       ) : null}
@@ -210,6 +218,22 @@ function ReelSlide({
               style={{ height: "min(100%, calc(100vw * 16 / 9))", aspectRatio: "9 / 16" }}
             >
               {renderMedia()}
+            </div>
+          </div>
+          <div
+            data-testid="shortform-meta"
+            className="w-full shrink-0 border-t border-white/10 bg-black px-4 py-2.5 text-white"
+          >
+            <div className="mx-auto flex max-w-[440px] items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[11px] font-semibold text-white/65">{item.sourceName}</p>
+                <h2 className="m-0! mt-0.5! line-clamp-1 text-sm! font-semibold leading-5! text-white">
+                  {item.title}
+                </h2>
+              </div>
+              <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-white/70">
+                {index + 1} / {total}
+              </span>
             </div>
           </div>
           <div

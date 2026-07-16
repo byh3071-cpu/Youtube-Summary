@@ -63,7 +63,8 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | SHELL-03 | 모달 scroll-lock fixed UI 위치 유지 | browser-verified | 대기열·AI·필터 전후 하단 버튼 좌표·전체화면 폭 통과 |
 | SHELL-04 | 채널 상세 상단을 홈 탐색 계층과 통일 | browser-verified | 새로고침·중복 필터 카드 제거, 아바타형 채널 헤더와 검색·트렌드·필터 통합, 360/1440px overflow 0 |
 | PREVIEW-01 | Vercel Preview OAuth·Gemini 실검증 | blocked | Vercel CLI·인증·프로젝트 link와 Supabase redirect 필요 |
-| QA-01 | 디자인·기능·코드 3단계 검수 | planned | CI Playwright는 push 승인 이후 최종 병합 게이트 |
+| QA-01 | 디자인·기능·코드 3단계 검수 | active | 디자인 시각 검수 완료. 기능·코드 검수와 CI Playwright는 잔여 |
+| QA-01-1 | 주요 화면 디자인 시각 검수 | browser-verified | 홈·채널·롱폼·숏폼·라이브·확장 라디오 393/1440px 캡처, 숏폼 포스터·외부 메타 보완 |
 
 ## 검증 기록
 
@@ -77,6 +78,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | 2026-07-16 | 미니 복구·fixed UI | 라디오 E2E 16개, 3개 viewport 직접 닫기·16:9, 대기열·AI·필터 좌표·전체화면 폭 통과 |
 | 2026-07-17 | 셸 최종 감사·채널 상세 | 홈 360/393/768/1024/1440px, 라이트·다크 393/1440px, 롱폼·숏폼·라이브 360/1440px overflow 0·핵심 44px 통과. 채널 상세 360/1440px 시각 검수 |
 | 2026-07-17 | 확장 대기열 탐색 | 마지막 항목 2/2 재생 후에도 이전 항목 노출·재선택, 현재 항목 표시, 자동 숨김 유지 확인 |
+| 2026-07-17 | QA 디자인 시각 검수 | 홈·채널·롱폼·숏폼·라이브·확장 라디오 9개 상태 캡처. 숏폼 로딩 포스터와 자막 비충돌 메타 영역 추가 후 393/1440px 재검증 |
 
 ## 현재 blocker와 다음 Task
 

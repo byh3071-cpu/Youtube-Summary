@@ -162,6 +162,12 @@ test.describe("responsive app shell", () => {
         expect(mediaBox!.width / mediaBox!.height).toBeCloseTo(expectedRatio, 2);
         if (mode === "shortform") {
           expect(actionsBox!.y).toBeGreaterThanOrEqual(mediaBox!.y + mediaBox!.height - 1);
+          const metadata = page.getByTestId("shortform-meta").first();
+          await expect(metadata).toBeVisible();
+          const metadataBox = await metadata.boundingBox();
+          expect(metadataBox).not.toBeNull();
+          expect(metadataBox!.y).toBeGreaterThanOrEqual(mediaBox!.y + mediaBox!.height - 1);
+          expect(actionsBox!.y).toBeGreaterThanOrEqual(metadataBox!.y + metadataBox!.height - 1);
         }
 
         const targets = actions.locator("a, button");

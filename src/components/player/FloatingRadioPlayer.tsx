@@ -30,7 +30,11 @@ declare namespace YT {
       width?: string;
       videoId?: string;
       playerVars?: Record<string, number | string>;
-      events?: { onReady?: (event: { target: Player }) => void; onStateChange?: (event: { data: number }) => void };
+      events?: {
+        onReady?: (event: { target: Player }) => void;
+        onStateChange?: (event: { data: number }) => void;
+        onError?: (event: { data: number }) => void;
+      };
     });
     loadVideoById(videoId: string): void;
     playVideo(): void;
