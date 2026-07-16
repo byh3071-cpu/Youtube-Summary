@@ -137,6 +137,10 @@ test.describe("expanded radio player", () => {
 
     const resumeButton = prompt.getByRole("button");
     await resumeButton.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(resumeButton).toBeFocused();
+    expect(await resumeButton.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
     await page.mouse.move(1, 1);
     await expect(prompt).toHaveCSS("opacity", "1");
   });
@@ -163,12 +167,56 @@ test.describe("expanded radio player", () => {
     await expect(queuePreview).toHaveCSS("opacity", "0");
   });
 
+  test("mini and expanded modes keep the same YouTube iframe instance", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await addFirstItemToRadio(page);
+
+    const iframe = page.locator("#yt-radio-player-wrapper iframe");
+    await expect(iframe).toHaveCount(1, { timeout: 30_000 });
+    await page.getByRole("button", { name: "미니 영상 켜기" }).click();
+    await expect(iframe).toHaveCSS("width", "320px");
+
+    const initialSrc = await iframe.getAttribute("src");
+    await page.evaluate(() => {
+      const target = document.querySelector("#yt-radio-player-wrapper iframe");
+      (window as Window & { __focusFeedRadioIframe?: Element | null }).__focusFeedRadioIframe = target;
+    });
+
+    await openExpandedPlayer(page, false);
+    await expect(page.getByRole("dialog", { name: "확장 라디오 플레이어" })).toBeVisible();
+    expect(await iframe.evaluate((element) => element.style.width)).toBe("100%");
+    const expandedIframeBox = await iframe.boundingBox();
+    const expandedMediaBox = await page.getByTestId("expanded-radio-media").boundingBox();
+    expect(expandedIframeBox).not.toBeNull();
+    expect(expandedMediaBox).not.toBeNull();
+    expect(expandedIframeBox!.width).toBeCloseTo(expandedMediaBox!.width, 0);
+    expect(expandedIframeBox!.height).toBeCloseTo(expandedMediaBox!.height, 0);
+    expect(await iframe.getAttribute("src")).toBe(initialSrc);
+    expect(
+      await page.evaluate(() => {
+        const stored = (window as Window & { __focusFeedRadioIframe?: Element | null }).__focusFeedRadioIframe;
+        return Boolean(stored?.isSameNode(document.querySelector("#yt-radio-player-wrapper iframe")));
+      })
+    ).toBe(true);
+
+    await page.getByRole("button", { name: "확장 플레이어 닫기" }).click();
+    await expect(page.getByRole("dialog", { name: "확장 라디오 플레이어" })).toHaveCount(0);
+    await expect(iframe).toHaveCSS("width", "320px");
+    expect(await iframe.getAttribute("src")).toBe(initialSrc);
+    expect(
+      await page.evaluate(() => {
+        const stored = (window as Window & { __focusFeedRadioIframe?: Element | null }).__focusFeedRadioIframe;
+        return Boolean(stored?.isSameNode(document.querySelector("#yt-radio-player-wrapper iframe")));
+      })
+    ).toBe(true);
+  });
+
   test("desktop AI summary shell stays open until explicitly closed", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await addFirstItemToRadio(page);
     await openExpandedPlayer(page, false);
 
-    const trigger = page.getByRole("button", { name: "AI 요약", exact: true });
+    const trigger = page.getByTestId("expanded-ai-summary-trigger");
     await trigger.click();
     const panel = page.getByTestId("expanded-ai-summary-panel");
     await expect(panel).toBeVisible();
