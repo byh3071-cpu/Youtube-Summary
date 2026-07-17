@@ -16,6 +16,7 @@ import {
   resolveStoredReelIndex,
   type ReelViewMode,
 } from "@/lib/reel-playback-policy";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 const RSS_BOOKMARK_PREFIX = "rss:";
 
@@ -323,7 +324,9 @@ function ReelSlide({
 
 export default function FeedReelView({ items, viewMode, bookmarks = [], onBookmarkChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isHydrated = useIsHydrated();
   const playbackPolicy = REEL_PLAYBACK_POLICY[viewMode];
+  const itemKeySignature = items.map(reelItemKey).join("\u001f");
   const [ytReady, setYtReady] = useState(false);
 
   useEffect(() => {
@@ -364,7 +367,7 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
       raw = sessionStorage.getItem(reelPositionStorageKey(viewMode));
     } catch {}
     const stored = parseStoredReelPosition(raw);
-    const index = resolveStoredReelIndex(stored, items.map(reelItemKey));
+    const index = resolveStoredReelIndex(stored, itemKeySignature.split("\u001f"));
     const restore = () => {
       const previousBehavior = root.style.scrollBehavior;
       root.style.scrollBehavior = "auto";
@@ -372,11 +375,14 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
       root.style.scrollBehavior = previousBehavior;
     };
     restore();
-    const frame = requestAnimationFrame(restore);
+    const restoredScrollTop = root.scrollTop;
+    const frame = requestAnimationFrame(() => {
+      if (Math.abs(root.scrollTop - restoredScrollTop) < 1) restore();
+    });
     return () => cancelAnimationFrame(frame);
-  }, [items, viewMode]);
+  }, [itemKeySignature, items.length, viewMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = containerRef.current;
     if (!root || items.length === 0) return;
     let frame = 0;
@@ -399,9 +405,12 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
     };
 
     root.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("pagehide", savePosition);
     return () => {
       root.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("pagehide", savePosition);
       if (frame) cancelAnimationFrame(frame);
+      savePosition();
     };
   }, [items, viewMode]);
 
@@ -433,6 +442,7 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
       <div
         ref={containerRef}
         data-testid="reel-content"
+        data-hydrated={isHydrated ? "true" : "false"}
         data-autoplay={playbackPolicy.autoplay ? "true" : "false"}
         data-advance-on-end={playbackPolicy.advanceOnEnd ? "true" : "false"}
         className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain snap-y snap-mandatory"

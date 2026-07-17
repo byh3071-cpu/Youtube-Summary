@@ -87,8 +87,13 @@ function FeedClientContainerContent({
         try {
             const stored = Number(sessionStorage.getItem(HOME_SCROLL_STORAGE_KEY));
             if (!Number.isFinite(stored) || stored <= 0) return;
+            const initialScrollY = window.scrollY;
             firstFrame = requestAnimationFrame(() => {
-                secondFrame = requestAnimationFrame(() => window.scrollTo({ top: stored, behavior: "auto" }));
+                secondFrame = requestAnimationFrame(() => {
+                    if (Math.abs(window.scrollY - initialScrollY) < 1) {
+                        window.scrollTo({ top: stored, behavior: "auto" });
+                    }
+                });
             });
         } catch {
             return;
@@ -99,7 +104,7 @@ function FeedClientContainerContent({
         };
     }, [isReelMode, pathname]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (isReelMode) return;
         const saveScroll = () => {
             try {
@@ -168,13 +173,16 @@ function FeedClientContainerContent({
 
     const trendFilter = useTrendFilter();
     const selectedTrendKeyword = trendFilter?.selectedTrendKeyword ?? null;
-    const selectedTrendSamples = trendFilter?.selectedTrendSamples ?? [];
+    const selectedTrendSamples = trendFilter?.selectedTrendSamples;
 
-    const byView = filterByView(initialItems, view);
-    const bySearch = filterFeedBySearch(byView, searchQuery);
-    const byKeywords = filterFeedByKeywords(bySearch, keywords);
-    const byCategory = filterFeedByCategory(byKeywords, selectedCategory);
-    const filteredItems = filterFeedByTrendKeyword(byCategory, selectedTrendKeyword, selectedTrendSamples);
+    const byView = useMemo(() => filterByView(initialItems, view), [initialItems, view]);
+    const bySearch = useMemo(() => filterFeedBySearch(byView, searchQuery), [byView, searchQuery]);
+    const byKeywords = useMemo(() => filterFeedByKeywords(bySearch, keywords), [bySearch, keywords]);
+    const byCategory = useMemo(() => filterFeedByCategory(byKeywords, selectedCategory), [byKeywords, selectedCategory]);
+    const filteredItems = useMemo(
+        () => filterFeedByTrendKeyword(byCategory, selectedTrendKeyword, selectedTrendSamples ?? []),
+        [byCategory, selectedTrendKeyword, selectedTrendSamples]
+    );
     const hasActiveFilters = keywords.length > 0 || stateFilter !== "all";
 
     // 선별 반영: 제외(dismissed)는 기본으로 숨기고, 상태 필터에 따라 좁힌다.
@@ -195,8 +203,9 @@ function FeedClientContainerContent({
         );
     }, [filteredItems, contentStates, stateFilter]);
 
-    const availableCategories = FEED_CATEGORIES.filter(cat =>
-        byKeywords.some(item => item.category === cat)
+    const availableCategories = useMemo(
+        () => FEED_CATEGORIES.filter(cat => byKeywords.some(item => item.category === cat)),
+        [byKeywords]
     );
 
     const isGlobalFeed = !selectedSourceName;

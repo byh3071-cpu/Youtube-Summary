@@ -233,20 +233,32 @@ test.describe("responsive app shell", () => {
   test("reel and home positions are restored within the session", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/?viewMode=shortform", { waitUntil: "domcontentloaded" });
-    const reel = page.getByTestId("reel-content");
+    const reel = page.locator('[data-testid="reel-content"][data-hydrated="true"]');
     await expect(page.getByTestId("reel-slide").nth(1)).toBeVisible({ timeout: 30_000 });
     await reel.evaluate((element) => {
+      const previousBehavior = element.style.scrollBehavior;
+      element.style.scrollBehavior = "auto";
       element.scrollTop = element.clientHeight;
       element.dispatchEvent(new Event("scroll"));
+      element.style.scrollBehavior = previousBehavior;
     });
     await expect.poll(() => reel.evaluate((element) => Math.round(element.scrollTop / element.clientHeight))).toBe(1);
+    await expect.poll(() => page.evaluate(() => {
+      const raw = sessionStorage.getItem("focus-feed:reel-position:shortform");
+      return raw ? JSON.parse(raw).index : null;
+    })).toBe(1);
 
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => page.evaluate(() => {
+      const raw = sessionStorage.getItem("focus-feed:reel-position:shortform");
+      return raw ? JSON.parse(raw).index : null;
+    })).toBe(1);
     await page.goto("/?viewMode=shortform", { waitUntil: "domcontentloaded" });
     await expect.poll(() => page.getByTestId("reel-content").evaluate((element) => Math.round(element.scrollTop / element.clientHeight))).toBe(1);
 
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("youtube-card").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-testid="discovery-toolbar"][data-hydrated="true"]')).toBeVisible({ timeout: 30_000 });
     const maxScroll = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
     test.skip(maxScroll < 300, "feed is not tall enough to verify home scroll restoration");
     await page.evaluate(() => window.scrollTo(0, Math.min(600, document.documentElement.scrollHeight - innerHeight)));

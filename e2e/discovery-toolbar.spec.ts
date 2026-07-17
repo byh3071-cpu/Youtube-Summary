@@ -37,6 +37,9 @@ test.describe("discovery toolbar", () => {
       const panel = document.querySelector('[data-testid="discovery-filter-panel"]');
       return !!panel?.contains(document.activeElement);
     })).toBe(true);
+    await expect
+      .poll(async () => (await sheet.boundingBox())?.width ?? 0)
+      .toBeCloseTo(393, 0);
     const mobileBox = await sheet.boundingBox();
     expect(mobileBox).not.toBeNull();
     expect(mobileBox!.width).toBeCloseTo(393, 0);
@@ -48,6 +51,9 @@ test.describe("discovery toolbar", () => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByTestId("discovery-filter-trigger").click();
     const panel = page.getByTestId("discovery-filter-panel");
+    await expect
+      .poll(async () => (await panel.boundingBox())?.width ?? 0)
+      .toBeCloseTo(400, 0);
     const desktopBox = await panel.boundingBox();
     expect(desktopBox).not.toBeNull();
     expect(desktopBox!.width).toBeCloseTo(400, 0);

@@ -32,16 +32,15 @@ test.describe("anonymous flows", () => {
     const keyword = `e2e키워드${Date.now() % 10000}`;
     await gotoHydratedHome(page);
 
-    await page.getByRole("button", { name: "필터 패널 열기" }).click();
-    await page.getByRole("button", { name: "키워드 추가" }).click();
+    await page.getByTestId("discovery-filter-trigger").click();
     await page.getByLabel("관심 키워드 입력").fill(keyword);
-    await page.getByRole("button", { name: "저장", exact: true }).click();
+    await page.getByRole("button", { name: "추가", exact: true }).click();
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();
 
     // 새로고침 후에도 localStorage로 유지
     await page.reload();
     await expect(page.getByRole("button", { name: /^(편집|닫기|접기)$/ })).toBeVisible({ timeout: 30000 });
-    await page.getByRole("button", { name: "필터 패널 열기" }).click();
+    await page.getByTestId("discovery-filter-trigger").click();
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();
 
     // 제거
@@ -62,7 +61,7 @@ test.describe("anonymous flows", () => {
     await expect(page).toHaveURL(/view=rss/);
     await expect(page.getByRole("button", { name: "RSS", exact: true })).toHaveAttribute("aria-pressed", "true");
 
-    await page.getByRole("button", { name: "전체(최신순)" }).click();
+    await page.getByTestId("view-all").click();
     await expect(page).not.toHaveURL(/view=/);
   });
 
