@@ -199,7 +199,7 @@ export default function FeedQADrawer({ selectedSourceId }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         // 데스크톱에서도 하단 라디오 푸터/안내(z-50, 높이 ~5rem)에 가리지 않도록 5.5rem 위에 띄운다.
-        className="scroll-lock-stable-right fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-(--notion-border) bg-(--notion-bg) text-(--notion-fg) shadow-lg transition hover:bg-(--notion-hover)"
+        className="scroll-lock-stable-right fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-(--notion-border) bg-(--notion-bg) text-(--notion-fg) shadow-lg transition hover:bg-(--notion-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--focus-accent)/60"
         aria-label="피드 Q&A 열기"
       >
         <MessageCircle size={22} strokeWidth={2} />

@@ -63,9 +63,10 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | SHELL-03 | 모달 scroll-lock fixed UI 위치 유지 | browser-verified | 대기열·AI·필터 전후 하단 버튼 좌표·전체화면 폭 통과 |
 | SHELL-04 | 채널 상세 상단을 홈 탐색 계층과 통일 | browser-verified | 새로고침·중복 필터 카드 제거, 아바타형 채널 헤더와 검색·트렌드·필터 통합, 360/1440px overflow 0 |
 | PREVIEW-01 | Vercel Preview OAuth·Gemini 실검증 | blocked | Vercel CLI·인증·프로젝트 link와 Supabase redirect 필요 |
-| QA-01 | 디자인·기능·코드 3단계 검수 | active | 디자인 시각 검수 완료. 기능·코드 검수와 CI Playwright는 잔여 |
+| QA-01 | 디자인·기능·코드 3단계 검수 | browser-verified | 로컬 디자인·기능·코드 감사 완료. push 승인 후 CI Playwright만 잔여 |
 | QA-01-1 | 주요 화면 디자인 시각 검수 | browser-verified | 홈·채널·롱폼·숏폼·라이브·확장 라디오 393/1440px 캡처, 숏폼 포스터·외부 메타 보완 |
 | QA-01-2 | 핵심 기능 상호작용 회귀 검수 | browser-verified | 검색·필터·소스·모달·라디오·반응형 셸 38개와 모바일 UX 5개 통과. 홈·숏폼 위치 복원 경합 수정 |
+| QA-01-3 | 코드·접근성 최종 감사 | browser-verified | 5개 viewport 의미 구조·포커스·44px·다크·reduced-motion 통과, 명시적 button type 보완 |
 
 ## 검증 기록
 
@@ -81,11 +82,12 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | 2026-07-17 | 확장 대기열 탐색 | 마지막 항목 2/2 재생 후에도 이전 항목 노출·재선택, 현재 항목 표시, 자동 숨김 유지 확인 |
 | 2026-07-17 | QA 디자인 시각 검수 | 홈·채널·롱폼·숏폼·라이브·확장 라디오 9개 상태 캡처. 숏폼 로딩 포스터와 자막 비충돌 메타 영역 추가 후 393/1440px 재검증 |
 | 2026-07-18 | QA 핵심 상호작용 검수 | production build 기준 데스크톱·반응형 E2E 38개와 모바일 E2E 5개 통과. 검색·필터·소스 전환, 대기열 선택·삭제·재정렬, 미니↔확장 동일 iframe, 모달 포커스·ESC, 44px·overflow 및 홈·숏폼 위치 복원 확인 |
+| 2026-07-18 | QA 코드·접근성 감사 | 360/393/768/1024/1440px에서 중복 ID·alt·button type·tabindex·dialog 이름·form label·실제 focus indicator·44px·다크 기하·reduced-motion 검사 통과. lint 오류 0, unit 183, build·secret·VHK 통과 |
 
 ## 현재 blocker와 다음 Task
 
 - Preview: Vercel CLI, 로그인 세션, project link가 아직 없다. production으로 우회하지 않는다.
 - 로컬 Playwright test runner: Windows 프로세스 종료 문제가 재현될 수 있어 직접 Chromium
   검증을 병행한다. push 승인 후 CI Playwright를 release-ready 게이트로 사용한다.
-- 외부 blocker가 해소되기 전 다음 Task는 `QA-01-3` 코드·접근성 최종 감사다. push 승인 후
-  CI Playwright를 실행하고, Preview 준비가 완료되는 즉시 `PREVIEW-01`을 재개한다.
+- 로컬 `QA-01`은 완료됐다. 다음 단계는 사용자 승인 후 push·PR·CI Playwright를 실행하거나,
+  Preview 준비가 완료되는 즉시 `PREVIEW-01`을 재개하는 것이다.

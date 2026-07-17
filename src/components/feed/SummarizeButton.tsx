@@ -144,6 +144,7 @@ export default function SummarizeButton({ videoId, fullWidth, compact }: Props) 
     <>
     <div className={compact ? "contents text-sm" : `mt-2.5 text-sm ${fullWidth ? "w-full" : ""}`}>
       <button
+        type="button"
         onClick={handleToggle}
         data-testid={compact ? "youtube-card-summary-action" : undefined}
         className={buttonClass}

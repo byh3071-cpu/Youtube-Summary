@@ -39,6 +39,15 @@ test.describe("SHELL-02 responsive and accessibility audit", () => {
         missingImageAlts: [...document.querySelectorAll("img")]
           .filter((image) => !image.hasAttribute("alt"))
           .map((image) => image.currentSrc || image.src),
+        buttonsWithoutType: [...document.querySelectorAll("button:not([type])")]
+          .map((button) => button.getAttribute("aria-label") || button.textContent?.trim() || "unnamed"),
+        positiveTabIndexes: [...document.querySelectorAll("[tabindex]")]
+          .filter((element) => Number(element.getAttribute("tabindex")) > 0).length,
+        unnamedDialogs: [...document.querySelectorAll('[role="dialog"]')]
+          .filter((dialog) => !dialog.getAttribute("aria-label") && !dialog.getAttribute("aria-labelledby")).length,
+        unlabeledControls: [...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select")]
+          .filter((control) => control.labels?.length === 0 && !control.getAttribute("aria-label") && !control.getAttribute("aria-labelledby"))
+          .map((control) => control.outerHTML.slice(0, 120)),
         lang: document.documentElement.lang,
         mainCount: document.querySelectorAll("main").length,
       }));
@@ -46,6 +55,10 @@ test.describe("SHELL-02 responsive and accessibility audit", () => {
       expect(shellState.overflow, `${viewport.width}px horizontal overflow`).toBeLessThanOrEqual(0);
       expect(shellState.duplicateIds, `${viewport.width}px duplicate ids`).toEqual([]);
       expect(shellState.missingImageAlts, `${viewport.width}px images without alt`).toEqual([]);
+      expect(shellState.buttonsWithoutType, `${viewport.width}px buttons without explicit type`).toEqual([]);
+      expect(shellState.positiveTabIndexes, `${viewport.width}px positive tabindex`).toBe(0);
+      expect(shellState.unnamedDialogs, `${viewport.width}px unnamed dialogs`).toBe(0);
+      expect(shellState.unlabeledControls, `${viewport.width}px unlabeled form controls`).toEqual([]);
       expect(shellState.lang).toBe("ko");
       expect(shellState.mainCount).toBe(1);
 
@@ -84,8 +97,21 @@ test.describe("SHELL-02 responsive and accessibility audit", () => {
         expect(box).not.toBeNull();
         expect(box!.width).toBeGreaterThanOrEqual(44);
         expect(box!.height).toBeGreaterThanOrEqual(44);
+        await control.evaluate((element) => (element as HTMLElement).blur());
+        const beforeFocus = await control.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { outline: style.outline, boxShadow: style.boxShadow };
+        });
         await control.focus();
         await expect(control).toBeFocused();
+        const afterFocus = await control.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { outline: style.outline, boxShadow: style.boxShadow };
+        });
+        expect(
+          afterFocus.outline !== beforeFocus.outline || afterFocus.boxShadow !== beforeFocus.boxShadow,
+          `${await control.getAttribute("data-testid")} needs a visible focus indicator`,
+        ).toBe(true);
       }
     }
   });
@@ -137,5 +163,34 @@ test.describe("SHELL-02 responsive and accessibility audit", () => {
     await expect(page.getByRole("button", { name: "새로고침" })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "필터" })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  });
+
+  test("reduced motion removes long transitions and smooth scrolling", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize(VIEWPORTS[1]);
+    await openHydratedHome(page);
+
+    await page.getByTestId("discovery-filter-trigger").click();
+    const panel = page.getByTestId("discovery-filter-panel");
+    await expect(panel).toBeVisible();
+
+    const motion = await panel.evaluate((element) => {
+      const toMilliseconds = (value: string) => Math.max(
+        ...value.split(",").map((token) => {
+          const trimmed = token.trim();
+          return trimmed.endsWith("ms") ? Number.parseFloat(trimmed) : Number.parseFloat(trimmed) * 1000;
+        }),
+      );
+      const style = getComputedStyle(element);
+      return {
+        transitionMs: toMilliseconds(style.transitionDuration),
+        animationMs: toMilliseconds(style.animationDuration),
+        scrollBehavior: style.scrollBehavior,
+      };
+    });
+
+    expect(motion.transitionMs).toBeLessThanOrEqual(0.01);
+    expect(motion.animationMs).toBeLessThanOrEqual(0.01);
+    expect(motion.scrollBehavior).toBe("auto");
   });
 });
