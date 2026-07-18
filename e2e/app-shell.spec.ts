@@ -220,9 +220,10 @@ test.describe("responsive app shell", () => {
     }
   });
 
-  test("shortform reuses its player after leaving and returning to a slide", async ({ page }) => {
+  test("shortform autoplays muted and advances on end", async ({ page }) => {
     await page.addInitScript(() => {
       class MockPlayer {
+        private muted = false;
         private events: {
           onReady?: (event: { target: MockPlayer }) => void;
           onStateChange?: (event: { data: number }) => void;
@@ -237,15 +238,31 @@ test.describe("responsive app shell", () => {
           iframe.className = host?.className ?? "";
           if (host?.getAttribute("style")) iframe.setAttribute("style", host.getAttribute("style")!);
           host?.replaceWith(iframe);
+          const testWindow = window as typeof window & { __focusFeedReelPlayers?: Record<string, MockPlayer> };
+          if (!testWindow.__focusFeedReelPlayers) testWindow.__focusFeedReelPlayers = {};
+          testWindow.__focusFeedReelPlayers[elementId] = this;
           queueMicrotask(() => this.events.onReady?.({ target: this }));
         }
 
+        mute() {
+          this.muted = true;
+        }
+
+        isMuted() {
+          return this.muted;
+        }
+
         playVideo() {
+          if (!this.muted) return;
           this.events.onStateChange?.({ data: 1 });
         }
 
         pauseVideo() {
           this.events.onStateChange?.({ data: 2 });
+        }
+
+        endVideo() {
+          this.events.onStateChange?.({ data: 0 });
         }
       }
 
@@ -263,18 +280,29 @@ test.describe("responsive app shell", () => {
     const content = page.getByTestId("reel-content");
     const firstMedia = page.getByTestId("reel-media").first();
     await expect(firstMedia).toHaveAttribute("data-player-ready", "true", { timeout: 10_000 });
+    await expect(firstMedia).toHaveAttribute("data-player-state", "playing");
+    await expect(firstMedia).toHaveAttribute("data-autoplay-muted", "true");
     const firstSurface = firstMedia.getByTestId("youtube-player-surface");
     const firstFrame = page.locator('iframe[data-e2e-youtube-player="reel-yt-0"]');
     await expect(firstFrame).toHaveCount(1);
     await expect(firstSurface).toHaveCSS("opacity", "1");
     await expect(firstFrame).toHaveCSS("opacity", "1");
+    expect(await page.evaluate(() => {
+      const testWindow = window as typeof window & {
+        __focusFeedReelPlayers?: Record<string, { isMuted(): boolean }>;
+      };
+      return testWindow.__focusFeedReelPlayers?.["reel-yt-0"]?.isMuted();
+    })).toBe(true);
 
-    await content.evaluate((element) => { element.scrollTop = element.clientHeight; });
-    await expect(page.getByTestId("reel-media").nth(1)).toHaveAttribute("data-player-ready", "true", { timeout: 10_000 });
-    await content.evaluate((element) => { element.scrollTop = 0; });
-    await expect(firstMedia).toHaveAttribute("data-player-ready", "true");
-    await expect(firstFrame).toHaveCount(1);
-    await expect(firstSurface).toHaveCSS("opacity", "1");
+    await page.evaluate(() => {
+      const testWindow = window as typeof window & {
+        __focusFeedReelPlayers?: Record<string, { endVideo(): void }>;
+      };
+      testWindow.__focusFeedReelPlayers?.["reel-yt-0"]?.endVideo();
+    });
+    await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
+    const secondMedia = page.getByTestId("reel-media").nth(1);
+    await expect(secondMedia).toHaveAttribute("data-player-state", "playing", { timeout: 10_000 });
   });
 
   test("longform uses a browse-first list and opens a 16:9 watch view", async ({ page }) => {

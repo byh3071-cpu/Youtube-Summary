@@ -32,6 +32,15 @@ interface Props {
   onBookmarkChange?: () => void;
 }
 
+type ReelPlayer = {
+  playVideo?: () => void;
+  pauseVideo?: () => void;
+  mute?: () => void;
+  isMuted?: () => boolean;
+};
+
+type ReelPlayerState = "idle" | "ready" | "playing" | "paused" | "ended" | "error";
+
 function ReelSlide({
   item,
   viewMode,
@@ -67,13 +76,19 @@ function ReelSlide({
   // 폴백은 16:9 무레터박스 소스(maxresdefault). hqdefault(4:3)는 검은띠가 구워져 있어 contain 시 이중 레터박스가 생김.
   const thumbUrl = item.thumbnail ?? (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
   const sectionRef = useRef<HTMLElement>(null);
-  const playerRef = useRef<{ playVideo?: () => void; pauseVideo?: () => void } | null>(null);
+  const playerRef = useRef<ReelPlayer | null>(null);
   const playerCreatedRef = useRef(false);
   const inViewRef = useRef(false);
   const [inView, setInView] = useState(false);
   const [playerMounted, setPlayerMounted] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
+  const [playerState, setPlayerState] = useState<ReelPlayerState>("idle");
   const playerId = `reel-yt-${index}`;
+
+  const startPlayback = useCallback((player: ReelPlayer) => {
+    if (isShortform) player.mute?.();
+    player.playVideo?.();
+  }, [isShortform]);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -93,10 +108,10 @@ function ReelSlide({
     inViewRef.current = inView;
     if (!playerRef.current) return;
     try {
-      if (inView && playbackPolicy.autoplay) playerRef.current.playVideo?.();
+      if (inView && playbackPolicy.autoplay) startPlayback(playerRef.current);
       else if (!inView) playerRef.current.pauseVideo?.();
     } catch {}
-  }, [inView, playbackPolicy.autoplay]);
+  }, [inView, playbackPolicy.autoplay, startPlayback]);
 
   useEffect(() => {
     if (!inView || !videoId || !ytReady || typeof window === "undefined") return;
@@ -113,21 +128,22 @@ function ReelSlide({
         videoId,
         playerVars: {
           autoplay: playbackPolicy.autoplay ? 1 : 0,
-          mute: 0,
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
         },
         events: {
-          onReady(ev: { target: { playVideo?: () => void } }) {
+          onReady(ev: { target: ReelPlayer }) {
             setPlayerMounted(true);
             setPlayerReady(true);
+            setPlayerState("ready");
             if (inViewRef.current && playbackPolicy.autoplay) {
-              try { ev.target.playVideo?.(); } catch {}
+              try { startPlayback(ev.target); } catch {}
             }
           },
           onError() {
             setPlayerReady(false);
+            setPlayerState("error");
           },
           onStateChange(ev: { data: number }) {
             if (
@@ -135,16 +151,22 @@ function ReelSlide({
               ev.data === YT.PlayerState?.PAUSED ||
               ev.data === YT.PlayerState?.CUED
             ) setPlayerReady(true);
-            if (playbackPolicy.advanceOnEnd && ev.data === YT.PlayerState?.ENDED) onVideoEnd?.();
+            if (ev.data === YT.PlayerState?.PLAYING) setPlayerState("playing");
+            else if (ev.data === YT.PlayerState?.PAUSED) setPlayerState("paused");
+            else if (ev.data === YT.PlayerState?.CUED) setPlayerState("ready");
+            else if (ev.data === YT.PlayerState?.ENDED) {
+              setPlayerState("ended");
+              if (playbackPolicy.advanceOnEnd) onVideoEnd?.();
+            }
           },
         },
       });
-      playerRef.current = player as unknown as { playVideo?: () => void; pauseVideo?: () => void };
+      playerRef.current = player as unknown as ReelPlayer;
     } catch {
       playerRef.current = null;
       playerCreatedRef.current = false;
     }
-  }, [inView, videoId, playerId, onVideoEnd, playbackPolicy.advanceOnEnd, playbackPolicy.autoplay, ytReady]);
+  }, [inView, videoId, playerId, onVideoEnd, playbackPolicy.advanceOnEnd, playbackPolicy.autoplay, startPlayback, ytReady]);
 
   useEffect(() => {
     return () => {
@@ -250,6 +272,8 @@ function ReelSlide({
               data-testid="reel-media"
               data-player-mounted={playerMounted ? "true" : "false"}
               data-player-ready={playerReady ? "true" : "false"}
+              data-player-state={playerState}
+              data-autoplay-muted={isShortform ? "true" : "false"}
               className="relative max-h-full max-w-full overflow-hidden bg-black sm:rounded-2xl"
               style={{ height: "min(100%, calc(100vw * 16 / 9))", aspectRatio: "9 / 16" }}
             >
@@ -306,6 +330,7 @@ function ReelSlide({
               data-testid="reel-media"
               data-player-mounted={playerMounted ? "true" : "false"}
               data-player-ready={playerReady ? "true" : "false"}
+              data-player-state={playerState}
               className={`relative w-full max-w-6xl overflow-hidden bg-black ${isLive ? "aspect-video sm:mt-4 sm:rounded-2xl" : "h-full"}`}
             >
               {renderMedia()}
