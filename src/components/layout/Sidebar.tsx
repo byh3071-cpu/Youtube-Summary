@@ -3,38 +3,23 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, usePathname } from "next/navigation";
-import { Rss, Youtube, Tag, Bookmark, ListMusic, Film, Clapperboard, Radio, Users, TrendingUp } from "lucide-react";
-import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
+import { Rss, Youtube, Bookmark, ListMusic, Film, Clapperboard, Radio, Users, TrendingUp, LayoutGrid } from "lucide-react";
+import { defaultSources } from "@/lib/sources";
 import { LoginButton } from "@/components/auth/LoginButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import AddChannelButton from "@/components/feed/AddChannelButton";
 import SourceExportImport from "@/components/feed/SourceExportImport";
 import YouTubeSourceList from "@/components/layout/YouTubeSourceList";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
-// rssSources moved inside Sidebar or taken from sources.ts directly
-
-function SidebarViewModeLinks({ currentViewMode }: { currentViewMode: string | null }) {
-    return (
-        <div className="flex w-full gap-1">
-            <Link
-                href="/?viewMode=longform"
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${currentViewMode === "longform" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-            >
-                <Film size={14} className="shrink-0" />
-                롱폼
-            </Link>
-            <Link
-                href="/?viewMode=shortform"
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${currentViewMode === "shortform" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-            >
-                <Clapperboard size={14} className="shrink-0" />
-                숏폼
-            </Link>
-        </div>
-    );
-}
+const primaryItemClass = (active: boolean) =>
+    `flex min-h-10 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors ${
+        active
+            ? "bg-(--surface-raised) font-semibold text-(--text-primary) shadow-[var(--shadow-xs)]"
+            : "font-medium text-(--text-secondary) hover:bg-(--surface-raised)/70 hover:text-(--text-primary)"
+    }`;
 
 export default function Sidebar({
     selectedSourceId,
@@ -52,70 +37,59 @@ export default function Sidebar({
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const viewMode = searchParams?.get("viewMode") ?? null;
+    const radio = useRadioQueueOptional();
+    const playerActive = !!radio?.queue.length;
     return (
-        <aside className="hidden w-72 shrink-0 bg-white dark:bg-(--notion-gray) md:flex md:flex-col">
-            <div className="mt-0 mb-2 mx-2 rounded-xl bg-white dark:bg-(--notion-bg) pt-1 px-4 pb-3">
-                <div className="mb-1.5 flex flex-col items-center gap-1.5">
-                    <Link href="/" className="relative block h-28 w-[300px] shrink-0 overflow-hidden rounded-lg">
+        <aside data-testid="desktop-sidebar" className="sticky top-0 hidden h-screen w-[260px] shrink-0 overflow-hidden border-r border-(--border-subtle) bg-(--surface-subtle)/45 lg:flex lg:flex-col">
+            <div className="shrink-0 px-3 pb-2 pt-3">
+                <div className="flex flex-col items-stretch gap-1">
+                    <Link href="/" className="relative mb-2 block h-11 w-[172px] shrink-0 overflow-hidden rounded-lg">
                         <Image
                             src="/rogo.png"
                             alt="Focus Feed"
                             fill
-                            sizes="300px"
-                            className="object-contain"
+                            sizes="172px"
+                            className="object-cover object-left dark:hidden"
+                        />
+                        <Image
+                            src="/rogo-dark.png"
+                            alt="Focus Feed"
+                            fill
+                            sizes="172px"
+                            className="hidden object-cover object-left dark:block"
                         />
                     </Link>
-                    <div className="flex w-full items-center justify-center gap-2">
-                        <LoginButton />
-                    </div>
-                    <div className="flex w-full justify-center">
-                        <Link
-                            href="/trends"
-                            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${pathname === "/trends" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-                        >
-                            <span className="inline-flex items-center gap-1.5">
-                                <TrendingUp size={14} className="shrink-0" />
-                                트렌드
-                            </span>
+                    <nav aria-label="주요 메뉴" className="space-y-1">
+                        <Link href="/" className={primaryItemClass(!selectedSourceId && !selectedCategory && !viewMode && pathname === "/")}>
+                            <LayoutGrid size={17} className="shrink-0" />
+                            홈
                         </Link>
-                    </div>
-                    <div className="flex w-full justify-center">
-                        <Link
-                            href="/"
-                            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${!selectedSourceId && !selectedCategory && !viewMode && pathname === "/" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-                        >
-                            전체 피드
+                        <Link href="/trends" className={primaryItemClass(pathname === "/trends")}>
+                            <TrendingUp size={17} className="shrink-0" />
+                            트렌드
                         </Link>
-                    </div>
-                    <SidebarViewModeLinks currentViewMode={viewMode} />
-                    <div className="flex w-full justify-center">
-                        <Link
-                            href="/?viewMode=live"
-                            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${viewMode === "live" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-                        >
-                            <Radio size={14} className="shrink-0" />
+                        <Link href="/?viewMode=longform" className={primaryItemClass(viewMode === "longform")}>
+                            <Film size={17} className="shrink-0" />
+                            동영상
+                        </Link>
+                        <Link href="/?viewMode=shortform" className={primaryItemClass(viewMode === "shortform")}>
+                            <Clapperboard size={17} className="shrink-0" />
+                            숏폼
+                        </Link>
+                        <Link href="/?viewMode=live" className={primaryItemClass(viewMode === "live")}>
+                            <Radio size={17} className="shrink-0" />
                             라이브
                         </Link>
-                    </div>
+                    </nav>
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-3 bg-white dark:bg-transparent px-3 pt-0.5 pb-2">
-                <SidebarSection
-                    title="카테고리"
-                    items={[{ id: "", name: "전체" }, ...FEED_CATEGORIES.map((id) => ({ id, name: id }))]}
-                    icon={<Tag size={15} className="text-(--notion-fg)/60" />}
-                    statusLabel=""
-                    statusTone=""
-                    helperText="AI·자기계발·개발·뉴스 등으로 필터합니다."
-                    selectedSourceId={selectedCategory ?? ""}
-                    linkParam="category"
-                />
-
+            <nav aria-label="구독 및 보관함" className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
                 <section>
-                    <div className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
+                    <div className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold text-(--text-primary)/70">
                         <Youtube size={15} className="text-red-500" />
-                        <span>YouTube ({youtubeSources.length})</span>
+                        <span>구독 채널</span>
+                        <span className="font-medium">{youtubeSources.length}</span>
                     </div>
                     <YouTubeSourceList
                         items={youtubeSources}
@@ -127,7 +101,7 @@ export default function Sidebar({
                 </section>
 
                 <SidebarSection
-                    title={`RSS (${defaultSources.filter((s) => s.type === "RSS").length})`}
+                    title={`뉴스 소스 · ${defaultSources.filter((s) => s.type === "RSS").length}`}
                     items={defaultSources.filter((s) => s.type === "RSS")}
                     icon={<Rss size={15} className="text-blue-500" />}
                     statusLabel=""
@@ -137,27 +111,27 @@ export default function Sidebar({
                 />
 
                 <section className="pt-2">
-                    <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
-                        내 콘텐츠
+                    <div className="mb-2 px-2 text-xs font-semibold text-(--text-primary)/70">
+                        보관함
                     </div>
                     <div className="space-y-0.5">
                         <Link
                             href="/playlists"
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                            className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-(--text-secondary) hover:bg-(--surface-raised)/70 hover:text-(--text-primary)"
                         >
                             <ListMusic size={15} className="text-(--notion-fg)/60" />
                             내 플레이리스트
                         </Link>
                         <Link
                             href="/bookmarks"
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                            className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-(--text-secondary) hover:bg-(--surface-raised)/70 hover:text-(--text-primary)"
                         >
                             <Bookmark size={15} className="text-(--notion-fg)/60" />
                             북마크
                         </Link>
                         <Link
                             href="/teams"
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+                            className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-(--text-secondary) hover:bg-(--surface-raised)/70 hover:text-(--text-primary)"
                         >
                             <Users size={15} className="text-(--notion-fg)/60" />
                             팀
@@ -165,28 +139,16 @@ export default function Sidebar({
                     </div>
                 </section>
 
-                <section className="pt-2">
-                    <div className="space-y-0.5">
-                        <Link
-                            href="/pricing"
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
-                        >
-                            요금제
-                        </Link>
-                        <Link
-                            href="/landing"
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--notion-fg)/80 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
-                        >
-                            소개
-                        </Link>
-                    </div>
-                </section>
             </nav>
 
-            <div className="flex flex-col gap-2 border-t border-(--notion-border) bg-white dark:bg-transparent p-4 pb-28 md:pb-24">
+            <div className={`shrink-0 bg-(--surface-subtle)/90 px-3 pt-2 backdrop-blur ${playerActive ? "pb-24" : "pb-3"}`}>
+                <div className="mb-1 px-1">
+                    <LoginButton />
+                </div>
                 <ThemeToggle />
-                <div className="text-xs leading-relaxed text-(--notion-fg)/55">
-                    새 기능은 검증이 끝난 뒤 순차적으로 추가합니다. 현재는 읽기와 필터링 경험에 집중합니다.
+                <div className="flex gap-3 px-1 pt-1 text-xs font-medium text-(--text-primary)/70">
+                    <Link href="/pricing" className="hover:text-(--text-primary)">요금제</Link>
+                    <Link href="/landing" className="hover:text-(--text-primary)">소개</Link>
                 </div>
             </div>
         </aside>
@@ -222,7 +184,7 @@ function SidebarSection({
     return (
         <section>
             <div className="mb-2 flex items-center justify-between gap-2 px-2">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--notion-fg)/45">
+                <div className="flex items-center gap-2 text-xs font-semibold text-(--text-primary)/70">
                     {icon}
                     <span>{title}</span>
                 </div>
@@ -234,7 +196,7 @@ function SidebarSection({
             </div>
 
             {helperText ? (
-                <div className="mb-2 px-2 text-xs leading-relaxed text-(--notion-fg)/45">
+                <div className="mb-2 px-2 text-xs leading-relaxed text-(--text-secondary)">
                     {helperText}
                 </div>
             ) : null}

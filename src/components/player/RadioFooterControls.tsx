@@ -1,10 +1,21 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ListMusic,
+  Maximize2,
+  MoreHorizontal,
+  Pause,
+  PictureInPicture2,
+  Play,
+  SkipBack,
+  SkipForward,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { qaLog } from "@/lib/qa-log";
-import { ChevronLeft, ChevronRight, Pause } from "lucide-react";
-import { ThemeIcon } from "@/components/ui/ThemeIcon";
 
 interface RadioFooterControlsProps {
   drawerOpen: boolean;
@@ -16,7 +27,6 @@ interface RadioFooterControlsProps {
   setFullPlayerOpen: (v: boolean) => void;
   togglePlay: () => void;
   progress: number;
-  /** 진행 바 클릭·동그라미 드래그로 구간 이동(시킹). 없으면 비활성 */
   onSeek?: (percent: number) => void;
 }
 
@@ -33,47 +43,69 @@ export function RadioFooterControls({
   onSeek,
 }: RadioFooterControlsProps) {
   const radio = useRadioQueueOptional();
-  const barRef = useRef<HTMLDivElement>(null);
+  const mobileBarRef = useRef<HTMLDivElement>(null);
+  const desktopBarRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMoreRef = useRef<HTMLButtonElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const clampedProgress = Math.max(0, Math.min(100, progress));
 
+  const visibleSeekBar = useCallback(() => {
+    return [mobileBarRef.current, desktopBarRef.current].find((element) => {
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }) ?? null;
+  }, []);
+
   const percentFromEvent = useCallback(
-    (e: { clientX: number }) => {
-      const el = barRef.current;
-      if (!el) return 0;
-      const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      return Math.max(0, Math.min(100, (x / rect.width) * 100));
+    (event: { clientX: number }) => {
+      const element = visibleSeekBar();
+      if (!element) return 0;
+      const rect = element.getBoundingClientRect();
+      return Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
     },
-    []
+    [visibleSeekBar],
   );
 
   const handleBarClick = useCallback(
-    (e: React.MouseEvent) => {
+    (event: React.MouseEvent) => {
       if (!onSeek) return;
-      if ((e.target as HTMLElement).closest?.("[data-seek-thumb]")) return;
-      e.preventDefault();
-      e.stopPropagation();
-      onSeek(percentFromEvent(e));
+      if ((event.target as HTMLElement).closest?.("[data-seek-thumb]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onSeek(percentFromEvent(event));
     },
-    [onSeek, percentFromEvent]
+    [onSeek, percentFromEvent],
   );
 
   const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
+    (event: React.PointerEvent) => {
       if (!onSeek) return;
-      e.preventDefault();
-      e.stopPropagation();
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      event.preventDefault();
+      event.stopPropagation();
+      (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
       setIsDragging(true);
-      onSeek(percentFromEvent(e));
+      onSeek(percentFromEvent(event));
     },
-    [onSeek, percentFromEvent]
+    [onSeek, percentFromEvent],
+  );
+
+  const handleSeekKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (!onSeek) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const delta = event.key === "ArrowRight" ? 5 : -5;
+      onSeek(Math.max(0, Math.min(100, clampedProgress + delta)));
+    },
+    [clampedProgress, onSeek],
   );
 
   useEffect(() => {
     if (!isDragging || !onSeek) return;
-    const onMove = (e: PointerEvent) => onSeek(percentFromEvent(e));
+    const onMove = (event: PointerEvent) => onSeek(percentFromEvent(event));
     const onUp = () => setIsDragging(false);
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
@@ -85,163 +117,224 @@ export function RadioFooterControls({
     };
   }, [isDragging, onSeek, percentFromEvent]);
 
-  if (!radio) return null;
+  useEffect(() => {
+    if (!mobileActionsOpen) return;
+    requestAnimationFrame(() => {
+      mobileMenuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    });
+    const closeAndRestore = () => {
+      setMobileActionsOpen(false);
+      requestAnimationFrame(() => mobileMoreRef.current?.focus());
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeAndRestore();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (mobileMenuRef.current?.contains(target) || mobileMoreRef.current?.contains(target)) return;
+      setMobileActionsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [mobileActionsOpen]);
 
-  const btnBase = "flex shrink-0 items-center justify-center rounded-full bg-white/80 text-(--notion-fg)/70 ring-1 ring-black/15 shadow-[0_1px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg) touch-manipulation dark:bg-black/40 dark:ring-white/20 dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] dark:hover:bg-black/60";
-  const btnMobile = "h-11 w-11 min-h-[44px] min-w-[44px] sm:h-12 sm:w-12 sm:min-h-[48px] sm:min-w-[48px] md:h-16 md:w-16 md:min-h-[64px] md:min-w-[64px]";
-  const btnNav = "h-11 w-11 min-h-[44px] min-w-[44px] sm:h-12 sm:w-12 md:h-12 md:w-12";
+  if (!radio || !radio.currentItem) return null;
+
+  const thumbnail = `https://i.ytimg.com/vi/${encodeURIComponent(radio.currentItem.videoId)}/mqdefault.jpg`;
+  const atFirst = radio.currentIndex <= 0;
+  const atLast = radio.currentIndex >= radio.queue.length - 1;
+  const iconButton =
+    "inline-flex h-11 w-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) transition-colors hover:bg-(--surface-subtle) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45 disabled:cursor-not-allowed disabled:opacity-35";
+  const playButton =
+    "inline-flex h-11 w-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-(--playback-accent) text-black shadow-[0_5px_18px_rgba(16,185,129,0.24)] transition-transform hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/50 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-raised)";
+
+  const toggleDrawer = () => {
+    const next = !drawerOpen;
+    setDrawerOpen(next);
+    if (next) qaLog.radio.playlistDrawerOpen(radio.queue.length);
+    else qaLog.radio.playlistDrawerClose();
+  };
+
+  const toggleLyrics = () => {
+    const next = !lyricsOpen;
+    setLyricsOpen(next);
+    if (next) qaLog.radio.lyricsViewOpen(!!radio.currentItem?.summary);
+    else qaLog.radio.lyricsViewClose();
+  };
+
+  const toggleVideo = () => {
+    setVideoExpanded((expanded) => {
+      const next = !expanded;
+      if (next) qaLog.radio.videoExpandOn();
+      else qaLog.radio.videoExpandOff();
+      return next;
+    });
+  };
+
+  const openFullPlayer = () => {
+    setFullPlayerOpen(true);
+    qaLog.radio.fullPlayerOpen();
+  };
+
+  const renderProgress = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    compact = false,
+  ) => (
+    <div
+      ref={ref}
+      role={onSeek ? "slider" : undefined}
+      aria-label={onSeek ? "재생 위치" : undefined}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(clampedProgress)}
+      tabIndex={onSeek ? 0 : undefined}
+      onClick={onSeek ? handleBarClick : undefined}
+      onKeyDown={onSeek ? handleSeekKeyDown : undefined}
+      className={`relative flex w-full items-center overflow-visible ${compact ? "h-3" : "h-4"} ${onSeek ? "cursor-pointer touch-none" : ""}`}
+    >
+      <div className={`relative w-full overflow-hidden rounded-full bg-(--surface-subtle) ${compact ? "h-1" : "h-1.5"}`}>
+        <div
+          className="h-full rounded-full bg-(--playback-accent)"
+          style={{ width: `${clampedProgress}%` }}
+        />
+      </div>
+      {!compact && clampedProgress > 0 && clampedProgress < 100 && (
+        <div
+          data-seek-thumb
+          className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--playback-accent) shadow-sm ring-2 ring-(--surface-raised) ${onSeek ? "pointer-events-auto cursor-grab touch-none active:cursor-grabbing" : "pointer-events-none"}`}
+          style={{ left: `${clampedProgress}%` }}
+          onPointerDown={onSeek ? handlePointerDown : undefined}
+          aria-hidden
+        />
+      )}
+    </div>
+  );
+
+  const mobileMenuAction =
+    "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium text-(--text-primary) hover:bg-(--surface-subtle) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35";
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-(--notion-border) bg-(--notion-bg)/95 backdrop-blur supports-backdrop-filter:bg-(--notion-bg)/80 pb-[env(safe-area-inset-bottom)]"
-      role="region"
+      data-testid="radio-player"
+      className="scroll-lock-stable-full fixed inset-x-0 bottom-0 z-50 border-t border-(--border-subtle) bg-(--surface-raised)/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(15,23,42,0.08)] backdrop-blur-xl"
       aria-label="라디오 플레이어"
     >
-      <div className="mx-auto flex max-w-5xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-3 md:gap-4 md:px-6">
-        <button
-          type="button"
-          onClick={togglePlay}
-          className={`${btnBase} ${btnMobile}`}
-          aria-label={radio.isPlaying ? "일시정지" : "재생"}
-          title={radio.isPlaying ? "일시정지" : "재생"}
-        >
-          {radio.isPlaying ? <Pause size={28} /> : <ThemeIcon name="Play_the_radio" alt="재생" size={56} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => radio.prev()}
-          className={`${btnBase} ${btnNav}`}
-          aria-label="이전 곡"
-          title="이전 곡"
-        >
-          <ChevronLeft size={20} className="shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => radio.next()}
-          className={`${btnBase} ${btnNav}`}
-          aria-label="다음 곡"
-          title="다음 곡"
-        >
-          <ChevronRight size={20} className="shrink-0" />
-        </button>
-        <div className="min-w-0 flex-1 basis-0">
-          <p className="line-clamp-1 text-sm font-semibold text-(--notion-fg)">
-            {radio.currentItem?.title ?? "재생 중"}
-          </p>
-          <div className="mt-0.5 flex items-center gap-2">
-            <div
-              ref={barRef}
-              role={onSeek ? "slider" : undefined}
-              aria-label={onSeek ? "재생 위치" : undefined}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(clampedProgress)}
-              tabIndex={onSeek ? 0 : undefined}
-              onClick={onSeek ? handleBarClick : undefined}
-              className={`relative flex-1 overflow-visible py-1 ${onSeek ? "cursor-pointer touch-none" : ""}`}
-            >
-              {/* 트랙: 초록 바와 동그라미가 같은 progress로 즉시 갱신되도록 transition 없음 (재생 중 렉 방지) */}
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-(--notion-gray)">
-                <div
-                  className={`h-full min-w-0 rounded-full bg-(--focus-accent) transition-none ${radio.isPlaying ? "shadow-[0_0_8px_rgba(16,185,129,0.7)]" : ""}`}
-                  style={{
-                    width: `calc(${clampedProgress}% + ${clampedProgress > 0 && clampedProgress < 100 ? 8 : 0}px)`,
-                  }}
-                />
-              </div>
-              {/* 포인터: 클릭·드래그로 시킹 가능 (onSeek 있을 때) */}
-              {clampedProgress > 0 && clampedProgress < 100 && (
-                <div
-                  data-seek-thumb
-                  className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_6px_rgba(15,23,42,0.4)] ring-2 ring-(--notion-bg) ${onSeek ? "cursor-grab touch-none active:cursor-grabbing pointer-events-auto" : "pointer-events-none"}`}
-                  style={{ left: `${clampedProgress}%` }}
-                  onPointerDown={onSeek ? handlePointerDown : undefined}
-                  aria-hidden
-                />
-              )}
-            </div>
-            <p className="-mt-0.5 shrink-0 text-[11px] leading-none text-(--notion-fg)/55">
-              {radio.currentIndex + 1}/{radio.queue.length}
-            </p>
-          </div>
+      <div className="relative md:hidden">
+        <div className="absolute inset-x-0 top-0 z-[1]">{renderProgress(mobileBarRef, true)}</div>
+        <div className="flex h-16 items-center gap-1 px-2 pt-1">
+          <button
+            type="button"
+            onClick={toggleDrawer}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35"
+            aria-label="재생 대기열 열기"
+          >
+            <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-(--surface-subtle)">
+              <Image src={thumbnail} alt="" fill sizes="44px" className="object-cover" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-(--text-primary)">{radio.currentItem.title}</span>
+              <span className="mt-0.5 block text-[11px] text-(--text-secondary)">라디오 · {radio.currentIndex + 1}/{radio.queue.length}</span>
+            </span>
+          </button>
+          <button type="button" onClick={togglePlay} className={playButton} aria-label={radio.isPlaying ? "일시정지" : "재생"}>
+            {radio.isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" className="ml-0.5" />}
+          </button>
+          <button type="button" onClick={() => radio.next()} disabled={atLast} className={iconButton} aria-label="다음 곡">
+            <SkipForward size={19} fill="currentColor" />
+          </button>
+          <button
+            ref={mobileMoreRef}
+            type="button"
+            onClick={() => setMobileActionsOpen((open) => !open)}
+            className={iconButton}
+            aria-label="플레이어 더보기"
+            aria-expanded={mobileActionsOpen}
+            aria-controls="mobile-player-actions"
+          >
+            <MoreHorizontal size={21} />
+          </button>
         </div>
-        {/* 재생 대기열·AI·미니영상·전체화면·닫기: 모바일에서 작은 크기로 전부 노출 */}
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const next = !drawerOpen;
-              setDrawerOpen(next);
-              if (next) qaLog.radio.playlistDrawerOpen(radio.queue.length);
-              else qaLog.radio.playlistDrawerClose();
-            }}
-            className={`${btnBase} ${btnMobile}`}
-            aria-label="재생 목록"
-            title="재생 목록"
+
+        {mobileActionsOpen && (
+          <div
+            ref={mobileMenuRef}
+            id="mobile-player-actions"
+            data-testid="mobile-player-actions"
+            role="menu"
+            className="absolute bottom-[calc(100%+0.5rem)] right-2 z-[2] w-60 rounded-2xl border border-(--border-subtle) bg-(--surface-raised) p-2 shadow-[var(--shadow-lg)]"
           >
-            <span className="flex h-full w-full items-center justify-center [&>span]:scale-[0.65] sm:[&>span]:scale-75 md:[&>span]:scale-100">
-              <ThemeIcon name="feed_list1" alt="재생 목록" size={65} />
-            </span>
+            <button type="button" role="menuitem" disabled={atFirst} onClick={() => { radio.prev(); setMobileActionsOpen(false); }} className={mobileMenuAction}>
+              <SkipBack size={18} /> 이전 영상
+            </button>
+            <button type="button" role="menuitem" onClick={() => { toggleDrawer(); setMobileActionsOpen(false); }} className={mobileMenuAction}>
+              <ListMusic size={18} /> 재생 대기열
+            </button>
+            <button type="button" role="menuitem" onClick={() => { toggleLyrics(); setMobileActionsOpen(false); }} className={mobileMenuAction}>
+              <Sparkles size={18} className="text-(--ai-accent)" /> AI 요약
+            </button>
+            <button type="button" role="menuitem" onClick={() => { toggleVideo(); setMobileActionsOpen(false); }} className={mobileMenuAction}>
+              <PictureInPicture2 size={18} /> {videoExpanded ? "미니 영상 닫기" : "미니 영상"}
+            </button>
+            <button type="button" role="menuitem" onClick={() => { openFullPlayer(); setMobileActionsOpen(false); }} className={mobileMenuAction}>
+              <Maximize2 size={18} /> 전체 화면
+            </button>
+            <button type="button" role="menuitem" onClick={() => radio.close()} className={`${mobileMenuAction} text-red-600 dark:text-red-400`}>
+              <X size={18} /> 플레이어 닫기
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mx-auto hidden min-h-[84px] max-w-screen-2xl grid-cols-[minmax(0,1fr)_minmax(260px,1.1fr)_minmax(0,1fr)] items-center gap-5 px-5 py-3 md:grid lg:px-7">
+        <button
+          type="button"
+          onClick={toggleDrawer}
+          className="flex min-w-0 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35"
+          aria-label="재생 대기열 열기"
+        >
+          <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-(--surface-subtle)">
+            <Image src={thumbnail} alt="" fill sizes="56px" className="object-cover" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-(--text-primary)">{radio.currentItem.title}</span>
+            <span className="mt-1 block text-xs text-(--text-secondary)">라디오 · {radio.currentIndex + 1}/{radio.queue.length}</span>
+          </span>
+        </button>
+
+        <div className="min-w-0">
+          <div className="flex items-center justify-center gap-2">
+            <button type="button" onClick={() => radio.prev()} disabled={atFirst} className={iconButton} aria-label="이전 곡">
+              <SkipBack size={18} fill="currentColor" />
+            </button>
+            <button type="button" onClick={togglePlay} className={playButton} aria-label={radio.isPlaying ? "일시정지" : "재생"}>
+              {radio.isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" className="ml-0.5" />}
+            </button>
+            <button type="button" onClick={() => radio.next()} disabled={atLast} className={iconButton} aria-label="다음 곡">
+              <SkipForward size={18} fill="currentColor" />
+            </button>
+          </div>
+          <div className="mt-1">{renderProgress(desktopBarRef)}</div>
+        </div>
+
+        <div className="flex min-w-0 items-center justify-end gap-1">
+          <button type="button" onClick={toggleDrawer} className={`${iconButton} ${drawerOpen ? "bg-(--playback-accent-muted) text-(--playback-accent)" : ""}`} aria-label="재생 목록" aria-pressed={drawerOpen}>
+            <ListMusic size={19} />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              const next = !lyricsOpen;
-              setLyricsOpen(next);
-              if (next) qaLog.radio.lyricsViewOpen(!!radio.currentItem?.summary);
-              else qaLog.radio.lyricsViewClose();
-            }}
-            className={`${btnBase} ${btnMobile}`}
-            aria-label="AI 요약(가사) 보기"
-            title="AI 요약(가사) 보기"
-          >
-            <span className="flex h-full w-full items-center justify-center [&>span]:scale-[0.6] sm:[&>span]:scale-[0.7] md:[&>span]:scale-100">
-              <ThemeIcon name="ai_summary1" alt="AI 요약" size={70} />
-            </span>
+          <button type="button" onClick={toggleLyrics} className={`${iconButton} ${lyricsOpen ? "bg-(--ai-accent-muted) text-(--ai-accent)" : ""}`} aria-label="AI 요약 보기" aria-pressed={lyricsOpen}>
+            <Sparkles size={19} />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setVideoExpanded((e) => {
-                const next = !e;
-                if (next) qaLog.radio.videoExpandOn();
-                else qaLog.radio.videoExpandOff();
-                return next;
-              });
-            }}
-            className={`${btnBase} ${btnMobile} ${videoExpanded ? "bg-(--notion-hover) text-(--notion-fg) dark:bg-(--notion-hover)" : ""}`}
-            aria-label={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"}
-            title={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"}
-          >
-            <span className="flex h-full w-full items-center justify-center [&>span]:scale-[0.65] sm:[&>span]:scale-75 md:[&>span]:scale-100">
-              <ThemeIcon name="watch_mini_video" alt="미니 영상" size={56} />
-            </span>
+          <button type="button" onClick={toggleVideo} className={`${iconButton} ${videoExpanded ? "bg-(--playback-accent-muted) text-(--playback-accent)" : ""}`} aria-label={videoExpanded ? "미니 영상 끄기" : "미니 영상 켜기"} aria-pressed={videoExpanded}>
+            <PictureInPicture2 size={19} />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFullPlayerOpen(true);
-              qaLog.radio.fullPlayerOpen();
-            }}
-            className={`${btnBase} ${btnMobile}`}
-            aria-label="전체 화면 영상"
-            title="전체 화면 영상"
-          >
-            <span className="flex h-full w-full items-center justify-center [&>span]:scale-[0.65] sm:[&>span]:scale-75 md:[&>span]:scale-100">
-              <ThemeIcon name="view_fullscreen" alt="전체 화면" size={56} />
-            </span>
+          <button type="button" onClick={openFullPlayer} className={iconButton} aria-label="전체 화면 영상">
+            <Maximize2 size={19} />
           </button>
-          <button
-            type="button"
-            onClick={() => radio.close()}
-            className={`${btnBase} ${btnMobile} text-(--notion-fg)/50`}
-            aria-label="플레이어 닫기"
-            title="플레이어 닫기"
-          >
-            <span className="flex h-full w-full items-center justify-center [&>span]:scale-[0.65] sm:[&>span]:scale-75 md:[&>span]:scale-100">
-              <ThemeIcon name="close_player" alt="플레이어 닫기" size={56} />
-            </span>
+          <button type="button" onClick={() => radio.close()} className={iconButton} aria-label="플레이어 닫기">
+            <X size={19} />
           </button>
         </div>
       </div>

@@ -113,7 +113,8 @@ export default function YouTubeSourceList({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.avatarUrl}
-                      alt={item.name}
+                      alt=""
+                      aria-hidden="true"
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -130,7 +131,7 @@ export default function YouTubeSourceList({
             <button
               type="button"
               onClick={(e) => handleRemove(e, item.id)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 hover:bg-(--notion-gray) hover:text-red-600 min-h-[44px] min-w-[44px] touch-manipulation"
+              className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 opacity-0 transition-opacity hover:bg-(--notion-gray) hover:text-red-600 group-hover:opacity-100 group-focus-within:opacity-100 touch-manipulation"
               aria-label={`${item.name} 채널 목록에서 제거`}
             >
               <Trash2 size={14} />

@@ -12,6 +12,9 @@ export const qaLog = {
     queueRemoved: (index: number, videoId: string) => {
       console.log(`${PREFIX} [Radio] 큐에서 제거`, { index, videoId });
     },
+    queueReordered: (fromIndex: number, toIndex: number, videoId: string) => {
+      console.log(`${PREFIX} [Radio] 큐 순서 변경`, { fromIndex, toIndex, videoId });
+    },
     currentIndexChanged: (index: number, title: string) => {
       console.log(`${PREFIX} [Radio] 재생 위치 변경`, { index, title: title.slice(0, 30) });
     },

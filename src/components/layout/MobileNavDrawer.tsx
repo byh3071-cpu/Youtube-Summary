@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, usePathname } from "next/navigation";
-import { X, Bookmark, ListMusic, Film, Clapperboard, Radio, TrendingUp } from "lucide-react";
+import { X, Bookmark, ListMusic, Film, Clapperboard, Radio, TrendingUp, LayoutGrid, Youtube, Rss } from "lucide-react";
 import { ModalTransition } from "@/components/ui/ModalTransition";
 import { LoginButton } from "@/components/auth/LoginButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { defaultSources, FEED_CATEGORIES } from "@/lib/sources";
+import { defaultSources } from "@/lib/sources";
 import AddChannelButton from "@/components/feed/AddChannelButton";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
@@ -47,20 +46,9 @@ export default function MobileNavDrawer({
   const pathname = usePathname();
   const viewMode = searchParams?.get("viewMode") ?? null;
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.isComposing || e.keyCode === 229) return;
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  const linkTo = (source?: string, category?: string) => {
+  const linkTo = (source?: string) => {
     const params = new URLSearchParams();
     if (source) params.set("source", source);
-    if (category) params.set("category", category);
     const q = params.toString();
     return q ? `/?${q}` : "/";
   };
@@ -69,14 +57,17 @@ export default function MobileNavDrawer({
     <ModalTransition
       open={open}
       onClose={onClose}
-      overlayClassName="fixed inset-0 z-40 bg-(--notion-fg)/30 md:hidden"
+      overlayClassName="fixed inset-0 z-40 bg-(--notion-fg)/30 lg:hidden"
       overlayZ={40}
       panelZ={50}
       variant="left"
-      panelClassName="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto overflow-x-hidden overscroll-contain bg-white dark:bg-(--notion-bg) md:hidden"
+      panelClassName="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto overflow-x-hidden overscroll-contain bg-white dark:bg-(--notion-bg) lg:hidden"
+      panelRole="dialog"
+      panelAriaLabel="메뉴"
+      panelId="mobile-navigation-drawer"
     >
-      <aside className="outline-none pb-32 md:pb-0" role="dialog" aria-modal="true" aria-label="메뉴">
-        <div className="border-b border-(--notion-border) px-4 pt-6 pb-4">
+      <aside data-testid="mobile-nav-drawer" className="outline-none pb-24 lg:pb-0" aria-label="모바일 탐색">
+        <div className="px-4 pb-2 pt-5">
           <div className="relative">
             <button
               type="button"
@@ -86,117 +77,75 @@ export default function MobileNavDrawer({
             >
               <X size={20} />
             </button>
-            <div className="flex flex-col items-start gap-3 w-full">
-              <div className="relative h-14 w-[180px] shrink-0 overflow-hidden rounded-lg">
+            <div className="flex w-full flex-col items-start gap-3">
+              <div className="relative h-12 w-[160px] shrink-0 overflow-hidden rounded-lg">
                 <Image
                   src="/rogo.png"
                   alt="Focus Feed"
                   fill
-                  sizes="180px"
-                  className="object-contain object-left"
+                  sizes="160px"
+                  className="object-cover object-left dark:hidden"
                   priority
                 />
-              </div>
-              <Link
-                href="/trends"
-                onClick={onClose}
-                className={`mt-2 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${pathname === "/trends" ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-              >
-                <TrendingUp size={16} className="shrink-0" />
-                트렌드 대시보드
-              </Link>
-              <Link
-                href="/"
-                onClick={onClose}
-                className={`block w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors ${pathname === "/" && !selectedSourceId && !selectedCategory && !viewMode ? "bg-(--notion-hover) text-(--notion-fg)" : "text-(--notion-fg)/80 hover:bg-(--notion-hover)"}`}
-              >
-                전체 피드
-              </Link>
-              <div className="flex items-center justify-center gap-2 pt-1 w-full">
-                <LoginButton />
-              </div>
-              <div className="w-full rounded-lg border border-(--notion-border)/60">
-                <ThemeToggle />
+                <Image
+                  src="/rogo-dark.png"
+                  alt="Focus Feed"
+                  fill
+                  sizes="160px"
+                  className="hidden object-cover object-left dark:block"
+                  priority
+                />
               </div>
             </div>
           </div>
         </div>
-        <nav className="space-y-5 p-4">
-          <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">
-              피드 보기
-            </p>
-            <div className="flex gap-1.5 rounded-xl border border-(--notion-border)/60 bg-(--notion-bg)/50 p-1.5">
+        <nav className="space-y-7 px-4 py-3">
+          <section aria-label="주요 메뉴" className="space-y-1">
+            {[
+              { href: "/", label: "홈", icon: LayoutGrid, active: pathname === "/" && !selectedSourceId && !selectedCategory && !viewMode },
+              { href: "/trends", label: "트렌드", icon: TrendingUp, active: pathname === "/trends" },
+              { href: "/?viewMode=longform", label: "동영상", icon: Film, active: viewMode === "longform" },
+              { href: "/?viewMode=shortform", label: "숏폼", icon: Clapperboard, active: viewMode === "shortform" },
+              { href: "/?viewMode=live", label: "라이브", icon: Radio, active: viewMode === "live" },
+            ].map(({ href, label, icon: Icon, active }) => (
               <Link
-                href="/?viewMode=longform"
+                key={href}
+                href={href}
                 onClick={onClose}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm ${viewMode === "longform" ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
+                className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "font-medium text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
               >
-                <Film size={16} className="shrink-0" />
-                롱폼
+                <Icon size={18} className="shrink-0" />
+                {label}
               </Link>
-              <Link
-                href="/?viewMode=shortform"
-                onClick={onClose}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm ${viewMode === "shortform" ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
-              >
-                <Clapperboard size={16} className="shrink-0" />
-                숏폼
-              </Link>
-            </div>
-            <div className="flex justify-center pt-1">
-              <Link
-                href="/?viewMode=live"
-                onClick={onClose}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm ${viewMode === "live" ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
-              >
-                <Radio size={16} className="shrink-0" />
-                라이브
-              </Link>
-            </div>
+            ))}
           </section>
 
-          <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">
-              카테고리
-            </p>
-            <div className="space-y-0.5 rounded-xl border border-(--notion-border)/60 bg-(--notion-bg)/50 p-1.5">
-              <Link
-                href="/"
-                onClick={onClose}
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm ${!selectedCategory ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
-              >
-                전체
-              </Link>
-              {FEED_CATEGORIES.map((cat) => (
-                <Link
-                  key={cat}
-                  href={linkTo(undefined, cat)}
-                  onClick={onClose}
-                  className={`flex items-center rounded-lg px-3 py-2.5 text-sm ${selectedCategory === cat ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
-                >
-                  {cat}
-                </Link>
-              ))}
+          <section data-testid="mobile-account-settings" aria-label="계정 및 설정" className="rounded-2xl bg-(--surface-subtle) p-2">
+            <div className="px-1 pb-1"><LoginButton /></div>
+            <ThemeToggle />
+            <div className="flex gap-4 px-2 py-2 text-xs font-medium text-(--text-primary)/70">
+              <Link href="/pricing" onClick={onClose} className="hover:text-(--text-primary)">요금제</Link>
+              <Link href="/landing" onClick={onClose} className="hover:text-(--text-primary)">소개</Link>
             </div>
           </section>
 
           <section>
             <div className="mb-2 flex items-center justify-between gap-2 px-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">
-                YouTube ({ytSources.length})
+              <span className="flex items-center gap-2 text-xs font-semibold text-(--text-primary)/70">
+                <Youtube size={15} className="text-red-500" />
+                구독 채널 · {ytSources.length}
               </span>
               <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${youtubeStatusTone[sourceStatus.youtube]}`}>
                 {youtubeStatusLabel[sourceStatus.youtube]}
               </span>
             </div>
-            <div className="space-y-0.5 rounded-xl border border-(--notion-border)/60 bg-(--notion-bg)/50 p-1.5">
+            <div className="space-y-0.5">
               {ytSources.map((item) => (
                 <Link
                   key={item.id}
                   href={linkTo(item.id)}
                   onClick={onClose}
-                  className={`flex items-center rounded-lg px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
+                  className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
                 >
                   <span className="truncate">{item.name}</span>
                 </Link>
@@ -208,15 +157,15 @@ export default function MobileNavDrawer({
           </section>
 
           <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">
-              내 콘텐츠
+            <p className="mb-2 px-1 text-xs font-semibold text-(--text-primary)/70">
+              보관함
             </p>
-            <div className="space-y-0.5 rounded-xl border border-(--notion-border)/60 bg-(--notion-bg)/50 p-1.5">
-              <Link href="/playlists" onClick={onClose} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-(--notion-fg)/85 hover:bg-(--notion-hover)">
+            <div className="space-y-0.5">
+              <Link href="/playlists" onClick={onClose} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <ListMusic size={18} className="shrink-0 text-(--notion-fg)/70" />
                 내 플레이리스트
               </Link>
-              <Link href="/bookmarks" onClick={onClose} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-(--notion-fg)/85 hover:bg-(--notion-hover)">
+              <Link href="/bookmarks" onClick={onClose} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <Bookmark size={18} className="shrink-0 text-(--notion-fg)/70" />
                 북마크
               </Link>
@@ -224,22 +173,24 @@ export default function MobileNavDrawer({
           </section>
 
           <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-(--notion-fg)/50">
-              RSS ({rssSources.length})
+            <p className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold text-(--text-primary)/70">
+              <Rss size={15} className="text-blue-500" />
+              뉴스 소스 · {rssSources.length}
             </p>
-            <div className="space-y-0.5 rounded-xl border border-(--notion-border)/60 bg-(--notion-bg)/50 p-1.5">
+            <div className="space-y-0.5">
               {rssSources.map((item) => (
                 <Link
                   key={item.id}
                   href={linkTo(item.id)}
                   onClick={onClose}
-                  className={`flex items-center rounded-lg px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--notion-hover) font-medium text-(--notion-fg)" : "text-(--notion-fg)/85 hover:bg-(--notion-hover)"}`}
+                  className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
                 >
                   <span className="truncate">{item.name}</span>
                 </Link>
               ))}
             </div>
           </section>
+
         </nav>
       </aside>
     </ModalTransition>

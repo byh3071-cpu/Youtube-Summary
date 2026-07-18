@@ -32,25 +32,33 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
             >
                 본문으로 건너뛰기
             </a>
-            <div className={`w-full shrink-0 space-y-1.5 px-2 sm:px-4 md:px-6 ${reelMode ? "py-0" : "py-1.5"}`}>
-                <AuthSuccessBanner authSuccess={authSuccess ?? false} />
-                <AuthErrorBanner authError={authError} authErrorHint={authErrorHint} />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col md:flex-row">
-            <MobileHeaderWithNav
-                sourceStatus={sourceStatus}
-                selectedSourceId={selectedSourceId}
-                selectedCategory={selectedCategory}
-                youtubeSources={youtubeSources}
-            />
+            {(authSuccess || authError) && (
+                <div className={reelMode
+                    ? "fixed inset-x-2 top-14 z-[80] space-y-1.5 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-lg sm:-translate-x-1/2"
+                    : "w-full shrink-0 space-y-1.5 px-2 py-1.5 sm:px-4 md:px-6"}>
+                    <AuthSuccessBanner authSuccess={authSuccess ?? false} />
+                    <AuthErrorBanner authError={authError} authErrorHint={authErrorHint} />
+                </div>
+            )}
+            <div className={`flex min-w-0 flex-1 flex-col lg:flex-row ${reelMode ? "h-dvh min-h-0 overflow-hidden" : ""}`}>
+            {!reelMode && (
+                <>
+                    <MobileHeaderWithNav
+                        sourceStatus={sourceStatus}
+                        selectedSourceId={selectedSourceId}
+                        selectedCategory={selectedCategory}
+                        youtubeSources={youtubeSources}
+                    />
 
-            <Sidebar
-                sourceStatus={sourceStatus}
-                selectedSourceId={selectedSourceId}
-                selectedCategory={selectedCategory}
-                youtubeSources={youtubeSources}
-                latestVideoBySource={latestVideoBySource}
-            />
+                    <Sidebar
+                        sourceStatus={sourceStatus}
+                        selectedSourceId={selectedSourceId}
+                        selectedCategory={selectedCategory}
+                        youtubeSources={youtubeSources}
+                        latestVideoBySource={latestVideoBySource}
+                    />
+                </>
+            )}
 
             <main
                 id="main"
@@ -66,7 +74,7 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
 
             <FloatingRadioPlayer />
             <CustomSourcesSync />
-            <ScrollToTop />
+            {!reelMode && <ScrollToTop />}
             </div>
         </div>
     );

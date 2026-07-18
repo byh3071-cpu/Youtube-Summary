@@ -73,8 +73,8 @@ test.describe("mobile ux", () => {
     await gotoHydratedHome(page);
 
     const targets = [
-      page.getByRole("button", { name: "필터 패널 열기" }),
-      page.getByRole("button", { name: "전체(최신순)" }),
+      page.getByTestId("discovery-filter-trigger"),
+      page.getByTestId("view-all"),
       page.getByRole("button", { name: "유튜브", exact: true }),
       page.getByRole("button", { name: "RSS", exact: true }),
       page.getByRole("button", { name: "피드 Q&A 열기" }),

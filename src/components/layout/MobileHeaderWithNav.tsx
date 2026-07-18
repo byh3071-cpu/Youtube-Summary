@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Menu } from "lucide-react";
-import { LoginButton } from "@/components/auth/LoginButton";
+import Link from "next/link";
 import MobileNavDrawer from "./MobileNavDrawer";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
@@ -23,29 +22,29 @@ export default function MobileHeaderWithNav({
 
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-(--notion-border) bg-(--notion-bg)/92 px-4 py-3 backdrop-blur md:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-(--notion-border) pl-1.5 pr-2.5 text-(--notion-fg)/70 hover:bg-(--notion-hover) hover:text-(--notion-fg)"
-            aria-label="메뉴 열기"
-          >
-            {/* 햄버거 아이콘으로 '메뉴'임을 명확히 한다(UX-32). 로고는 브랜드용으로 유지. */}
-            <Menu size={20} className="shrink-0" aria-hidden />
-            <Image
-              src="/rogo.png"
-              alt="Focus Feed"
-              width={124}
-              height={38}
-              className="object-contain object-left"
-              priority
+      <header data-testid="mobile-header" className="sticky top-0 z-50 h-16 border-b border-(--border-subtle) bg-(--surface-raised)/92 px-3 py-2 backdrop-blur-xl lg:hidden">
+        <div className="flex h-full items-center">
+          <div data-testid="mobile-brand-menu" className="relative h-10 w-[136px] shrink-0 overflow-visible">
+            <Image src="/rogo.png" alt="" fill sizes="136px" className="pointer-events-none object-cover object-left dark:hidden" priority aria-hidden />
+            <Image src="/rogo-dark.png" alt="" fill sizes="136px" className="pointer-events-none hidden object-cover object-left dark:block" priority aria-hidden />
+            <button
+              data-testid="brand-menu-trigger"
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="absolute top-1/2 left-0 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl hover:bg-(--surface-subtle)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
+              aria-label="메뉴 열기"
+              aria-expanded={drawerOpen}
+              aria-controls="mobile-navigation-drawer"
+            >
+              <span className="sr-only">메뉴 열기</span>
+            </button>
+            <Link
+              href="/"
+              className="absolute inset-y-0 right-0 left-11 z-10 rounded-r-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
+              aria-label="Focus Feed 홈"
             />
-          </button>
-          <div className="min-w-0 flex-1" aria-hidden />
-          <div className="flex items-center gap-2">
-            <LoginButton />
           </div>
+          <div className="min-w-0 flex-1" aria-hidden />
         </div>
       </header>
       <MobileNavDrawer

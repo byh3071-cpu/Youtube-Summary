@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const MODE_LABEL: Record<"longform" | "shortform" | "live", string> = {
-  longform: "롱폼",
+  longform: "동영상",
   shortform: "숏폼",
   live: "라이브",
 };
@@ -28,24 +29,21 @@ export default function ReelContextBar({
 
   return (
     <header
-      role="region"
       aria-label={`${MODE_LABEL[viewMode]} 리얼 피드`}
-      className="grid h-12 shrink-0 grid-cols-3 items-center gap-2 border-b border-(--notion-border) bg-(--notion-bg) px-3 sm:px-4"
+      data-testid="reel-context-bar"
+      className="relative z-10 grid h-12 shrink-0 grid-cols-3 items-center gap-2 overflow-hidden bg-black px-3 text-white sm:px-4"
     >
-      <span className="min-w-0 truncate text-left text-xs font-semibold text-(--notion-fg)/70 sm:text-sm">
-        Focus Feed
-      </span>
-      <span className="text-center text-xs font-semibold text-(--notion-fg) sm:text-sm">
+      <Link
+        href={exitHref}
+        className="inline-flex min-h-10 w-fit items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:text-sm"
+      >
+        <ArrowLeft size={16} aria-hidden />
+        홈
+      </Link>
+      <h1 data-testid="reel-context-title" className="m-0! text-center text-xs! font-semibold leading-none! text-white sm:text-sm!">
         {MODE_LABEL[viewMode]}
-      </span>
-      <div className="flex justify-end">
-        <Link
-          href={exitHref}
-          className="shrink-0 rounded-lg bg-(--focus-accent) px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 sm:px-3.5 sm:text-sm"
-        >
-          목록으로
-        </Link>
-      </div>
+      </h1>
+      <span aria-hidden />
     </header>
   );
 }

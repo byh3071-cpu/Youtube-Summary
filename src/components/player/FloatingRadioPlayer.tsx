@@ -5,11 +5,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { qaLog } from "@/lib/qa-log";
-import { X } from "lucide-react";
+import { AlertCircle, ListMusic, Loader2, Radio, Sparkles, X } from "lucide-react";
+import { summarizeVideoAction } from "@/app/actions/summarize";
 import { RadioFooterControls } from "./RadioFooterControls";
 import { RadioPlaylistDrawer } from "./RadioPlaylistDrawer";
 import { RadioLyricsView } from "./RadioLyricsView";
 import { getWatchProgress, saveWatchProgress } from "@/lib/watch-history";
+import { useBodyScrollLock } from "@/lib/body-scroll-lock";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { ModalTransition } from "@/components/ui/ModalTransition";
 
 declare global {
   interface Window {
@@ -26,7 +30,11 @@ declare namespace YT {
       width?: string;
       videoId?: string;
       playerVars?: Record<string, number | string>;
-      events?: { onReady?: (event: { target: Player }) => void; onStateChange?: (event: { data: number }) => void };
+      events?: {
+        onReady?: (event: { target: Player }) => void;
+        onStateChange?: (event: { data: number }) => void;
+        onError?: (event: { data: number }) => void;
+      };
     });
     loadVideoById(videoId: string): void;
     playVideo(): void;
@@ -46,10 +54,107 @@ declare namespace YT {
 
 const PLAYER_DIV_ID = "yt-radio-player-host";
 const PLAYER_WRAPPER_ID = "yt-radio-player-wrapper";
-const EMPTY_HINT_DISMISSED_KEY = "focus-feed:radio-empty-hint-dismissed";
 
 type RadioOptional = ReturnType<typeof useRadioQueueOptional>;
 type RadioRefValue = NonNullable<RadioOptional>;
+
+interface ExpandedSummaryBodyProps {
+  summary?: string;
+  loading: boolean;
+  error: string | null;
+  onGenerate: () => void;
+  onLogin: () => void;
+}
+
+function ExpandedSummaryBody({
+  summary,
+  loading,
+  error,
+  onGenerate,
+  onLogin,
+}: ExpandedSummaryBodyProps) {
+  if (summary) {
+    return (
+      <p className="whitespace-pre-wrap rounded-2xl bg-(--surface-subtle) px-5 py-4 text-base leading-7 text-(--text-primary)">
+        {summary}
+      </p>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div
+        data-testid="expanded-ai-summary-loading"
+        role="status"
+        aria-live="polite"
+        className="rounded-2xl bg-(--surface-subtle) px-5 py-5"
+      >
+        <div className="flex items-center gap-3 text-sm font-semibold text-(--text-primary)">
+          <Loader2 size={18} className="animate-spin text-(--ai-accent)" aria-hidden />
+          AI가 영상의 핵심 내용을 정리하고 있어요.
+        </div>
+        <div className="mt-5 space-y-3" aria-hidden>
+          <span className="block h-3 w-full animate-pulse rounded-full bg-(--border-subtle)" />
+          <span className="block h-3 w-[88%] animate-pulse rounded-full bg-(--border-subtle)" />
+          <span className="block h-3 w-[72%] animate-pulse rounded-full bg-(--border-subtle)" />
+        </div>
+        <p className="mt-5 text-xs leading-5 text-(--text-secondary)">
+          영상 길이에 따라 시간이 조금 걸릴 수 있습니다. 재생은 계속할 수 있어요.
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div data-testid="expanded-ai-summary-error" role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-5">
+        <div className="flex items-start gap-3 text-red-700 dark:text-red-300">
+          <AlertCircle size={18} className="mt-0.5 shrink-0" aria-hidden />
+          <p className="text-sm font-medium leading-6">{error}</p>
+        </div>
+        {error.includes("로그인") ? (
+          <button
+            data-testid="expanded-ai-summary-login"
+            type="button"
+            onClick={onLogin}
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-(--ai-accent) px-4 text-sm font-bold text-white transition-[filter,transform] hover:brightness-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ai-accent)/40 focus-visible:ring-offset-2 dark:text-violet-950"
+          >
+            Google로 로그인
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onGenerate}
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-red-500/25 px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 dark:text-red-300"
+          >
+            다시 시도
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-(--surface-subtle) px-5 py-5">
+      <p className="text-base font-semibold">아직 생성된 요약이 없어요.</p>
+      <p className="mt-2 text-sm leading-6 text-(--text-secondary)">
+        재생 화면을 벗어나지 않고 현재 영상의 핵심 내용을 바로 정리할 수 있습니다.
+      </p>
+      <button
+        data-testid="expanded-ai-summary-generate"
+        type="button"
+        onClick={onGenerate}
+        className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-(--ai-accent) px-4 text-sm font-bold text-white shadow-sm transition-[filter,transform] hover:brightness-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ai-accent)/40 focus-visible:ring-offset-2 dark:text-violet-950"
+      >
+        <Sparkles size={16} aria-hidden />
+        AI 요약 생성
+      </button>
+      <p className="mt-3 text-xs leading-5 text-(--text-secondary)">
+        생성이 끝나면 이 패널에 자동으로 표시됩니다.
+      </p>
+    </div>
+  );
+}
 
 export default function FloatingRadioPlayer() {
   const radio = useRadioQueueOptional();
@@ -63,32 +168,31 @@ export default function FloatingRadioPlayer() {
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [videoExpanded, setVideoExpanded] = useState(false);
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
+  const [expandedSummaryOpen, setExpandedSummaryOpen] = useState(false);
+  const expandedSummaryOpenRef = useRef(false);
+  expandedSummaryOpenRef.current = expandedSummaryOpen;
+  const [wideSummaryLayout, setWideSummaryLayout] = useState(false);
+  const [expandedSummaryLoading, setExpandedSummaryLoading] = useState(false);
+  const [expandedSummaryError, setExpandedSummaryError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
-  // 빈 큐 안내: 모바일에서는 닫을 수 있게 해 피드/Q&A 공간을 계속 차지하지 않도록 한다(세션 단위 기억).
-  const [emptyHintDismissed, setEmptyHintDismissed] = useState(false);
-
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem(EMPTY_HINT_DISMISSED_KEY) === "1") {
-        setEmptyHintDismissed(true);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const dismissEmptyHint = useCallback(() => {
-    setEmptyHintDismissed(true);
-    try {
-      sessionStorage.setItem(EMPTY_HINT_DISMISSED_KEY, "1");
-    } catch {
-      // ignore
-    }
-  }, []);
+  const [expandedChromeVisible, setExpandedChromeVisible] = useState(true);
+  const fullPlayerRef = useRef<HTMLDivElement>(null);
+  const fullPlayerCloseRef = useRef<HTMLButtonElement>(null);
+  const fullPlayerRestoreFocusRef = useRef<HTMLElement | null>(null);
+  const expandedMediaRef = useRef<HTMLElement>(null);
   /** 시크 직후 rAF가 이전 재생 위치로 덮어쓰지 않도록 목표 % 유지 */
   const seekTargetRef = useRef<number | null>(null);
   const seekTargetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expandedSummaryRequestRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1280px)");
+    const sync = () => setWideSummaryLayout(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -184,6 +288,17 @@ export default function FloatingRadioPlayer() {
     if (!radio?.currentItem) return;
     setProgress(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- videoId 변경만 진행 바 초기화 트리거로 사용
+  }, [radio?.currentItem?.videoId]);
+
+  useEffect(() => {
+    setExpandedSummaryLoading(false);
+    setExpandedSummaryError(null);
+    expandedSummaryRequestRef.current = null;
+
+    const current = radioRef.current?.currentItem;
+    if (!current || current.summary || typeof window === "undefined") return;
+    const cached = localStorage.getItem(`summary_${current.videoId}`);
+    if (cached) radioRef.current?.updateItemSummary(current.videoId, cached);
   }, [radio?.currentItem?.videoId]);
 
   // 현재 큐 아이템 기준으로 저장된 마지막 시청 위치 불러오기 (완료한 영상은 제외)
@@ -299,7 +414,6 @@ export default function FloatingRadioPlayer() {
 
   // 미니/전체 영상: YT가 1x1로 만든 iframe을 모드에 맞게 리사이즈
   const MINI_VIDEO_W = 320;
-  const MINI_VIDEO_H = 180;
   const videoVisible = videoExpanded || fullPlayerOpen;
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -313,10 +427,10 @@ export default function FloatingRadioPlayer() {
         iframe.style.width = "100%";
         iframe.style.height = "100%";
       } else if (videoExpanded) {
-        iframe.setAttribute("width", String(MINI_VIDEO_W));
-        iframe.setAttribute("height", String(MINI_VIDEO_H));
-        iframe.style.width = `${MINI_VIDEO_W}px`;
-        iframe.style.height = `${MINI_VIDEO_H}px`;
+        iframe.removeAttribute("width");
+        iframe.removeAttribute("height");
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
       } else {
         iframe.setAttribute("width", "1");
         iframe.setAttribute("height", "1");
@@ -332,18 +446,94 @@ export default function FloatingRadioPlayer() {
     };
   }, [videoExpanded, fullPlayerOpen]);
 
+  useBodyScrollLock(fullPlayerOpen);
+
+  const closeFullPlayer = useCallback(() => {
+    setExpandedChromeVisible(true);
+    setExpandedSummaryOpen(false);
+    setFullPlayerOpen(false);
+    qaLog.radio.fullPlayerClose();
+  }, []);
+
+  const hasExpandedChromeKeyboardFocus = useCallback(() => {
+    const media = expandedMediaRef.current;
+    const active = document.activeElement;
+    return Boolean(
+      media &&
+      active instanceof HTMLElement &&
+      media.contains(active) &&
+      active.matches(":focus-visible"),
+    );
+  }, []);
+
   useEffect(() => {
     if (!fullPlayerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.isComposing || e.keyCode === 229) return;
-      if (e.key === "Escape") {
-        setFullPlayerOpen(false);
-        qaLog.radio.fullPlayerClose();
+    const syncChromeWithPointer = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") return;
+      const media = expandedMediaRef.current;
+      if (!media) return;
+      const rect = media.getBoundingClientRect();
+      const inside =
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      if (inside) {
+        setExpandedChromeVisible(true);
+      } else if (!hasExpandedChromeKeyboardFocus()) {
+        setExpandedChromeVisible(false);
+      }
+    };
+    document.addEventListener("pointermove", syncChromeWithPointer, true);
+    return () => document.removeEventListener("pointermove", syncChromeWithPointer, true);
+  }, [fullPlayerOpen, hasExpandedChromeKeyboardFocus]);
+
+  useEffect(() => {
+    if (!fullPlayerOpen) return;
+    fullPlayerRestoreFocusRef.current = document.activeElement as HTMLElement | null;
+    const focusFrame = requestAnimationFrame(() => fullPlayerCloseRef.current?.focus());
+    const onKey = (event: KeyboardEvent) => {
+      if (event.isComposing || event.keyCode === 229) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (expandedSummaryOpenRef.current) {
+          setExpandedSummaryOpen(false);
+          return;
+        }
+        closeFullPlayer();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = fullPlayerRef.current;
+      if (!dialog) return;
+      const focusables = Array.from(
+        dialog.querySelectorAll<HTMLElement>('button, iframe, [href], [tabindex]:not([tabindex="-1"])'),
+      ).filter((element) => !element.hasAttribute("disabled") && element.offsetParent !== null);
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [fullPlayerOpen]);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", onKey);
+      const previous = fullPlayerRestoreFocusRef.current;
+      requestAnimationFrame(() => {
+        if (previous?.isConnected && previous !== document.body) {
+          previous.focus();
+          return;
+        }
+        document.querySelector<HTMLButtonElement>('button[aria-label="플레이어 더보기"]')?.focus();
+      });
+    };
+  }, [closeFullPlayer, fullPlayerOpen]);
 
   const togglePlay = useCallback(() => {
     radioRef.current?.togglePlay();
@@ -449,154 +639,403 @@ export default function FloatingRadioPlayer() {
     }, 1500);
   }, []);
 
+  const generateExpandedSummary = useCallback(async () => {
+    const current = radioRef.current?.currentItem;
+    if (!current || expandedSummaryRequestRef.current === current.videoId) return;
+
+    const requestVideoId = current.videoId;
+    expandedSummaryRequestRef.current = requestVideoId;
+    setExpandedSummaryLoading(true);
+    setExpandedSummaryError(null);
+    qaLog.radio.summaryFetchStart(requestVideoId);
+
+    try {
+      const result = await summarizeVideoAction(requestVideoId);
+      if (result.summary) {
+        radioRef.current?.updateItemSummary(requestVideoId, result.summary);
+        localStorage.setItem(`summary_${requestVideoId}`, result.summary);
+        window.dispatchEvent(new Event("focus-feed:usage-updated"));
+        qaLog.radio.summaryFetchSuccess(requestVideoId);
+      } else {
+        const message = result.error ?? "요약을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        if (radioRef.current?.currentItem?.videoId === requestVideoId) {
+          setExpandedSummaryError(message);
+        }
+        qaLog.radio.summaryFetchError(requestVideoId, message);
+      }
+    } catch {
+      const message = "요약 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+      if (radioRef.current?.currentItem?.videoId === requestVideoId) {
+        setExpandedSummaryError(message);
+      }
+      qaLog.radio.summaryFetchError(requestVideoId, message);
+    } finally {
+      if (expandedSummaryRequestRef.current === requestVideoId) {
+        expandedSummaryRequestRef.current = null;
+      }
+      if (radioRef.current?.currentItem?.videoId === requestVideoId) {
+        setExpandedSummaryLoading(false);
+      }
+    }
+  }, []);
+
+  const startSummaryLogin = useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setExpandedSummaryError("로그인 설정을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  }, []);
+
   if (!radio) return null;
 
   if (radio.queue.length === 0) {
-    return (
-      <>
-        {/* 데스크톱: 기존 고정 안내 유지 */}
-        <footer
-          className="fixed bottom-0 left-0 right-0 z-50 hidden border-t border-(--notion-border) bg-(--notion-bg)/95 py-2 backdrop-blur supports-backdrop-filter:bg-(--notion-bg)/80 md:block"
-          role="region"
-          aria-label="라디오 안내"
-        >
-          <div className="mx-auto flex max-w-5xl items-center justify-center gap-2.5 px-4 md:px-6">
-            <div className="relative h-14 w-14 shrink-0 md:h-16 md:w-16">
-              <Image
-                src="/focus-feed-logo-v2.png"
-                alt="Focus Feed 로고"
-                fill
-                sizes="(max-width: 768px) 56px, 64px"
-                className="object-contain object-center"
-              />
-            </div>
-            <div className="text-sm">
-              <p className="font-medium text-(--notion-fg)">아직 라디오에 담긴 영상이 없어요.</p>
-              <p className="text-(--notion-fg)/65">
-                피드에서 <span className="font-semibold text-(--focus-accent)">라디오에 추가</span>를 눌러 플레이리스트를 채워보세요.
-              </p>
-            </div>
-          </div>
-        </footer>
-        {/* 모바일: 닫을 수 있는 컴팩트 안내 — 닫으면 피드/Q&A 공간을 차지하지 않음 */}
-        {!emptyHintDismissed && (
-          <div
-            className="fixed bottom-0 left-0 right-0 z-50 border-t border-(--notion-border) bg-(--notion-bg)/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur supports-backdrop-filter:bg-(--notion-bg)/80 md:hidden"
-            role="region"
-            aria-label="라디오 안내"
-          >
-            <div className="flex items-center gap-2 px-3 py-1.5">
-              <p className="min-w-0 flex-1 text-xs leading-snug text-(--notion-fg)/75">
-                피드에서 <span className="font-semibold text-(--focus-accent)">라디오에 추가</span>를 누르면 여기서 이어 들을 수 있어요.
-              </p>
-              <button
-                type="button"
-                onClick={dismissEmptyHint}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-(--notion-fg)/55 touch-manipulation hover:bg-(--notion-hover) hover:text-(--notion-fg)"
-                aria-label="라디오 안내 닫기"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-      </>
-    );
+    return null;
   }
+
+  // 확장 플레이어의 작은 대기열도 현재 항목 이후만 보여주지 않고,
+  // 현재 항목을 중심으로 이전·다음 항목을 최대 5개까지 유지한다.
+  const queuePreviewStart = Math.max(
+    0,
+    Math.min(radio.currentIndex - 2, Math.max(0, radio.queue.length - 5)),
+  );
+  const queuePreviewItems = radio.queue.slice(queuePreviewStart, queuePreviewStart + 5);
 
   return (
     <>
       {/* 미니: 우하단 320x180 / 전체: 모달 중앙 큰 영상 / 숨김: 1px */}
       <div
         id={PLAYER_WRAPPER_ID}
+        ref={fullPlayerRef}
+        data-testid={fullPlayerOpen ? "expanded-radio-player" : undefined}
+        role={fullPlayerOpen ? "dialog" : undefined}
+        aria-modal={fullPlayerOpen ? true : undefined}
+        aria-label={fullPlayerOpen ? "확장 라디오 플레이어" : undefined}
         className={
           fullPlayerOpen
-            ? "fixed inset-0 z-60 flex items-center justify-center bg-black/80 transition-all duration-300 pointer-events-auto"
+            ? "pointer-events-auto fixed inset-0 z-60 overflow-y-auto bg-(--surface-canvas) text-(--text-primary)"
             : videoExpanded
-              ? "fixed bottom-20 right-4 z-60 overflow-hidden rounded-xl border border-(--notion-border) bg-black shadow-lg transition-all duration-300 pointer-events-auto"
+              ? "scroll-lock-stable-right pointer-events-auto fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] right-3 z-60 overflow-hidden rounded-xl border border-(--notion-border) bg-black shadow-lg transition-[box-shadow] duration-[180ms] md:bottom-24 md:right-4"
               : "pointer-events-none fixed bottom-0 left-0 h-px w-px overflow-hidden opacity-0"
         }
         style={
           fullPlayerOpen
             ? undefined
             : videoExpanded
-              ? { width: MINI_VIDEO_W, height: MINI_VIDEO_H }
+              ? { width: `min(${MINI_VIDEO_W}px, calc(100vw - 1.5rem))`, aspectRatio: "16 / 9" }
               : undefined
         }
         aria-hidden={!videoVisible}
-        onClick={
-          fullPlayerOpen
-            ? () => {
-                setFullPlayerOpen(false);
-                qaLog.radio.fullPlayerClose();
-              }
-            : undefined
-        }
       >
-        <div
-          id={PLAYER_DIV_ID}
-          className={fullPlayerOpen ? "w-[90vw] max-w-4xl aspect-video overflow-hidden rounded-lg bg-black shadow-2xl" : ""}
-          style={
-            fullPlayerOpen
-              ? { width: "90vw", maxWidth: "896px", aspectRatio: "16/9" }
-              : { width: "100%", height: "100%", minWidth: 0, minHeight: 0 }
-          }
-          aria-hidden={!videoVisible}
-          onClick={fullPlayerOpen ? (e) => e.stopPropagation() : undefined}
-        />
-
-        {fullPlayerOpen && radio.currentItem && resumeSeconds != null && (
-          <div className="pointer-events-none absolute inset-x-0 top-4 z-70 flex justify-center px-4">
-            <div className="flex max-w-4xl flex-1 items-center justify-between gap-3 rounded-full bg-black/60 px-4 py-2 text-[11px] text-white">
-              <span className="line-clamp-1 font-semibold">
-                {radio.currentItem.title}
+        <div className={fullPlayerOpen ? "mx-auto flex min-h-dvh w-full max-w-[2160px] flex-col" : "h-full w-full"}>
+          <header className={fullPlayerOpen ? "flex h-16 shrink-0 items-center justify-between px-4 sm:h-[72px] sm:px-7 xl:h-14" : "hidden"}>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--playback-accent-muted) text-(--playback-accent)" aria-hidden>
+                <Radio size={18} />
               </span>
-              <button
-                type="button"
-                className="pointer-events-auto rounded-full bg-(--focus-accent) px-3 py-1 text-[10px] font-semibold text-black hover:bg-(--focus-accent)/90"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  try {
-                    const player = playerRef.current as { seekTo?: (sec: number, allow: boolean) => void } | null;
-                    if (player && typeof player.seekTo === "function") {
-                      player.seekTo(resumeSeconds, true);
-                    }
-                  } catch {
-                    // ignore
-                  } finally {
-                    // 한 번 이동 후에는 안내를 숨겨서 화면을 더 깔끔하게 유지
-                    setResumeSeconds(null);
-                  }
-                }}
-              >
-                마지막 시청{" "}
-                {(() => {
-                  const total = Math.max(0, Math.floor(resumeSeconds));
-                  const h = Math.floor(total / 3600);
-                  const m = Math.floor((total % 3600) / 60);
-                  const s = total % 60;
-                  if (h > 0) {
-                    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-                  }
-                  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-                })()}로 이동
-              </button>
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-bold tracking-[0.16em] text-(--text-secondary)">FOCUS FEED RADIO</p>
+                <p className="mt-0.5 truncate text-sm font-semibold">현재 재생</p>
+              </div>
             </div>
-          </div>
-        )}
+            <button
+              ref={fullPlayerCloseRef}
+              type="button"
+              onClick={closeFullPlayer}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-(--surface-raised) text-(--text-secondary) shadow-[var(--shadow-sm)] transition-colors hover:bg-(--surface-subtle) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
+              aria-label="확장 플레이어 닫기"
+            >
+              <X size={20} />
+            </button>
+          </header>
+
+          <main className={fullPlayerOpen ? "flex flex-1 flex-col items-center justify-center px-3 pb-5 sm:px-7 sm:pb-7 xl:pb-3" : "h-full w-full"}>
+            <div
+              data-testid={fullPlayerOpen ? "expanded-radio-stage" : undefined}
+              className={fullPlayerOpen ? "flex w-full items-stretch gap-4" : "h-full w-full"}
+              style={
+                fullPlayerOpen
+                  ? {
+                      width: expandedSummaryOpen
+                        ? "min(100%, 2000px, calc((100dvh - 164px) * 1.77778 + clamp(360px, 21vw, 420px) + 16px))"
+                        : "min(100%, 2000px, calc((100dvh - 164px) * 1.77778))",
+                    }
+                  : undefined
+              }
+            >
+              <section
+                ref={expandedMediaRef}
+                data-testid={fullPlayerOpen ? "expanded-radio-media" : undefined}
+                className={
+                  fullPlayerOpen
+                    ? "relative aspect-video min-w-0 flex-1 overflow-hidden rounded-2xl bg-black shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:rounded-3xl"
+                    : "relative h-full w-full overflow-hidden bg-black"
+                }
+              onPointerEnter={(event) => {
+                if (event.pointerType === "mouse") setExpandedChromeVisible(true);
+              }}
+              onPointerLeave={(event) => {
+                if (event.pointerType === "mouse" && !hasExpandedChromeKeyboardFocus()) {
+                  setExpandedChromeVisible(false);
+                }
+              }}
+              onFocusCapture={() => setExpandedChromeVisible(true)}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setExpandedChromeVisible(false);
+                }
+              }}
+            >
+              <div
+                id={PLAYER_DIV_ID}
+                className="h-full w-full"
+                style={{ width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}
+                aria-hidden={!videoVisible}
+              />
+
+              {videoExpanded && !fullPlayerOpen && (
+                <button
+                  type="button"
+                  data-testid="mini-video-close"
+                  onClick={() => {
+                    setVideoExpanded(false);
+                    qaLog.radio.videoExpandOff();
+                  }}
+                  className="absolute right-2 top-2 z-80 inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                  aria-label="미니 영상 닫기"
+                >
+                  <X size={20} aria-hidden />
+                </button>
+              )}
+
+              {fullPlayerOpen && radio.currentItem && resumeSeconds != null && (
+                <div
+                  data-testid="resume-playback-prompt"
+                  className={`pointer-events-none absolute inset-x-0 top-3 z-70 flex justify-center px-3 transition-opacity duration-[180ms] motion-reduce:transition-none sm:top-4 sm:px-4 ${!expandedSummaryOpen ? "xl:right-[21rem]" : ""} ${expandedChromeVisible ? "opacity-100" : "opacity-0"}`}
+                >
+                  <div className="flex max-w-3xl flex-1 items-center justify-between gap-3 rounded-2xl bg-black/65 px-3 py-2 text-[11px] text-white shadow-lg backdrop-blur-md sm:rounded-full sm:px-4">
+                    <span className="line-clamp-1 font-semibold">이어서 재생할 위치가 있어요.</span>
+                    <button
+                      type="button"
+                      className="pointer-events-auto shrink-0 rounded-full bg-(--playback-accent) px-3 py-1.5 text-[10px] font-bold text-black hover:brightness-95"
+                      onClick={() => {
+                        try {
+                          const player = playerRef.current as { seekTo?: (sec: number, allow: boolean) => void } | null;
+                          if (player && typeof player.seekTo === "function") player.seekTo(resumeSeconds, true);
+                        } catch {
+                          // ignore
+                        } finally {
+                          setResumeSeconds(null);
+                        }
+                      }}
+                    >
+                      마지막 시청 {(() => {
+                        const total = Math.max(0, Math.floor(resumeSeconds));
+                        const h = Math.floor(total / 3600);
+                        const m = Math.floor((total % 3600) / 60);
+                        const s = total % 60;
+                        return h > 0
+                          ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+                          : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+                      })()}로 이동
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {fullPlayerOpen && radio.queue.length > 0 && !expandedSummaryOpen && (
+                <aside
+                  data-testid="expanded-queue-preview"
+                  aria-label="재생 대기열 미리보기"
+                  className={`absolute top-20 right-4 z-60 hidden max-h-[calc(100%-9rem)] w-80 flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/72 text-white shadow-2xl backdrop-blur-xl transition-[opacity,transform] duration-[180ms] motion-reduce:transition-none xl:flex ${expandedChromeVisible ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-3 opacity-0"}`}
+                >
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <ListMusic size={16} className="text-emerald-300" aria-hidden />
+                      <span className="text-xs font-bold">재생 대기열</span>
+                    </div>
+                    <span className="text-[11px] font-medium text-white/65">
+                      {radio.currentIndex + 1} / {radio.queue.length}
+                    </span>
+                  </div>
+                  <div className="min-h-0 overflow-y-auto px-2 pb-2">
+                    {queuePreviewItems.map((item, offset) => {
+                      const itemIndex = queuePreviewStart + offset;
+                      const current = itemIndex === radio.currentIndex;
+                      const relativeLabel = itemIndex < radio.currentIndex
+                        ? `이전 ${radio.currentIndex - itemIndex}번째`
+                        : `다음 ${itemIndex - radio.currentIndex}번째`;
+                      return (
+                        <button
+                          key={`${item.videoId}-${itemIndex}`}
+                          type="button"
+                          data-testid="expanded-queue-preview-item"
+                          data-queue-index={itemIndex}
+                          onClick={() => radio.setCurrentIndex(itemIndex)}
+                          className={`flex min-h-[68px] w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 ${current ? "bg-white/14" : "hover:bg-white/9"}`}
+                          aria-current={current ? "true" : undefined}
+                        >
+                          <span className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-lg bg-white/10">
+                            <Image
+                              src={`https://i.ytimg.com/vi/${encodeURIComponent(item.videoId)}/mqdefault.jpg`}
+                              alt=""
+                              fill
+                              sizes="80px"
+                              className="object-cover"
+                            />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2 text-xs font-semibold leading-4">{item.title}</span>
+                            <span className={`mt-1 block text-[10px] ${current ? "font-bold text-emerald-300" : "text-white/55"}`}>
+                              {current ? (radio.isPlaying ? "재생 중" : "일시정지") : relativeLabel}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </aside>
+              )}
+
+              </section>
+
+              {fullPlayerOpen && expandedSummaryOpen && wideSummaryLayout && (
+                <aside
+                  id="expanded-ai-summary-panel"
+                  data-testid="expanded-ai-summary-panel"
+                  aria-label="AI 핵심 요약"
+                  className="hidden w-[clamp(360px,21vw,420px)] shrink-0 self-stretch flex-col overflow-hidden rounded-2xl border border-(--border-subtle) bg-(--surface-raised) text-(--text-primary) shadow-[var(--shadow-lg)] xl:flex"
+                >
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-(--ai-accent-muted) text-(--ai-accent)">
+                        <Sparkles size={18} aria-hidden />
+                      </span>
+                      <div>
+                        <p className="text-[11px] font-bold tracking-[0.13em] text-(--ai-accent)">FOCUS FEED AI</p>
+                        <h3 className="m-0! mt-0.5! text-base! font-bold leading-6!">AI 핵심 요약</h3>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedSummaryOpen(false)}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full text-(--text-secondary) transition-colors hover:bg-(--surface-subtle) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ai-accent)/45"
+                      aria-label="AI 요약 패널 닫기"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="min-h-0 overflow-y-auto px-5 pb-5">
+                    <ExpandedSummaryBody
+                      summary={radio.currentItem?.summary}
+                      loading={expandedSummaryLoading}
+                      error={expandedSummaryError}
+                      onGenerate={generateExpandedSummary}
+                      onLogin={startSummaryLogin}
+                    />
+                  </div>
+                </aside>
+              )}
+            </div>
+
+            <section
+              data-testid={fullPlayerOpen ? "expanded-radio-context" : undefined}
+              className={
+                fullPlayerOpen
+                  ? "mt-3 flex w-full max-w-[2000px] flex-col gap-3 rounded-2xl bg-(--surface-raised) px-4 py-4 shadow-[var(--shadow-sm)] sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 xl:mt-3 xl:px-5 xl:py-4"
+                  : "hidden"
+              }
+              style={
+                fullPlayerOpen
+                  ? {
+                      width: expandedSummaryOpen
+                        ? "min(100%, 2000px, calc((100dvh - 164px) * 1.77778 + clamp(360px, 21vw, 420px) + 16px))"
+                        : "min(100%, 2000px, calc((100dvh - 164px) * 1.77778))",
+                    }
+                  : undefined
+              }
+              aria-label="현재 재생 정보"
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold tracking-[0.12em] text-emerald-700 dark:text-emerald-300">NOW PLAYING</p>
+                <h2 className="m-0! mt-1! line-clamp-2 text-base! font-bold leading-6! text-(--text-primary) sm:text-lg!">
+                  {radio.currentItem?.title}
+                </h2>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 text-xs text-(--text-secondary)">
+                <button
+                  data-testid="expanded-ai-summary-trigger"
+                  type="button"
+                  onClick={() => setExpandedSummaryOpen((open) => !open)}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 xl:min-h-9 ${expandedSummaryOpen ? "bg-(--ai-accent-muted) text-(--ai-accent)" : "bg-(--surface-subtle) text-(--text-secondary) hover:text-(--ai-accent)"}`}
+                  aria-expanded={expandedSummaryOpen}
+                  aria-controls={wideSummaryLayout ? "expanded-ai-summary-panel" : "expanded-ai-summary-sheet"}
+                >
+                  <Sparkles size={14} aria-hidden />
+                  AI 요약
+                </button>
+                <span className="inline-flex min-h-8 items-center rounded-full bg-(--playback-accent-muted) px-3 font-semibold text-emerald-700 dark:text-emerald-300">
+                  {radio.isPlaying ? "재생 중" : "일시정지"}
+                </span>
+                <span className="inline-flex min-h-8 items-center rounded-full bg-(--surface-subtle) px-3 font-medium">
+                  {radio.currentIndex + 1} / {radio.queue.length}
+                </span>
+              </div>
+            </section>
+          </main>
+        </div>
       </div>
-      {fullPlayerOpen && (
-        <button
-          type="button"
-          onClick={() => {
-            setFullPlayerOpen(false);
-            qaLog.radio.fullPlayerClose();
-          }}
-          className="fixed top-4 right-4 z-70 flex h-10 w-10 items-center justify-center rounded-full bg-(--notion-fg)/20 text-(--notion-fg) transition-colors hover:bg-(--notion-fg)/30"
-          aria-label="전체 화면 닫기"
+
+      {fullPlayerOpen && !wideSummaryLayout && (
+        <ModalTransition
+          open={expandedSummaryOpen}
+          onClose={() => setExpandedSummaryOpen(false)}
+          overlayClassName="fixed inset-0 bg-black/30 backdrop-blur-[1px] xl:hidden"
+          overlayZ={80}
+          panelZ={81}
+          variant="bottom"
+          panelId="expanded-ai-summary-sheet"
+          panelTestId="expanded-ai-summary-sheet"
+          panelRole="dialog"
+          panelAriaLabel="AI 핵심 요약"
+          transitionDuration={0.16}
+          exitDuration={0.1}
+          panelClassName="fixed inset-x-0 bottom-0 mx-auto flex max-h-[72dvh] w-full max-w-[680px] flex-col overflow-hidden rounded-t-[28px] border border-b-0 border-(--border-subtle) bg-(--surface-raised) text-(--text-primary) shadow-[0_-24px_70px_rgba(15,23,42,0.22)] xl:hidden"
         >
-          <X size={24} />
-        </button>
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-(--text-secondary)/25" aria-hidden />
+          <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-(--ai-accent-muted) text-(--ai-accent)">
+                <Sparkles size={18} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold tracking-[0.13em] text-(--ai-accent)">FOCUS FEED AI</p>
+                <h3 className="m-0! mt-0.5! truncate text-base! font-bold leading-6!">AI 핵심 요약</h3>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExpandedSummaryOpen(false)}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) transition-colors hover:bg-(--surface-subtle) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ai-accent)/45"
+              aria-label="AI 요약 닫기"
+            >
+              <X size={19} />
+            </button>
+          </div>
+          <div className="min-h-0 overflow-y-auto px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-5">
+            <ExpandedSummaryBody
+              summary={radio.currentItem?.summary}
+              loading={expandedSummaryLoading}
+              error={expandedSummaryError}
+              onGenerate={generateExpandedSummary}
+              onLogin={startSummaryLogin}
+            />
+          </div>
+        </ModalTransition>
       )}
 
       <RadioFooterControls

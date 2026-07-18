@@ -32,16 +32,15 @@ test.describe("anonymous flows", () => {
     const keyword = `e2e키워드${Date.now() % 10000}`;
     await gotoHydratedHome(page);
 
-    await page.getByRole("button", { name: "필터 패널 열기" }).click();
-    await page.getByRole("button", { name: "키워드 추가" }).click();
+    await page.getByTestId("discovery-filter-trigger").click();
     await page.getByLabel("관심 키워드 입력").fill(keyword);
-    await page.getByRole("button", { name: "저장", exact: true }).click();
+    await page.getByRole("button", { name: "추가", exact: true }).click();
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();
 
     // 새로고침 후에도 localStorage로 유지
     await page.reload();
     await expect(page.getByRole("button", { name: /^(편집|닫기|접기)$/ })).toBeVisible({ timeout: 30000 });
-    await page.getByRole("button", { name: "필터 패널 열기" }).click();
+    await page.getByTestId("discovery-filter-trigger").click();
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();
 
     // 제거
@@ -49,18 +48,21 @@ test.describe("anonymous flows", () => {
     await expect(page.getByText(`# ${keyword}`)).toBeHidden();
   });
 
-  test("view switcher updates URL query", async ({ page }) => {
+  test("view switcher filters instantly and updates URL without navigation", async ({ page }) => {
     await gotoHydratedHome(page);
 
-    // App Router는 서버 렌더 완료 후 URL을 커밋한다 — dev 서버에서 느릴 수 있어 타임아웃 여유.
+    const startedAt = Date.now();
     await page.getByRole("button", { name: "유튜브", exact: true }).click();
-    await expect(page).toHaveURL(/view=youtube/, { timeout: 30000 });
+    await expect(page).toHaveURL(/view=youtube/);
+    await expect(page.getByRole("button", { name: "유튜브", exact: true })).toHaveAttribute("aria-pressed", "true");
+    expect(Date.now() - startedAt).toBeLessThan(1500);
 
     await page.getByRole("button", { name: "RSS", exact: true }).click();
-    await expect(page).toHaveURL(/view=rss/, { timeout: 30000 });
+    await expect(page).toHaveURL(/view=rss/);
+    await expect(page.getByRole("button", { name: "RSS", exact: true })).toHaveAttribute("aria-pressed", "true");
 
-    await page.getByRole("button", { name: "전체(최신순)" }).click();
-    await expect(page).not.toHaveURL(/view=/, { timeout: 30000 });
+    await page.getByTestId("view-all").click();
+    await expect(page).not.toHaveURL(/view=/);
   });
 
   test("Q&A dialog has accessible name and closes with Escape", async ({ page }) => {

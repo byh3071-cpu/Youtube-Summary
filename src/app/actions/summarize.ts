@@ -74,6 +74,12 @@ type RankingResult = {
 
 
 export async function summarizeVideoAction(videoId: string) {
+  const cookieStore = await cookies();
+  const limitResult = await checkUsageLimit(cookieStore, "summary");
+  if (!limitResult.allowed) {
+    return { error: limitResult.error };
+  }
+
   if (!process.env.GEMINI_API_KEY) {
     return { error: geminiFailureMessage("missing_key") };
   }
@@ -81,12 +87,6 @@ export async function summarizeVideoAction(videoId: string) {
   const burst = await guardGeminiActionRateLimit("summary");
   if (!burst.ok) {
     return { error: burst.error };
-  }
-
-  const cookieStore = await cookies();
-  const limitResult = await checkUsageLimit(cookieStore, "summary");
-  if (!limitResult.allowed) {
-    return { error: limitResult.error };
   }
 
   // 0. Supabase 캐시 조회

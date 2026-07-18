@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import RefreshButton from "@/components/ui/RefreshButton";
-import ConnectionStatusPopup from "@/components/feed/ConnectionStatusPopup";
+import Image from "next/image";
+import { Rss, Youtube } from "lucide-react";
 import type { YouTubeFetchStatus } from "@/lib/youtube";
 
 interface FeedHeaderProps {
-  selectedSource?: { id: string; name: string; type: "YouTube" | "RSS" };
+  selectedSource?: { id: string; name: string; type: "YouTube" | "RSS"; avatarUrl?: string };
   visibleItemsCount: number;
   sourceStatus: { youtube: YouTubeFetchStatus; rss: "ready" | "request_failed" };
 }
@@ -33,31 +33,39 @@ export default function FeedHeader({
 
   return (
     <section
-      className={
-        selectedSource
-          ? "mb-0 border-0 rounded-none bg-white dark:bg-(--notion-bg) px-4 py-4 sm:px-6 sm:py-5"
-          : "mb-3 px-1"
-      }
+      data-testid={selectedSource ? "source-header" : undefined}
+      className={selectedSource
+        ? "mb-3 rounded-2xl border border-(--border-subtle) bg-(--surface-raised) px-4 py-4 shadow-[var(--shadow-xs)] sm:px-5"
+        : "mb-3 px-1"}
     >
-      <div className="flex flex-row items-center justify-between gap-3">
-        <div className="min-w-0">
-          {selectedSource ? (
-            <h1 className="mb-0 text-xl font-bold tracking-tight sm:text-2xl">
-              <span className="truncate">{selectedSource.name}</span>
+      {selectedSource ? (
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-(--surface-subtle) text-(--text-secondary)">
+            {selectedSource.avatarUrl ? (
+              <Image src={selectedSource.avatarUrl} alt="" fill sizes="44px" className="object-cover" />
+            ) : selectedSource.type === "YouTube" ? (
+              <Youtube className="h-5 w-5 text-red-500" aria-hidden />
+            ) : (
+              <Rss className="h-5 w-5 text-blue-500" aria-hidden />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="m-0 text-[10px] font-bold uppercase tracking-[0.14em] text-(--text-secondary)">
+              {selectedSource.type === "YouTube" ? "YouTube channel" : "RSS source"}
+            </p>
+            <h1 className="m-0! mt-1! truncate text-xl! font-bold leading-tight! tracking-[-0.025em] text-(--text-primary) sm:text-2xl!">
+              {selectedSource.name}
             </h1>
-          ) : (
-            // 글로벌 피드: 히어로 일러스트·워드마크 제거(상단 정리). 카운트만 슬림하게 노출.
-            <span className="rounded-full border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1 text-[11px] text-(--notion-fg)/60">
-              총 {visibleItemsCount}개
-            </span>
-          )}
+            <p className="m-0 mt-1 text-xs text-(--text-secondary)">
+              최신 콘텐츠 {visibleItemsCount}개를 한곳에서 확인합니다.
+            </p>
+          </div>
         </div>
-
-        <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
-          <ConnectionStatusPopup selectedSource={selectedSource} sourceStatus={sourceStatus} />
-          <RefreshButton />
-        </div>
-      </div>
+      ) : (
+        <span className="rounded-full border border-(--notion-border) bg-(--notion-bg)/80 px-3 py-1 text-[11px] text-(--notion-fg)/60">
+          총 {visibleItemsCount}개
+        </span>
+      )}
 
       {showYoutubeNotice && (
         <div className="mt-4 rounded-2xl border border-(--notion-border) bg-(--notion-bg)/70 px-4 py-3 text-sm leading-relaxed text-(--notion-fg)/65">

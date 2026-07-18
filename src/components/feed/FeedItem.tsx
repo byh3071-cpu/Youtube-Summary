@@ -7,6 +7,7 @@ import ContentStateControl from "./ContentStateControl";
 import { contentIdForItem } from "@/types/content-state";
 import type { ContentStateInfo } from "@/app/actions/content-state";
 import type { BookmarkEntry } from "./FeedClientContainer";
+import { ExternalLink, Rss, Youtube } from "lucide-react";
 
 interface Props {
     item: FeedItemType;
@@ -24,9 +25,7 @@ export default function FeedItem({ item, bookmark, onBookmarkChange, contentStat
     const publishedAt = new Date(item.pubDate);
     const hasValidDate = Number.isFinite(publishedAt.getTime());
     const cleanSummary = item.summary?.replace(/<[^>]*>?/gm, "").replace(/\s+/g, " ").trim();
-    const sourceToneClass = item.source === "YouTube"
-        ? "bg-red-500/10 text-red-600 dark:text-red-300"
-        : "bg-blue-500/10 text-blue-600 dark:text-blue-300";
+    const isYouTube = item.source === "YouTube";
 
     // 날짜 포맷팅 (예: 2026-03-11)
     const formattedDate = hasValidDate
@@ -44,29 +43,25 @@ export default function FeedItem({ item, bookmark, onBookmarkChange, contentStat
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${item.sourceName}의 ${item.title} 열기`}
-            className="group mb-3 block rounded-2xl border border-(--notion-border) bg-(--notion-bg) px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition-transform transition-shadow hover:-translate-y-[1px] hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--notion-fg)/20 last:mb-0 sm:px-5 dark:bg-[rgba(15,23,42,0.85)] dark:border-[rgba(148,163,184,0.28)] dark:hover:border-(--focus-accent)/60"
+            className="group block border-b border-(--notion-border) bg-(--notion-bg) px-4 py-4 transition-colors hover:bg-(--notion-gray)/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-(--focus-accent)/60 last:border-b-0 sm:px-5 sm:py-5"
         >
             <div className="flex items-start gap-3 sm:gap-4">
-                {/* Source Icon Indicator (Minimal) */}
-                <div className="mt-1 shrink-0">
-                    {item.source === 'YouTube' ? (
-                        <div className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${sourceToneClass}`}>
-                            YT
-                        </div>
-                    ) : (
-                        <div className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${sourceToneClass}`}>
-                            RSS
-                        </div>
-                    )}
+                <div
+                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                        isYouTube
+                            ? "bg-red-500/10 text-red-600 dark:text-red-300"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-300"
+                    }`}
+                    aria-hidden="true"
+                >
+                    {isYouTube ? <Youtube size={17} /> : <Rss size={17} />}
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
-                    <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-medium text-(--notion-fg)/50">
-                        <span className={`rounded-full px-2 py-0.5 ${sourceToneClass}`}>
-                            {item.source}
-                        </span>
-                        <span className="truncate">{item.sourceName}</span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--text-secondary)">
+                        <span className="truncate font-semibold text-(--notion-fg)/75">{item.sourceName}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{formattedDate}</span>
                         {item.source === "RSS" && (onBookmarkChange || onContentStateChange) && (
                             <span
                                 className="ml-auto flex shrink-0 items-center gap-1"
@@ -98,22 +93,20 @@ export default function FeedItem({ item, bookmark, onBookmarkChange, contentStat
                         )}
                     </div>
 
-                    <h3 className="mb-1 wrap-break-word text-base font-medium leading-tight text-(--notion-fg) decoration-(--notion-border) underline-offset-2 group-hover:underline">
+                    <h3 className="mb-1 mt-2 wrap-break-word text-base font-semibold leading-snug text-(--notion-fg) decoration-(--notion-border) underline-offset-2 group-hover:underline sm:text-[17px]">
                         {item.title}
                     </h3>
 
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--notion-fg)/60">
-                        <span>{formattedDate}</span>
-                        <span>·</span>
-                        <span className="underline-offset-2 group-hover:underline text-(--notion-fg)/70 font-medium">원문 보기</span>
-                    </div>
-
-                    {/* RSS인 경우 요약 텍스트 한 줄 추가 (Notion Description Style) */}
                     {item.source === 'RSS' && cleanSummary && (
-                        <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-(--notion-fg)/70">
+                        <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-(--text-secondary)">
                             {cleanSummary}
                         </p>
                     )}
+
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-(--text-secondary) transition-colors group-hover:text-(--text-primary)">
+                        원문 보기
+                        <ExternalLink size={12} />
+                    </span>
 
                     {/* YouTube인 경우 라디오 추가 + AI 요약 버튼 */}
                     {item.source === 'YouTube' && item.id && (
@@ -124,7 +117,6 @@ export default function FeedItem({ item, bookmark, onBookmarkChange, contentStat
                     )}
                 </div>
 
-                {/* 썸네일 노출 (최소화 - 유튜브만, 원할 경우만) */}
                 {item.source === 'YouTube' && item.thumbnail && (
                     <div className="relative hidden h-14 w-24 shrink-0 overflow-hidden rounded border border-(--notion-border) bg-(--notion-gray) sm:block">
                         <Image

@@ -14,7 +14,9 @@ let savedStyles: {
   left: string;
   right: string;
   width: string;
+  paddingRight: string;
   overflow: string;
+  scrollbarLockGap: string;
 } | null = null;
 
 export function lockBodyScroll() {
@@ -25,21 +27,28 @@ export function lockBodyScroll() {
   const body = document.body;
   savedScrollY = window.scrollY;
   savedPathname = window.location.pathname;
+  const scrollbarGap = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
   savedStyles = {
     position: body.style.position,
     top: body.style.top,
     left: body.style.left,
     right: body.style.right,
     width: body.style.width,
+    paddingRight: body.style.paddingRight,
     overflow: body.style.overflow,
+    scrollbarLockGap: body.style.getPropertyValue("--scrollbar-lock-gap"),
   };
   // position: fixed — iOS 사파리에서도 배경 스크롤·러버밴드를 차단하고 위치를 보존.
   body.style.position = "fixed";
   body.style.top = `-${savedScrollY}px`;
   body.style.left = "0";
+  // scrollbar-gutter 미지원 브라우저에서만 padding fallback으로 본문 content width를 보존한다.
+  // viewport 오른쪽 경계는 유지해야 fixed 챗봇·오버레이가 이동하거나 빈 띠를 만들지 않는다.
   body.style.right = "0";
   body.style.width = "100%";
+  body.style.paddingRight = `${scrollbarGap}px`;
   body.style.overflow = "hidden";
+  body.style.setProperty("--scrollbar-lock-gap", `${scrollbarGap}px`);
 }
 
 export function unlockBodyScroll() {
@@ -55,7 +64,13 @@ export function unlockBodyScroll() {
     body.style.left = savedStyles.left;
     body.style.right = savedStyles.right;
     body.style.width = savedStyles.width;
+    body.style.paddingRight = savedStyles.paddingRight;
     body.style.overflow = savedStyles.overflow;
+    if (savedStyles.scrollbarLockGap) {
+      body.style.setProperty("--scrollbar-lock-gap", savedStyles.scrollbarLockGap);
+    } else {
+      body.style.removeProperty("--scrollbar-lock-gap");
+    }
     savedStyles = null;
   }
   // 잠금 이후 경로가 바뀌었다면(라우트 전환 중 언마운트) 새 페이지의 스크롤은 건드리지 않는다.

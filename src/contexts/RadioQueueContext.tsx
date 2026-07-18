@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { qaLog } from "@/lib/qa-log";
+import { reorderQueue } from "@/lib/radio-queue";
 
 export interface RadioQueueItem {
   videoId: string;
@@ -35,6 +36,7 @@ interface RadioQueueContextValue extends RadioQueueState {
   addToQueue: (item: RadioQueueItem) => void;
   replaceQueue: (items: RadioQueueItem[]) => void;
   removeFromQueue: (index: number) => void;
+  moveQueueItem: (fromIndex: number, toIndex: number) => void;
   setCurrentIndex: (index: number) => void;
   updateItemSummary: (videoId: string, summary: string) => void;
   updatePlayback: (state: RadioPlaybackState) => void;
@@ -94,6 +96,16 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       if (currentIndex >= queue.length) currentIndex = Math.max(0, queue.length - 1);
       if (index < prev.currentIndex) currentIndex -= 1;
       return { ...prev, queue, currentIndex, isPlaying: queue.length > 0 ? prev.isPlaying : false };
+    });
+  }, []);
+
+  const moveQueueItem = useCallback((fromIndex: number, toIndex: number) => {
+    setState((prev) => {
+      const movedItem = prev.queue[fromIndex];
+      const next = reorderQueue(prev.queue, prev.currentIndex, fromIndex, toIndex);
+      if (next.queue === prev.queue) return prev;
+      queueMicrotask(() => qaLog.radio.queueReordered(fromIndex, toIndex, movedItem.videoId));
+      return { ...prev, ...next };
     });
   }, []);
 
@@ -170,6 +182,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       addToQueue,
       replaceQueue,
       removeFromQueue,
+      moveQueueItem,
       setCurrentIndex,
       updateItemSummary,
       updatePlayback,
@@ -182,7 +195,7 @@ export function RadioQueueProvider({ children }: { children: ReactNode }) {
       currentItem,
       playback,
     }),
-    [state, currentItem, playback, addToQueue, replaceQueue, removeFromQueue, setCurrentIndex, updateItemSummary, updatePlayback, play, pause, togglePlay, next, prev, close]
+    [state, currentItem, playback, addToQueue, replaceQueue, removeFromQueue, moveQueueItem, setCurrentIndex, updateItemSummary, updatePlayback, play, pause, togglePlay, next, prev, close]
   );
 
   return (

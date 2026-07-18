@@ -1,6 +1,44 @@
 @import "tailwindcss";
 
+/* next-themes의 class 전략과 Tailwind dark 변형을 일치시킨다.
+   시스템이 다크여도 html.dark가 없으면 dark:* 스타일이 섞이지 않는다. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* body scroll-lock은 일반 콘텐츠 폭을 padding으로 보존하지만 fixed 요소에는 적용되지 않는다.
+   아래 보정은 실제 Windows scrollbar gap만 받아 full/right/center 고정 UI의 위치를 유지한다. */
+.scroll-lock-stable-full {
+  padding-right: var(--scrollbar-lock-gap, 0px);
+}
+
+.scroll-lock-stable-right {
+  margin-right: var(--scrollbar-lock-gap, 0px);
+}
+
+.scroll-lock-stable-center {
+  margin-left: calc(var(--scrollbar-lock-gap, 0px) / -2);
+}
+
+@media (min-width: 768px) {
+  .scroll-lock-stable-center-md {
+    margin-left: calc(var(--scrollbar-lock-gap, 0px) / -2);
+  }
+}
+
 @theme {
+  /* 신규 코드는 아래 의미 기반 토큰을 우선 사용한다. */
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-hover: var(--surface-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-subtle: var(--border-subtle);
+  --color-ai-accent: var(--ai-accent);
+  --color-playback-accent: var(--playback-accent);
+  --color-youtube-accent: var(--youtube-accent);
+  --color-rss-accent: var(--rss-accent);
+
+  /* 기존 컴포넌트 호환 별칭. 단계적으로 semantic token으로 이관한다. */
   --color-notion-bg: var(--notion-bg);
   --color-notion-fg: var(--notion-fg);
   --color-notion-gray: var(--notion-gray);
@@ -9,25 +47,77 @@
 }
 
 :root {
-  --notion-bg: #ffffff;
-  --notion-fg: #37352f;
-  --notion-gray: #f7f6f3;
-  --notion-hover: #efedef;
-  --notion-border: #e9e9e7;
-  /* 재생/활성 상태 강조용 포커스 컬러 */
-  --focus-accent: #10b981; /* emerald-500 */
+  color-scheme: light;
+
+  /* Color roles — 장식 색이 아니라 제품 의미에 따라 사용한다. */
+  --surface-canvas: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-subtle: #f7f6f3;
+  --surface-hover: #efedef;
+  --text-primary: #37352f;
+  --text-secondary: rgba(55, 53, 47, 0.72);
+  --border-subtle: #e9e9e7;
+  --ai-accent: #7c3aed;
+  --ai-accent-muted: rgba(124, 58, 237, 0.1);
+  --playback-accent: #10b981;
+  --playback-accent-muted: rgba(16, 185, 129, 0.12);
+  --youtube-accent: #ff0033;
+  --rss-accent: #3b82f6;
+
+  /* Spacing — 4px 기반, 화면 구조는 주로 8px 배수를 사용한다. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-standard: 180ms;
+  --motion-slow: 280ms;
+
+  /* 기존 컴포넌트 호환 별칭 */
+  --notion-bg: var(--surface-canvas);
+  --notion-fg: var(--text-primary);
+  --notion-gray: var(--surface-subtle);
+  --notion-hover: var(--surface-hover);
+  --notion-border: var(--border-subtle);
+  --focus-accent: var(--playback-accent);
   --focus-accent-muted: rgba(16, 185, 129, 0.12);
 }
 
 .dark {
-  /* 다크 모드: 살짝 그라데이션 느낌의 딥 블랙 톤 */
-  --notion-bg: #050814;
-  --notion-fg: rgba(241, 245, 249, 0.9);
-  --notion-gray: #101322;
-  --notion-hover: #181c2a;
-  --notion-border: #202437;
-  --focus-accent: #34d399; /* emerald-400 */
-  --focus-accent-muted: rgba(52, 211, 153, 0.12);
+  color-scheme: dark;
+  --surface-canvas: #050814;
+  --surface-raised: #101322;
+  --surface-subtle: #101322;
+  --surface-hover: #181c2a;
+  --text-primary: rgba(241, 245, 249, 0.9);
+  --text-secondary: rgba(241, 245, 249, 0.62);
+  --border-subtle: #202437;
+  --ai-accent: #a78bfa;
+  --ai-accent-muted: rgba(167, 139, 250, 0.14);
+  --playback-accent: #34d399;
+  --playback-accent-muted: rgba(52, 211, 153, 0.12);
+  --youtube-accent: #ff4e70;
+  --rss-accent: #60a5fa;
+
+  --notion-bg: var(--surface-canvas);
+  --notion-fg: var(--text-primary);
+  --notion-gray: var(--surface-subtle);
+  --notion-hover: var(--surface-hover);
+  --notion-border: var(--border-subtle);
+  --focus-accent: var(--playback-accent);
+  --focus-accent-muted: var(--playback-accent-muted);
 }
 
 .light body {
@@ -92,4 +182,20 @@ a {
 a.cta-primary,
 button.cta-primary {
   color: #fff !important;
+}
+
+/* 움직임 축소 사용자는 드로어·모달·카드의 장시간 전환과 자동 스크롤을 보지 않는다. */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

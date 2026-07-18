@@ -87,6 +87,7 @@ export function LoginButton() {
   if (loading) {
     return (
       <button
+        data-testid="login-control"
         type="button"
         className="rounded-full bg-(--notion-gray)/30 px-2.5 py-1 text-[11px] text-(--notion-fg)/60"
         disabled
@@ -99,6 +100,7 @@ export function LoginButton() {
   if (!supabaseReady) {
     return (
       <button
+        data-testid="login-control"
         type="button"
         className="rounded-full bg-(--notion-gray)/20 px-3 py-2 text-[11px] font-medium text-(--notion-fg)/55 min-h-[32px] touch-manipulation whitespace-nowrap"
         disabled
@@ -112,6 +114,7 @@ export function LoginButton() {
   if (!user) {
     return (
       <button
+        data-testid="login-control"
         type="button"
         onClick={handleLogin}
         className="rounded-full bg-(--notion-gray)/30 px-4 py-2 text-[11px] font-medium text-(--notion-fg)/85 transition-colors hover:bg-(--notion-hover) min-h-[44px] sm:min-h-[32px] touch-manipulation whitespace-nowrap"
@@ -122,7 +125,7 @@ export function LoginButton() {
   }
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full bg-(--notion-gray)/20 pl-2.5 pr-1 py-1 text-[11px] text-(--notion-fg)/85">
+    <div data-testid="login-control" className="inline-flex items-center gap-2 rounded-full bg-(--notion-gray)/20 pl-2.5 pr-1 py-1 text-[11px] text-(--notion-fg)/85">
       <span className="max-w-[120px] truncate" title={user.email}>
         {user.email ?? "로그인됨"}
       </span>

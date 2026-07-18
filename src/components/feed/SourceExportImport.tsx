@@ -111,7 +111,7 @@ export default function SourceExportImport() {
         <button
           type="button"
           onClick={handleExport}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-(--notion-fg)/60 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-(--text-primary)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
           title="추가한 채널 목록을 파일로 저장 (다른 기기에서 가져오기용)"
         >
           <Download size={12} />
@@ -124,7 +124,7 @@ export default function SourceExportImport() {
             setImportError(null);
             setImportText("");
           }}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-(--notion-fg)/60 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-(--text-primary)/70 transition-colors hover:bg-(--notion-hover) hover:text-(--notion-fg)"
           title="다른 기기에서 내보낸 채널 목록 가져오기"
         >
           <Upload size={12} />
@@ -140,7 +140,7 @@ export default function SourceExportImport() {
         }}
         overlayZ={100}
         panelZ={101}
-        panelClassName="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
+        panelClassName="scroll-lock-stable-center fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 shadow-xl"
       >
           <div
             role="dialog"

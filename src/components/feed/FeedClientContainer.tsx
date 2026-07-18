@@ -1,22 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { FeedItem } from "@/types/feed";
 import type { FeedCategory } from "@/types/feed";
 import { filterFeedByKeywords, filterFeedByCategory, filterFeedByTrendKeyword, filterFeedBySearch } from "@/lib/filter";
 import FeedList from "./FeedList";
 import FeedReelView from "./FeedReelView";
+import LongformFeedView from "./LongformFeedView";
 import FeedSearch from "./FeedSearch";
-import KeywordFilter, { useKeywordFilter } from "./KeywordFilter";
+import { useKeywordFilter } from "./KeywordFilter";
 import ViewSwitcher, { type ViewMode } from "./ViewSwitcher";
 import MyFocusSection from "./MyFocusSection";
 import UsageBadge from "./UsageBadge";
 import FeedQADrawer from "./FeedQADrawer";
+import DiscoveryFilterPanel from "./DiscoveryFilterPanel";
 import { TrendFilterProvider, useTrendFilter } from "@/contexts/TrendFilterContext";
 import { FEED_CATEGORIES } from "@/lib/sources";
 import { getContentStatesAction, type ContentStateInfo } from "@/app/actions/content-state";
 import { isItemVisibleUnderStateFilter } from "@/types/content-state";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 export type BookmarkEntry = {
   id: string;
@@ -25,6 +28,8 @@ export type BookmarkEntry = {
   highlight: string;
   created_at: string;
 };
+
+const HOME_SCROLL_STORAGE_KEY = "focus-feed:home-scroll-y";
 
 function filterByView(items: FeedItem[], view: ViewMode): FeedItem[] {
   if (view === "youtube") return items.filter((i) => i.source === "YouTube");
@@ -40,8 +45,8 @@ type FeedClientContainerProps = {
     selectedSourceId?: string;
     initialCategory?: FeedCategory | null;
     initialView?: ViewMode;
-    showViewSwitcher?: boolean;
     viewMode?: "longform" | "shortform" | "live" | null;
+    initialWatchVideoId?: string | null;
     children?: ReactNode;
 };
 
@@ -59,15 +64,13 @@ function FeedClientContainerContent({
     selectedSourceId,
     initialCategory = null,
     initialView = "all",
-    showViewSwitcher = false,
     viewMode = null,
+    initialWatchVideoId = null,
     children,
 }: FeedClientContainerProps) {
-    const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const viewParam = searchParams?.get("view");
-    const view: ViewMode = viewParam === "youtube" || viewParam === "rss" ? viewParam : initialView;
+    const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
+    const [view, setView] = useState<ViewMode>(initialView);
 
     const { keywords, addKeyword, removeKeyword, clearKeywords } = useKeywordFilter();
     const [selectedCategory, setSelectedCategory] = useState<FeedCategory | null>(initialCategory);
@@ -75,6 +78,44 @@ function FeedClientContainerContent({
     const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
     const [contentStates, setContentStates] = useState<Record<string, ContentStateInfo>>({});
     const [stateFilter, setStateFilter] = useState<"all" | "queued" | "dismissed">("all");
+    const isHydrated = useIsHydrated();
+
+    useLayoutEffect(() => {
+        if (isReelMode) return;
+        let firstFrame = 0;
+        let secondFrame = 0;
+        try {
+            const stored = Number(sessionStorage.getItem(HOME_SCROLL_STORAGE_KEY));
+            if (!Number.isFinite(stored) || stored <= 0) return;
+            const initialScrollY = window.scrollY;
+            firstFrame = requestAnimationFrame(() => {
+                secondFrame = requestAnimationFrame(() => {
+                    if (Math.abs(window.scrollY - initialScrollY) < 1) {
+                        window.scrollTo({ top: stored, behavior: "auto" });
+                    }
+                });
+            });
+        } catch {
+            return;
+        }
+        return () => {
+            if (firstFrame) cancelAnimationFrame(firstFrame);
+            if (secondFrame) cancelAnimationFrame(secondFrame);
+        };
+    }, [isReelMode, pathname]);
+
+    useLayoutEffect(() => {
+        if (isReelMode) return;
+        const saveScroll = () => {
+            try {
+                sessionStorage.setItem(HOME_SCROLL_STORAGE_KEY, String(Math.max(0, Math.round(window.scrollY))));
+            } catch {}
+        };
+        window.addEventListener("scroll", saveScroll, { passive: true });
+        return () => {
+            window.removeEventListener("scroll", saveScroll);
+        };
+    }, [isReelMode]);
 
     const fetchBookmarks = useCallback(async () => {
         try {
@@ -111,22 +152,37 @@ function FeedClientContainerContent({
 
     const handleCategoryChange = (category: FeedCategory | null) => {
         setSelectedCategory(category);
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        const params = new URLSearchParams(window.location.search);
         if (category) params.set("category", category);
         else params.delete("category");
         const q = params.toString();
-        router.push(q ? `${pathname}?${q}` : pathname);
+        window.history.replaceState(window.history.state, "", q ? `${pathname}?${q}` : pathname);
+    };
+
+    const handleViewChange = (nextView: ViewMode) => {
+        setView(nextView);
+
+        // 보기 전환은 이미 내려받은 피드를 클라이언트에서 즉시 필터링한다.
+        // 주소만 History API로 동기화해 App Router 서버 재실행과 전체 피드 재조회를 피한다.
+        const params = new URLSearchParams(window.location.search);
+        if (nextView === "all") params.delete("view");
+        else params.set("view", nextView);
+        const query = params.toString();
+        window.history.replaceState(window.history.state, "", query ? `${pathname}?${query}` : pathname);
     };
 
     const trendFilter = useTrendFilter();
     const selectedTrendKeyword = trendFilter?.selectedTrendKeyword ?? null;
-    const selectedTrendSamples = trendFilter?.selectedTrendSamples ?? [];
+    const selectedTrendSamples = trendFilter?.selectedTrendSamples;
 
-    const byView = filterByView(initialItems, view);
-    const bySearch = filterFeedBySearch(byView, searchQuery);
-    const byKeywords = filterFeedByKeywords(bySearch, keywords);
-    const byCategory = filterFeedByCategory(byKeywords, selectedCategory);
-    const filteredItems = filterFeedByTrendKeyword(byCategory, selectedTrendKeyword, selectedTrendSamples);
+    const byView = useMemo(() => filterByView(initialItems, view), [initialItems, view]);
+    const bySearch = useMemo(() => filterFeedBySearch(byView, searchQuery), [byView, searchQuery]);
+    const byKeywords = useMemo(() => filterFeedByKeywords(bySearch, keywords), [bySearch, keywords]);
+    const byCategory = useMemo(() => filterFeedByCategory(byKeywords, selectedCategory), [byKeywords, selectedCategory]);
+    const filteredItems = useMemo(
+        () => filterFeedByTrendKeyword(byCategory, selectedTrendKeyword, selectedTrendSamples ?? []),
+        [byCategory, selectedTrendKeyword, selectedTrendSamples]
+    );
     const hasActiveFilters = keywords.length > 0 || stateFilter !== "all";
 
     // 선별 반영: 제외(dismissed)는 기본으로 숨기고, 상태 필터에 따라 좁힌다.
@@ -147,14 +203,24 @@ function FeedClientContainerContent({
         );
     }, [filteredItems, contentStates, stateFilter]);
 
-    const availableCategories = FEED_CATEGORIES.filter(cat =>
-        byKeywords.some(item => item.category === cat)
+    const availableCategories = useMemo(
+        () => FEED_CATEGORIES.filter(cat => byKeywords.some(item => item.category === cat)),
+        [byKeywords]
     );
 
     const isGlobalFeed = !selectedSourceName;
-    const isReelMode = viewMode === "longform" || viewMode === "shortform" || viewMode === "live";
+    if (viewMode === "longform") {
+        return (
+            <LongformFeedView
+                items={visibleItems}
+                initialWatchVideoId={initialWatchVideoId}
+                bookmarks={bookmarks}
+                onBookmarkChange={fetchBookmarks}
+            />
+        );
+    }
 
-    if (isReelMode && viewMode) {
+    if ((viewMode === "shortform" || viewMode === "live") && viewMode) {
         return (
             <FeedReelView
                 items={visibleItems}
@@ -167,29 +233,33 @@ function FeedClientContainerContent({
 
     return (
         <>
-            {/* 상단 정리: 검색 → 트렌딩 키워드 → 필터만 노출. 히어로/환영 배너 제거, MY FOCUS·사용량은 피드 아래로 이동(기능 유지). */}
-            {isGlobalFeed && (
-                <div style={{ marginBottom: 12, padding: "0 4px" }}>
-                    <FeedSearch value={searchQuery} onChange={setSearchQuery} />
-                </div>
-            )}
+            <h1 className="sr-only">
+                {selectedSourceName ? `${selectedSourceName} 피드` : "Focus Feed 홈"}
+            </h1>
+            {/* 홈과 소스 상세이 같은 탐색 구조를 공유한다: 검색 → 트렌드 → 소스 전환(홈만). */}
+            <section data-testid="discovery-toolbar" data-hydrated={isHydrated ? "true" : "false"} aria-label="피드 탐색" className="-mx-2 mb-3 bg-(--surface-raised)/95 px-2 pb-1 pt-1 backdrop-blur-xl sm:-mx-4 sm:px-4 md:sticky md:top-16 md:z-40 md:-mx-6 md:px-6 lg:top-0 lg:-mx-8 lg:px-8">
+                  <div className="flex items-center gap-2 py-2">
+                    <div className="min-w-0 flex-1">
+                      <FeedSearch value={searchQuery} onChange={setSearchQuery} />
+                    </div>
+                    <DiscoveryFilterPanel
+                      keywords={keywords}
+                      onAddKeyword={addKeyword}
+                      onRemoveKeyword={removeKeyword}
+                      onClearKeywords={clearKeywords}
+                      selectedCategory={selectedCategory}
+                      onCategoryChange={handleCategoryChange}
+                      availableCategories={availableCategories}
+                    />
+                  </div>
 
-            {/* 트렌딩 키워드(TrendRadarBar)를 검색 바로 아래로 끌어올림 */}
-            {children}
-
-            <KeywordFilter
-                keywords={keywords}
-                onAddKeyword={addKeyword}
-                onRemoveKeyword={removeKeyword}
-                onClearKeywords={clearKeywords}
-                selectedCategory={selectedCategory}
-                onCategoryChange={handleCategoryChange}
-                availableCategories={availableCategories}
-                compact={showViewSwitcher}
-                headerRight={
-                    showViewSwitcher ? <ViewSwitcher currentView={view} /> : undefined
-                }
-            />
+                  {children}
+                  {isGlobalFeed && (
+                    <div className="flex items-center justify-between py-1">
+                      <ViewSwitcher currentView={view} onChange={handleViewChange} />
+                    </div>
+                  )}
+            </section>
             {isGlobalFeed &&
                 (stateCounts.queued > 0 || stateCounts.dismissed > 0 || stateFilter !== "all") && (
                     <div className="mb-2 flex items-center gap-1.5 px-1">

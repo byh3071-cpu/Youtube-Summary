@@ -102,7 +102,7 @@ export default function KeywordFilter({
     <section
       className={
         compact
-          ? "mb-4 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 pt-0 pb-1 sm:px-3.5"
+          ? "border-t border-(--notion-border) bg-(--notion-bg) px-3 py-2 sm:px-4"
           : // 소스 상세: 헤더 아래에 붙고, 그 아래 트렌드 레이더가 붙음
             "mb-0 rounded-b-none rounded-t-none border border-t-0 border-(--notion-border) bg-(--notion-bg) px-5 pt-0 pb-1 sm:px-7 mt-0"
       }
@@ -111,9 +111,6 @@ export default function KeywordFilter({
         {compact ? (
           <>
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <h2 className="mb-0 shrink-0 text-sm font-semibold">
-                필터
-              </h2>
               {headerRight ? <div className="min-w-0 flex-1">{headerRight}</div> : null}
             </div>
             <button
@@ -123,7 +120,7 @@ export default function KeywordFilter({
               className="flex min-h-[44px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-(--notion-border) px-2.5 py-1 text-xs font-semibold text-(--notion-fg)/70 transition-colors touch-manipulation hover:bg-(--notion-hover) sm:min-h-0"
             >
               {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-              {collapsed ? "열기" : "접기"}
+              {collapsed ? "상세 필터" : "필터 접기"}
             </button>
           </>
         ) : (

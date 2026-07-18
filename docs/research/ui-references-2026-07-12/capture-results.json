@@ -1,0 +1,50 @@
+[
+  {
+    "name": "youtube-home",
+    "url": "https://www.youtube.com/",
+    "status": 200,
+    "title": "YouTube"
+  },
+  {
+    "name": "youtube-video-grid",
+    "url": "https://www.youtube.com/@Google/videos",
+    "status": 200,
+    "title": "Google - YouTube"
+  },
+  {
+    "name": "youtube-shorts",
+    "url": "https://www.youtube.com/shorts/",
+    "status": 200,
+    "title": "망할 뻔한 콘서트 페럿 한 마리가 살렸다 - YouTube"
+  },
+  {
+    "name": "spotify-web-player",
+    "url": "https://open.spotify.com/",
+    "status": 200,
+    "title": "Spotify - Web Player: Music for everyone"
+  },
+  {
+    "name": "apple-music-home",
+    "url": "https://music.apple.com/us/home",
+    "status": 200,
+    "title": "‎Apple Music - Web Player"
+  },
+  {
+    "name": "focus-feed-home",
+    "url": "http://127.0.0.1:3000/",
+    "status": 200,
+    "title": "Focus Feed"
+  },
+  {
+    "name": "focus-feed-longform",
+    "url": "http://127.0.0.1:3000/?viewMode=longform",
+    "status": 200,
+    "title": "Focus Feed"
+  },
+  {
+    "name": "focus-feed-shortform",
+    "url": "http://127.0.0.1:3000/?viewMode=shortform",
+    "status": 200,
+    "title": "Focus Feed"
+  }
+]
