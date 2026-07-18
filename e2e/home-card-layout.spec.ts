@@ -55,6 +55,7 @@ test.describe("YouTube-style home card body", () => {
     const playbackLink = card.locator("a").first();
     await expect(playbackLink).toHaveAttribute("href", /viewMode=longform/);
     await expect(playbackLink).toHaveAttribute("href", /watch=/);
+    await expect(playbackLink).toHaveAttribute("href", /source=UC/);
     await expect(playbackLink).not.toHaveAttribute("target", "_blank");
 
     const summary = card.getByTestId("youtube-card-summary-action");

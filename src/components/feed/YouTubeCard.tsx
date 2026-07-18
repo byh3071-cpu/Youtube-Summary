@@ -116,8 +116,9 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
         : "longform";
     params.set("viewMode", mode);
     params.set("watch", item.id);
+    if (item.sourceId) params.set("source", item.sourceId);
     return `/?${params.toString()}`;
-  }, [item.durationSeconds, item.id, item.isLive]);
+  }, [item.durationSeconds, item.id, item.isLive, item.sourceId]);
 
   const formLabel = useMemo(() => {
     if (!baseDuration || baseDuration <= 0) return null;
@@ -134,6 +135,7 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
     >
       <Link
         href={inAppWatchHref}
+        prefetch
         className="flex flex-1 flex-col"
         aria-label={`${item.sourceName} - ${item.title} 앱에서 재생`}
       >

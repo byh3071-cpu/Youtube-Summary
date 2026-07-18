@@ -287,8 +287,10 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
       .map((item) => item.snippet?.resourceId?.videoId)
       .filter((id): id is string => !!id);
 
-    const { durationSeconds: durationMap, isLive: liveMap } = await fetchVideoDetails(videoIds);
-    const avatarUrl = await fetchChannelAvatar(channelId);
+    const [{ durationSeconds: durationMap, isLive: liveMap }, avatarUrl] = await Promise.all([
+      fetchVideoDetails(videoIds),
+      fetchChannelAvatar(channelId),
+    ]);
 
     // 결과를 공통 FeedItem 형식으로 매핑
     const items = data.items.flatMap((item) => {
