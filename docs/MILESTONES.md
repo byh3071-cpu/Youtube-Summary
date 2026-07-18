@@ -106,14 +106,14 @@ tags: [focus-feed, roadmap, milestones]
 - [x] `docs/DESIGN_SYSTEM.md`: 제품별 역할·색·간격·radius·타입·버튼·모션·완료 게이트 확정.
 - [x] `globals.css`: 라이트·다크 의미 기반 토큰과 기존 `--notion-*` 무변경 호환 별칭.
 - [x] YouTube식 홈 카드 본문과 카드 액션 우선순위 (`HOME-01/02`, 로컬 브라우저 검증).
-- [x] 롱폼 목록·query 기반 상세·외부 AI 패널 (`VIDEO-01/02`, Preview 인증 검증 남음).
+- [x] 롱폼 목록·query 기반 상세·외부 AI 패널 (`VIDEO-01/02`, Preview 인증·실제 요약 검증 완료).
 - [x] 숏폼 9:16·라이브 16:9 전용 레이아웃과 재생 정책 (`VIDEO-03`).
 - [x] Spotify식 하단 플레이어·큐·확장 플레이어 시각 구조 (`RADIO-01`).
 - [x] Apple식 앱 셸·모바일 드로어·고정 UI 충돌 수정 (`SHELL-01`).
 - [x] 라디오 큐 재정렬·재생 인스턴스 유지 자동 검증 (`RADIO-02/03`).
-- [ ] Vercel Preview 로그인·Gemini 실생성 (`PREVIEW-01`).
+- [x] Vercel Preview 로그인·Gemini 실생성·사용량·캐시 (`PREVIEW-01`).
 - [x] 전 화면 반응형·접근성 감사와 채널 상세 탐색 계층 정리 (`SHELL-02/04`).
-- [ ] 다중 검수·CI 병합 게이트 (`QA-01`).
+- [x] 다중 검수·CI 병합 게이트 (`QA-01`, Draft PR #36 전체 CI 통과).
 - 활성 상태·완료 조건·검증 증거: `docs/M11_EXECUTION_PLAN.md`.
 
 ## 변경 이력
