@@ -53,7 +53,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | HOME-02 | 카드 액션 우선순위·AI CTA 정렬 | browser-verified | 카드 하단 정렬·기존 기능 유지 확인 |
 | VIDEO-01 | 롱폼 목록·상세·관련 영상·스크롤 복원 | browser-verified | `600px → 상세 → 600px`, autoplay off |
 | VIDEO-02 | 롱폼 외부 AI 패널 상태 연결 | preview-verified | idle/loading/auth/error/success/cache와 Preview 실생성 통과 |
-| VIDEO-03 | 숏폼 9:16·라이브 16:9 정책 분리 | browser-verified | 숏폼 자동 다음, 라이브 자동 다음 없음, 자막 충돌 수정 |
+| VIDEO-03 | 숏폼 9:16·라이브 16:9 정책 분리 | browser-verified | 숏폼은 데스크톱·모바일 무음 자동재생 후 종료 시 다음 영상 자동재생, 라이브는 자동 다음 없음, 자막 충돌 수정 |
 | RADIO-01 | 미니·확장 플레이어·큐·AI 외부 패널 | browser-verified | 393/768/1440px safe area·hover chrome 확인 |
 | RADIO-02 | 큐 재정렬과 currentIndex 불변식 | browser-verified | drag·44px 이동 버튼·동일 현재 항목·확장 미리보기의 이전/현재/다음 탐색·overflow 검증 완료 |
 | RADIO-03 | 미니↔확장 전환 재생 인스턴스 유지 | browser-verified | 동일 iframe `isSameNode`·src·320px↔100% 전환 통과 |
@@ -84,6 +84,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | 2026-07-17 | 확장 대기열 탐색 | 마지막 항목 2/2 재생 후에도 이전 항목 노출·재선택, 현재 항목 표시, 자동 숨김 유지 확인 |
 | 2026-07-17 | QA 디자인 시각 검수 | 홈·채널·롱폼·숏폼·라이브·확장 라디오 9개 상태 캡처. 숏폼 로딩 포스터와 자막 비충돌 메타 영역 추가 후 393/1440px 재검증 |
 | 2026-07-18 | QA 핵심 상호작용 검수 | production build 기준 데스크톱·반응형 E2E 38개와 모바일 E2E 5개 통과. 검색·필터·소스 전환, 대기열 선택·삭제·재정렬, 미니↔확장 동일 iframe, 모달 포커스·ESC, 44px·overflow 및 홈·숏폼 위치 복원 확인 |
+| 2026-07-18 | 숏폼 자동재생 정책 검수 | 엄격한 자동재생 정책의 실제 YouTube IFrame API에서 Desktop Chrome·Pixel 5 모두 `playing`·muted·ready 확인, 모의 종료 이벤트 E2E에서 다음 슬라이드 자동재생 확인 |
 | 2026-07-18 | QA 코드·접근성 감사 | 360/393/768/1024/1440px에서 중복 ID·alt·button type·tabindex·dialog 이름·form label·실제 focus indicator·44px·다크 기하·reduced-motion 검사 통과. lint 오류 0, unit 183, build·secret·VHK 통과 |
 | 2026-07-18 | Draft PR CI·Preview 실검증 | PR #36 CI Playwright 68/68·unit 185/185·build·secret·VHK 통과. Preview Google OAuth가 동일 롱폼 상세로 복귀하고 Gemini 실제 요약, Free 사용량 0→1, 새로고침 캐시 복원 확인 |
 
