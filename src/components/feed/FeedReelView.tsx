@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { ExternalLink, ChevronDown } from "lucide-react";
+import { ExternalLink, ChevronDown, Loader2 } from "lucide-react";
 import type { FeedItem } from "@/types/feed";
 import AddToRadioButton from "./AddToRadioButton";
 import BookmarkButton from "./BookmarkButton";
@@ -27,6 +27,7 @@ const reelItemKey = (item: FeedItem) => `${item.source}:${item.sourceId}:${item.
 interface Props {
   items: FeedItem[];
   viewMode: ReelViewMode;
+  initialVideoId?: string | null;
   bookmarks?: BookmarkEntry[];
   onBookmarkChange?: () => void;
 }
@@ -66,8 +67,11 @@ function ReelSlide({
   // 폴백은 16:9 무레터박스 소스(maxresdefault). hqdefault(4:3)는 검은띠가 구워져 있어 contain 시 이중 레터박스가 생김.
   const thumbUrl = item.thumbnail ?? (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
   const sectionRef = useRef<HTMLElement>(null);
-  const playerRef = useRef<{ destroy: () => void; pauseVideo?: () => void } | null>(null);
+  const playerRef = useRef<{ playVideo?: () => void; pauseVideo?: () => void } | null>(null);
+  const playerCreatedRef = useRef(false);
+  const inViewRef = useRef(false);
   const [inView, setInView] = useState(false);
+  const [playerMounted, setPlayerMounted] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const playerId = `reel-yt-${index}`;
 
@@ -86,11 +90,22 @@ function ReelSlide({
   }, [scrollRoot]);
 
   useEffect(() => {
+    inViewRef.current = inView;
+    if (!playerRef.current) return;
+    try {
+      if (inView && playbackPolicy.autoplay) playerRef.current.playVideo?.();
+      else if (!inView) playerRef.current.pauseVideo?.();
+    } catch {}
+  }, [inView, playbackPolicy.autoplay]);
+
+  useEffect(() => {
     if (!inView || !videoId || !ytReady || typeof window === "undefined") return;
+    if (playerCreatedRef.current) return;
     const YT = window.YT;
     if (!YT?.Player) return;
     const el = document.getElementById(playerId);
     if (!el) return;
+    playerCreatedRef.current = true;
     try {
       const player = new YT.Player(playerId, {
         height: "100%",
@@ -98,32 +113,45 @@ function ReelSlide({
         videoId,
         playerVars: { autoplay: playbackPolicy.autoplay ? 1 : 0, mute: 0, rel: 0, modestbranding: 1 },
         events: {
+          onReady(ev: { target: { playVideo?: () => void } }) {
+            setPlayerMounted(true);
+            setPlayerReady(true);
+            if (inViewRef.current && playbackPolicy.autoplay) {
+              try { ev.target.playVideo?.(); } catch {}
+            }
+          },
           onError() {
             setPlayerReady(false);
           },
           onStateChange(ev: { data: number }) {
-            if (ev.data === YT.PlayerState?.PLAYING) setPlayerReady(true);
+            if (
+              ev.data === YT.PlayerState?.PLAYING ||
+              ev.data === YT.PlayerState?.PAUSED ||
+              ev.data === YT.PlayerState?.CUED
+            ) setPlayerReady(true);
             if (playbackPolicy.advanceOnEnd && ev.data === YT.PlayerState?.ENDED) onVideoEnd?.();
           },
         },
       });
-      playerRef.current = player as unknown as { destroy: () => void };
+      playerRef.current = player as unknown as { playVideo?: () => void; pauseVideo?: () => void };
     } catch {
       playerRef.current = null;
+      playerCreatedRef.current = false;
     }
+  }, [inView, videoId, playerId, onVideoEnd, playbackPolicy.advanceOnEnd, playbackPolicy.autoplay, ytReady]);
+
+  useEffect(() => {
     return () => {
       try {
         playerRef.current?.pauseVideo?.();
       } catch {}
       playerRef.current = null;
-      setPlayerReady(false);
-      // YouTube player.destroy() mutates DOM and can trigger React "removeChild" errors;
-      // skip destroy and let React unmount the container normally.
+      playerCreatedRef.current = false;
     };
-  }, [inView, videoId, playerId, onVideoEnd, playbackPolicy.advanceOnEnd, playbackPolicy.autoplay, ytReady]);
+  }, []);
 
   const showPlayer = inView && videoId;
-  const useApiPlayer = showPlayer && ytReady;
+  const useApiPlayer = !!videoId && playerMounted;
 
   const renderMedia = () => (
     <>
@@ -137,24 +165,22 @@ function ReelSlide({
           priority={index < 3}
         />
       ) : null}
-      {videoId && ytReady ? (
+      {videoId ? (
         <div
           id={playerId}
           className="relative z-10 h-full w-full transition-opacity duration-200 motion-reduce:transition-none"
-          style={{ display: useApiPlayer ? "block" : "none", opacity: playerReady ? 1 : 0 }}
-          aria-hidden={!useApiPlayer}
+          style={{ opacity: useApiPlayer && playerReady ? 1 : 0 }}
+          aria-hidden={!useApiPlayer || !playerReady}
         />
       ) : null}
-      {!useApiPlayer ? (
-        showPlayer ? (
-          <iframe
-            title={item.title}
-            className="absolute inset-0 z-10 h-full w-full border-0"
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=${playbackPolicy.autoplay ? 1 : 0}&mute=0&rel=0&modestbranding=1`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        ) : (
+      {showPlayer && !playerReady ? (
+        <span className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-label="영상 불러오는 중">
+          <span className="grid size-11 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm">
+            <Loader2 size={22} className="animate-spin" aria-hidden />
+          </span>
+        </span>
+      ) : null}
+      {!showPlayer && !useApiPlayer ? (
           <a
             href={item.link}
             target="_blank"
@@ -168,7 +194,6 @@ function ReelSlide({
               </div>
             ) : null}
           </a>
-        )
       ) : null}
     </>
   );
@@ -215,6 +240,8 @@ function ReelSlide({
           <div className="flex min-h-0 w-full flex-1 items-center justify-center bg-black">
             <div
               data-testid="reel-media"
+              data-player-mounted={playerMounted ? "true" : "false"}
+              data-player-ready={playerReady ? "true" : "false"}
               className="relative max-h-full max-w-full overflow-hidden bg-black sm:rounded-2xl"
               style={{ height: "min(100%, calc(100vw * 16 / 9))", aspectRatio: "9 / 16" }}
             >
@@ -269,6 +296,8 @@ function ReelSlide({
           <div className={`relative flex min-h-0 w-full items-stretch justify-center bg-black ${isLive ? "shrink-0" : "flex-1"}`}>
             <div
               data-testid="reel-media"
+              data-player-mounted={playerMounted ? "true" : "false"}
+              data-player-ready={playerReady ? "true" : "false"}
               className={`relative w-full max-w-6xl overflow-hidden bg-black ${isLive ? "aspect-video sm:mt-4 sm:rounded-2xl" : "h-full"}`}
             >
               {renderMedia()}
@@ -322,7 +351,7 @@ function ReelSlide({
   );
 }
 
-export default function FeedReelView({ items, viewMode, bookmarks = [], onBookmarkChange }: Props) {
+export default function FeedReelView({ items, viewMode, initialVideoId = null, bookmarks = [], onBookmarkChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isHydrated = useIsHydrated();
   const playbackPolicy = REEL_PLAYBACK_POLICY[viewMode];
@@ -367,7 +396,10 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
       raw = sessionStorage.getItem(reelPositionStorageKey(viewMode));
     } catch {}
     const stored = parseStoredReelPosition(raw);
-    const index = resolveStoredReelIndex(stored, itemKeySignature.split("\u001f"));
+    const requestedIndex = initialVideoId ? items.findIndex((item) => item.id === initialVideoId) : -1;
+    const index = requestedIndex >= 0
+      ? requestedIndex
+      : resolveStoredReelIndex(stored, itemKeySignature.split("\u001f"));
     const restore = () => {
       const previousBehavior = root.style.scrollBehavior;
       root.style.scrollBehavior = "auto";
@@ -380,7 +412,7 @@ export default function FeedReelView({ items, viewMode, bookmarks = [], onBookma
       if (Math.abs(root.scrollTop - restoredScrollTop) < 1) restore();
     });
     return () => cancelAnimationFrame(frame);
-  }, [itemKeySignature, items.length, viewMode]);
+  }, [initialVideoId, itemKeySignature, items, items.length, viewMode]);
 
   useLayoutEffect(() => {
     const root = containerRef.current;

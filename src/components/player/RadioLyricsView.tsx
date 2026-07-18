@@ -47,7 +47,7 @@ export function RadioLyricsView({ lyricsOpen, setLyricsOpen }: RadioLyricsViewPr
       overlayZ={55}
       panelZ={56}
       variant="bottom"
-      panelClassName="scroll-lock-stable-center-md fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 max-h-[50vh] overflow-auto rounded-t-2xl border border-b-0 border-(--notion-border) bg-(--notion-bg) p-4 shadow-2xl md:bottom-[5.25rem] md:left-1/2 md:right-auto md:w-full md:max-w-md md:-translate-x-1/2"
+      panelClassName="scroll-lock-stable-center-md fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-3 right-3 max-h-[50vh] overflow-auto rounded-t-2xl border border-b-0 border-(--notion-border) bg-(--notion-bg) p-4 shadow-2xl md:bottom-[5.25rem] md:left-1/2 md:right-auto md:w-full md:max-w-md md:-translate-x-1/2"
     >
       <div className="outline-none" role="dialog" aria-label="AI 요약">
         <div className="mb-3 flex items-center justify-between">

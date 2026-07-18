@@ -6,7 +6,7 @@ import TrendRadarBar from "@/components/trend/TrendRadarBar";
 import { getMergedFeed } from "@/lib/feed";
 import { FEED_CATEGORIES } from "@/lib/sources";
 import { getSessionSourcesBundle } from "@/lib/merged-session-sources";
-import { resolveYouTubeChannel } from "@/lib/youtube";
+import { fetchChannelAvatars } from "@/lib/youtube";
 import type { FeedCategory, FeedItem } from "@/types/feed";
 import type { FeedSource } from "@/lib/sources";
 
@@ -17,9 +17,6 @@ export const dynamic = "force-dynamic";
 // Gemini 영상 이해는 긴 영상에서 1~2분 걸리므로 기본 함수 제한(~15s)을 넘긴다.
 // Vercel Pro/Fluid는 이 값까지 허용(최대 300s), Hobby는 60s로 캡됨(긴 영상은 Pro 필요).
 export const maxDuration = 300;
-// YouTube 채널 수가 많지 않으므로, 프로필 이미지는 여유 있게 최대 64개까지 조회
-const MAX_YOUTUBE_AVATAR_RESOLVE = 64;
-
 /** 숏폼: 60초 이하, 롱폼: 61초 초과 또는 길이 미상 */
 const SHORTS_MAX_SECONDS = 60;
 
@@ -71,27 +68,29 @@ export default async function Home({ searchParams }: HomeProps) {
   const initialView = parseView(resolvedSearchParams?.view);
   const viewMode = parseViewMode(resolvedSearchParams?.viewMode);
   const { mergedSources } = await getSessionSourcesBundle();
-
-  // YouTube 채널 프로필 이미지(avatarUrl) 하이드레이션
-  const hydratedSources: FeedSource[] = await Promise.all(
-    mergedSources.map(async (source, index) => {
-      if (source.type !== "YouTube" || source.avatarUrl) return source;
-      // 너무 많은 채널에 대해 한 번에 아바타 요청하지 않도록 상한선을 둠
-      if (index >= MAX_YOUTUBE_AVATAR_RESOLVE) return source;
-      // 채널 ID 형식(UC...)만 프로필 조회
-      if (!source.id.startsWith("UC")) return source;
-      const resolved = await resolveYouTubeChannel({ type: "channelId", channelId: source.id });
-      if (resolved?.avatarUrl) {
-        return { ...source, avatarUrl: resolved.avatarUrl };
-      }
-      return source;
-    }),
-  );
-
-  const selectedSource = selectedSourceId ? hydratedSources.find((s) => s.id === selectedSourceId) : undefined;
   const initialCategory = parseCategory(resolvedSearchParams?.category);
+  const requestedSource = selectedSourceId ? mergedSources.find((source) => source.id === selectedSourceId) : undefined;
+  const feedSources = requestedSource ? [requestedSource] : mergedSources;
 
-  const { items, sourceStatus } = await getMergedFeed(hydratedSources);
+  // 피드 조회가 이미 채널 아바타를 함께 가져오므로 채널별 API를 한 번 더 호출하지 않는다.
+  // 중복 avatar hydration은 특히 모바일 채널 전환을 느리게 만들었다.
+  const [{ items, sourceStatus }, sidebarAvatarMap] = await Promise.all([
+    getMergedFeed(feedSources),
+    requestedSource
+      ? fetchChannelAvatars(mergedSources.filter((source) => source.type === "YouTube").map((source) => source.id))
+      : Promise.resolve({} as Record<string, string>),
+  ]);
+  const avatarBySource = new Map<string, string>();
+  for (const item of items) {
+    if (item.source === "YouTube" && item.sourceAvatarUrl && !avatarBySource.has(item.sourceId)) {
+      avatarBySource.set(item.sourceId, item.sourceAvatarUrl);
+    }
+  }
+  const hydratedSources: FeedSource[] = mergedSources.map((source) => ({
+    ...source,
+    avatarUrl: source.avatarUrl ?? avatarBySource.get(source.id) ?? sidebarAvatarMap[source.id],
+  }));
+  const selectedSource = selectedSourceId ? hydratedSources.find((s) => s.id === selectedSourceId) : undefined;
   let visibleItems = selectedSource
     ? items.filter((item) => item.sourceId === selectedSource.id)
     : items;

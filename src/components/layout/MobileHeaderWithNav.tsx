@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import MobileNavDrawer from "./MobileNavDrawer";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
@@ -19,6 +21,26 @@ export default function MobileHeaderWithNav({
   youtubeSources?: FeedSource[];
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigationTimeoutRef = useRef<number | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeKey = `${pathname}?${searchParams?.toString() ?? ""}`;
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsNavigating(false));
+    if (navigationTimeoutRef.current) {
+      window.clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+    return () => cancelAnimationFrame(frame);
+  }, [routeKey]);
+
+  const startNavigation = () => {
+    setIsNavigating(true);
+    if (navigationTimeoutRef.current) window.clearTimeout(navigationTimeoutRef.current);
+    navigationTimeoutRef.current = window.setTimeout(() => setIsNavigating(false), 10_000);
+  };
 
   return (
     <>
@@ -40,6 +62,7 @@ export default function MobileHeaderWithNav({
             </button>
             <Link
               href="/"
+              onClick={startNavigation}
               className="absolute inset-y-0 right-0 left-11 z-10 rounded-r-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
               aria-label="Focus Feed 홈"
             />
@@ -47,9 +70,20 @@ export default function MobileHeaderWithNav({
           <div className="min-w-0 flex-1" aria-hidden />
         </div>
       </header>
+      {isNavigating && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-0 top-16 z-[49] flex h-9 items-center justify-center gap-2 border-b border-(--border-subtle) bg-(--surface-raised)/96 text-xs font-semibold text-(--text-secondary) shadow-sm backdrop-blur-xl lg:hidden"
+        >
+          <Loader2 size={15} className="animate-spin text-(--playback-accent)" aria-hidden />
+          화면 불러오는 중
+        </div>
+      )}
       <MobileNavDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        onNavigate={startNavigation}
         sourceStatus={sourceStatus}
         selectedSourceId={selectedSourceId}
         selectedCategory={selectedCategory}

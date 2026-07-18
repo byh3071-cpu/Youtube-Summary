@@ -225,22 +225,22 @@ export function RadioFooterControls({
     >
       <div className="relative md:hidden">
         <div className="absolute inset-x-0 top-0 z-[1]">{renderProgress(mobileBarRef, true)}</div>
-        <div className="flex h-16 items-center gap-1 px-2 pt-1">
+        <div className="flex h-20 items-center gap-1.5 px-3 pt-1">
           <button
             type="button"
             onClick={toggleDrawer}
             className="flex min-w-0 flex-1 items-center gap-2 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/35"
             aria-label="재생 대기열 열기"
           >
-            <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-(--surface-subtle)">
-              <Image src={thumbnail} alt="" fill sizes="44px" className="object-cover" />
+            <span className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-xl bg-(--surface-subtle)">
+              <Image src={thumbnail} alt="" fill sizes="52px" className="object-cover" />
             </span>
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-(--text-primary)">{radio.currentItem.title}</span>
               <span className="mt-0.5 block text-[11px] text-(--text-secondary)">라디오 · {radio.currentIndex + 1}/{radio.queue.length}</span>
             </span>
           </button>
-          <button type="button" onClick={togglePlay} className={playButton} aria-label={radio.isPlaying ? "일시정지" : "재생"}>
+          <button type="button" onClick={togglePlay} className={`${playButton} !h-12 !w-12 !min-h-12 !min-w-12`} aria-label={radio.isPlaying ? "일시정지" : "재생"}>
             {radio.isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" className="ml-0.5" />}
           </button>
           <button type="button" onClick={() => radio.next()} disabled={atLast} className={iconButton} aria-label="다음 곡">

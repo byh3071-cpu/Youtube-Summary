@@ -719,7 +719,7 @@ export default function FloatingRadioPlayer() {
           fullPlayerOpen
             ? "pointer-events-auto fixed inset-0 z-60 overflow-y-auto bg-(--surface-canvas) text-(--text-primary)"
             : videoExpanded
-              ? "scroll-lock-stable-right pointer-events-auto fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] right-3 z-60 overflow-hidden rounded-xl border border-(--notion-border) bg-black shadow-lg transition-[box-shadow] duration-[180ms] md:bottom-24 md:right-4"
+              ? "scroll-lock-stable-right pointer-events-auto fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+0.75rem)] right-3 z-60 overflow-hidden rounded-xl border border-(--notion-border) bg-black shadow-lg transition-[box-shadow] duration-[180ms] md:bottom-24 md:right-4"
               : "pointer-events-none fixed bottom-0 left-0 h-px w-px overflow-hidden opacity-0"
         }
         style={

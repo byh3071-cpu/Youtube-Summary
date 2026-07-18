@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, RotateCcw, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, RotateCcw, MoreHorizontal, ExternalLink } from "lucide-react";
 import { FeedItem as FeedItemType } from "@/types/feed";
 import AddToRadioButton from "./AddToRadioButton";
 import BookmarkButton from "./BookmarkButton";
@@ -106,6 +107,18 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
     return formatSeconds(baseDuration);
   }, [baseDuration]);
 
+  const inAppWatchHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const mode = item.isLive
+      ? "live"
+      : typeof item.durationSeconds === "number" && item.durationSeconds <= 60
+        ? "shortform"
+        : "longform";
+    params.set("viewMode", mode);
+    params.set("watch", item.id);
+    return `/?${params.toString()}`;
+  }, [item.durationSeconds, item.id, item.isLive]);
+
   const formLabel = useMemo(() => {
     if (!baseDuration || baseDuration <= 0) return null;
     const total = baseDuration;
@@ -119,13 +132,10 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
       data-video-id={item.id}
       className="group relative flex h-full min-w-0 flex-col bg-transparent"
     >
-      <a
-        href={resumeHref ?? undefined}
-        target={resumeHref ? "_blank" : undefined}
-        rel={resumeHref ? "noopener noreferrer" : undefined}
-        className={`flex flex-1 flex-col${!resumeHref ? " pointer-events-none" : ""}`}
-        aria-label={`${item.sourceName} - ${item.title}`}
-        tabIndex={resumeHref ? undefined : -1}
+      <Link
+        href={inAppWatchHref}
+        className="flex flex-1 flex-col"
+        aria-label={`${item.sourceName} - ${item.title} 앱에서 재생`}
       >
         <div
           data-testid="youtube-card-thumbnail"
@@ -198,14 +208,14 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
             </p>
           </div>
         </div>
-      </a>
+      </Link>
       {item.id && (
         <div
           data-testid="youtube-card-actions"
-          className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1 py-1.5 pr-12 sm:pr-0"
+          className="flex shrink-0 flex-wrap items-center gap-2 py-2"
         >
           <SummarizeButton videoId={item.id} compact />
-          <div className="flex items-center justify-end gap-0.5">
+          <div className="flex items-center gap-0.5">
             <div data-testid="youtube-card-hover-actions" className="hidden items-center opacity-0 transition-opacity duration-[var(--motion-fast)] group-hover:opacity-100 group-focus-within:opacity-100 sm:flex">
               {onBookmarkChange && (
                 <BookmarkButton
@@ -235,7 +245,17 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
             </button>
           </div>
           {menuOpen && (
-            <div id={`card-more-${item.id}`} className="col-span-full mt-1.5 space-y-2.5 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-2.5 py-2 text-xs text-(--notion-fg) shadow-sm">
+            <div id={`card-more-${item.id}`} className="mt-1.5 w-full basis-full space-y-2.5 rounded-xl border border-(--notion-border) bg-(--notion-bg) px-2.5 py-2 text-xs text-(--notion-fg) shadow-sm">
+              {resumeHref && (
+                <a
+                  href={resumeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-11 items-center gap-2 rounded-lg px-2 font-semibold text-(--text-primary) hover:bg-(--surface-subtle)"
+                >
+                  <ExternalLink size={16} aria-hidden /> YouTube에서 열기
+                </a>
+              )}
               {onBookmarkChange && (
                 <div className="flex items-center justify-between sm:hidden">
                   <span className="font-medium">북마크</span>

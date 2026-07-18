@@ -225,6 +225,7 @@ function FeedClientContainerContent({
             <FeedReelView
                 items={visibleItems}
                 viewMode={viewMode}
+                initialVideoId={initialWatchVideoId}
                 bookmarks={bookmarks}
                 onBookmarkChange={fetchBookmarks}
             />

@@ -29,6 +29,7 @@ const youtubeStatusTone = {
 export default function MobileNavDrawer({
   open,
   onClose,
+  onNavigate,
   sourceStatus,
   selectedSourceId,
   selectedCategory,
@@ -36,6 +37,7 @@ export default function MobileNavDrawer({
 }: {
   open: boolean;
   onClose: () => void;
+  onNavigate?: () => void;
   sourceStatus: MergedFeedResult["sourceStatus"];
   selectedSourceId?: string;
   selectedCategory?: string;
@@ -111,7 +113,7 @@ export default function MobileNavDrawer({
               <Link
                 key={href}
                 href={href}
-                onClick={onClose}
+                onClick={() => { onNavigate?.(); onClose(); }}
                 className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "font-medium text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
               >
                 <Icon size={18} className="shrink-0" />
@@ -144,9 +146,16 @@ export default function MobileNavDrawer({
                 <Link
                   key={item.id}
                   href={linkTo(item.id)}
-                  onClick={onClose}
-                  className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
+                  onClick={() => { onNavigate?.(); onClose(); }}
+                  className={`flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
                 >
+                  <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-(--surface-raised) text-[11px] font-bold text-(--text-secondary) ring-1 ring-(--border-subtle)">
+                    {item.avatarUrl ? (
+                      <Image src={item.avatarUrl} alt="" fill sizes="32px" className="object-cover" />
+                    ) : (
+                      item.name.trim().slice(0, 2)
+                    )}
+                  </span>
                   <span className="truncate">{item.name}</span>
                 </Link>
               ))}
@@ -161,11 +170,11 @@ export default function MobileNavDrawer({
               보관함
             </p>
             <div className="space-y-0.5">
-              <Link href="/playlists" onClick={onClose} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
+              <Link href="/playlists" onClick={() => { onNavigate?.(); onClose(); }} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <ListMusic size={18} className="shrink-0 text-(--notion-fg)/70" />
                 내 플레이리스트
               </Link>
-              <Link href="/bookmarks" onClick={onClose} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
+              <Link href="/bookmarks" onClick={() => { onNavigate?.(); onClose(); }} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <Bookmark size={18} className="shrink-0 text-(--notion-fg)/70" />
                 북마크
               </Link>
@@ -182,7 +191,7 @@ export default function MobileNavDrawer({
                 <Link
                   key={item.id}
                   href={linkTo(item.id)}
-                  onClick={onClose}
+                  onClick={() => { onNavigate?.(); onClose(); }}
                   className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
                 >
                   <span className="truncate">{item.name}</span>

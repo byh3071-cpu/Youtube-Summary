@@ -47,7 +47,7 @@ tags: [focus-feed, prd, product]
 11. **PWA**: `public/app.webmanifest`(단일 manifest, 정사각 아이콘 192/512), 서비스 워커 `public/sw.js`·`PwaInstaller`. 캐시 정책: navigation은 network 우선·**HTML 미캐시**(stale chunk 방지), `/_next/static/` cache-first, 이미지 stale-while-revalidate, **API·RSC·인증 미캐시**, 오프라인은 정적 `/offline.html`.
 12. **테마**: 기본 라이트, 시스템 전환 가능(`ThemeProvider`).
 13. **탐색 UX**: 글로벌 피드는 검색→트렌드 키워드→콘텐츠 종류·상세 필터를 하나의 탐색 패널로 제공한다. `전체/유튜브/RSS` 전환은 이미 내려받은 피드를 클라이언트에서 즉시 필터링하고 URL만 History API로 동기화한다.
-14. **영상 모드**: 롱폼은 YouTube식 16:9 목록에서 `/?viewMode=longform&watch={videoId}` 상세로 진입하고 자동재생하지 않는다. 숏폼은 9:16 세로 스냅·자동 다음, 라이브는 16:9·자동 다음 없음 정책을 사용한다.
+14. **영상 모드**: YouTube 카드 탭은 외부 사이트 대신 앱 내부 재생으로 연결한다. 롱폼은 `/?viewMode=longform&watch={videoId}` 상세로 진입하고 자동재생하지 않으며, 숏폼은 해당 영상의 9:16 세로 스냅 위치로, 라이브는 16:9 재생 화면으로 진입한다. 외부 YouTube 열기는 카드 더보기의 보조 행동으로 유지한다.
 15. **상세 AI 요약**: 롱폼과 확장 라디오의 AI 요약은 영상 위를 덮지 않는 외부 패널/시트로 표시한다. 미생성·로딩·로그인 필요·성공·오류·로컬 캐시 복원 상태를 제공한다.
 
 ## 4.1 피드 Q&A (M5)
@@ -140,3 +140,4 @@ tags: [focus-feed, prd, product]
 | 2026-07-12 | 앱 테마 클래스와 Tailwind 다크 변형을 통일하고 RSS 항목을 단일 소스 아이콘 기반 플랫 리스트로 정리 |
 | 2026-07-16 | M11 영상 모드·롱폼 상세 AI 패널·라디오/앱 셸의 현재 제품 계약과 활성 실행 작업대장 반영 |
 | 2026-07-18 | M11 Draft PR #36 전체 CI와 Vercel Preview Google OAuth·롱폼 상세 복귀·Gemini 실제 요약·사용량·캐시 검증 완료 |
+| 2026-07-18 | 병합 후 모바일 후속: 구독 채널 아바타, 고화질 썸네일 선택, 카드 앱 내부 재생, 전환 로딩 피드백, 80px 라디오 바, 숏폼 플레이어 수명주기와 48px 홈 버튼 보완 |

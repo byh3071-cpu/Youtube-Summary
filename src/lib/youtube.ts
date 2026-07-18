@@ -64,11 +64,13 @@ interface YouTubeThumbnails {
   default?: { url?: string };
   medium?: { url?: string };
   high?: { url?: string };
+  standard?: { url?: string };
+  maxres?: { url?: string };
 }
 
 /** 썸네일 목록에서 가장 큰 해상도를 우선 선택합니다 */
 function pickBestThumbnail(thumbs?: YouTubeThumbnails): string | undefined {
-  return thumbs?.medium?.url || thumbs?.high?.url || thumbs?.default?.url;
+  return thumbs?.maxres?.url || thumbs?.standard?.url || thumbs?.high?.url || thumbs?.medium?.url || thumbs?.default?.url;
 }
 
 function hasUsableApiKey(apiKey: string | undefined): apiKey is string {
@@ -195,6 +197,43 @@ async function fetchChannelAvatar(channelId: string): Promise<string | undefined
   }
 }
 
+/** 사이드바용 채널 아바타를 채널별 요청 대신 YouTube batch API 한 번으로 조회합니다. */
+export async function fetchChannelAvatars(channelIds: string[]): Promise<Record<string, string>> {
+  if (!hasUsableApiKey(YOUTUBE_API_KEY)) return {};
+  const uniqueIds = [...new Set(channelIds.map((id) => id.trim()).filter((id) => id.startsWith("UC")))];
+  if (uniqueIds.length === 0) return {};
+
+  const chunks: string[][] = [];
+  for (let index = 0; index < uniqueIds.length; index += 50) {
+    chunks.push(uniqueIds.slice(index, index + 50));
+  }
+
+  const results = await Promise.all(chunks.map(async (ids) => {
+    const params = new URLSearchParams({
+      part: "snippet",
+      id: ids.join(","),
+      key: YOUTUBE_API_KEY!,
+    });
+    try {
+      const response = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
+        next: { revalidate: REVALIDATE_SECONDS },
+      });
+      if (!response.ok) return {} as Record<string, string>;
+      const data = (await response.json()) as YouTubeChannelResponse;
+      const avatars: Record<string, string> = {};
+      for (const channel of data.items ?? []) {
+        const avatar = pickBestThumbnail(channel.snippet?.thumbnails);
+        if (channel.id && avatar) avatars[channel.id] = avatar;
+      }
+      return avatars;
+    } catch {
+      return {} as Record<string, string>;
+    }
+  }));
+
+  return Object.assign({}, ...results);
+}
+
 export async function fetchYouTubeFeed(channelId: string, channelName: string): Promise<YouTubeFeedResult> {
   if (!hasUsableApiKey(YOUTUBE_API_KEY)) {
     logMissingApiKeyWarning();
@@ -273,7 +312,7 @@ export async function fetchYouTubeFeed(channelId: string, channelName: string): 
         source: "YouTube",
         sourceId: channelId,
         sourceName: channelName,
-        thumbnail: snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
+        thumbnail: pickBestThumbnail(snippet.thumbnails),
         durationSeconds: durationMap[videoId],
         isLive: liveMap[videoId],
         sourceAvatarUrl: avatarUrl,
