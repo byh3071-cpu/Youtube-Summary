@@ -76,7 +76,7 @@ export default async function Home({ searchParams }: HomeProps) {
   // 중복 avatar hydration은 특히 모바일 채널 전환을 느리게 만들었다.
   const [{ items, sourceStatus }, sidebarAvatarMap] = await Promise.all([
     getMergedFeed(feedSources),
-    requestedSource
+    requestedSource && !viewMode
       ? fetchChannelAvatars(mergedSources.filter((source) => source.type === "YouTube").map((source) => source.id))
       : Promise.resolve({} as Record<string, string>),
   ]);

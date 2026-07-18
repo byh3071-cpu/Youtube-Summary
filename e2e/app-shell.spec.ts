@@ -148,16 +148,21 @@ test.describe("responsive app shell", () => {
 
   test("mobile reel home control is a reliable 48px target", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
-    await page.goto("/?viewMode=shortform&watch=FFSH0000000", { waitUntil: "domcontentloaded" });
-    const home = page.getByRole("link", { name: /종료하고 홈으로 이동/ });
+    await page.goto("/?viewMode=shortform&watch=FFSH0000000&source=UC_FIXTURE_SHORTS", { waitUntil: "domcontentloaded" });
+    const home = page.getByTestId("reel-home-link");
     await expect(home).toBeVisible({ timeout: 30_000 });
     const box = await home.boundingBox();
     expect(box).not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(48);
-    expect(box!.width).toBeGreaterThanOrEqual(48);
+    expect(box!.x).toBeLessThanOrEqual(16);
+    expect(box!.height).toBeGreaterThanOrEqual(52);
+    expect(box!.width).toBeGreaterThanOrEqual(108);
+    const iconBox = await home.locator("svg").boundingBox();
+    expect(iconBox).not.toBeNull();
+    expect(iconBox!.width).toBeGreaterThanOrEqual(24);
     await home.click();
     await expect(page).not.toHaveURL(/viewMode=/);
     await expect(page).not.toHaveURL(/watch=/);
+    await expect(page).not.toHaveURL(/source=/);
   });
 
   test("shortform and live use mode-specific media frames", async ({ page }) => {
@@ -228,8 +233,9 @@ test.describe("responsive app shell", () => {
           const host = document.getElementById(elementId);
           const iframe = document.createElement("iframe");
           iframe.dataset.e2eYoutubePlayer = elementId;
-          iframe.style.width = "100%";
-          iframe.style.height = "100%";
+          iframe.id = elementId;
+          iframe.className = host?.className ?? "";
+          if (host?.getAttribute("style")) iframe.setAttribute("style", host.getAttribute("style")!);
           host?.replaceWith(iframe);
           queueMicrotask(() => this.events.onReady?.({ target: this }));
         }
@@ -257,13 +263,18 @@ test.describe("responsive app shell", () => {
     const content = page.getByTestId("reel-content");
     const firstMedia = page.getByTestId("reel-media").first();
     await expect(firstMedia).toHaveAttribute("data-player-ready", "true", { timeout: 10_000 });
-    await expect(page.locator('iframe[data-e2e-youtube-player="reel-yt-0"]')).toHaveCount(1);
+    const firstSurface = firstMedia.getByTestId("youtube-player-surface");
+    const firstFrame = page.locator('iframe[data-e2e-youtube-player="reel-yt-0"]');
+    await expect(firstFrame).toHaveCount(1);
+    await expect(firstSurface).toHaveCSS("opacity", "1");
+    await expect(firstFrame).toHaveCSS("opacity", "1");
 
     await content.evaluate((element) => { element.scrollTop = element.clientHeight; });
     await expect(page.getByTestId("reel-media").nth(1)).toHaveAttribute("data-player-ready", "true", { timeout: 10_000 });
     await content.evaluate((element) => { element.scrollTop = 0; });
     await expect(firstMedia).toHaveAttribute("data-player-ready", "true");
-    await expect(page.locator('iframe[data-e2e-youtube-player="reel-yt-0"]')).toHaveCount(1);
+    await expect(firstFrame).toHaveCount(1);
+    await expect(firstSurface).toHaveCSS("opacity", "1");
   });
 
   test("longform uses a browse-first list and opens a 16:9 watch view", async ({ page }) => {

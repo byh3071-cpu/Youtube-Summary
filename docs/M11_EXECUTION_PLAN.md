@@ -63,6 +63,7 @@ tags: [focus-feed, m11, ui, ux, execution, qa]
 | SHELL-03 | 모달 scroll-lock fixed UI 위치 유지 | browser-verified | 대기열·AI·필터 전후 하단 버튼 좌표·전체화면 폭 통과 |
 | SHELL-04 | 채널 상세 상단을 홈 탐색 계층과 통일 | browser-verified | 새로고침·중복 필터 카드 제거, 아바타형 채널 헤더와 검색·트렌드·필터 통합, 360/1440px overflow 0 |
 | MOBILE-01 | 병합 후 모바일 탐색·재생 보완 | browser-verified | 채널 아바타·고화질 썸네일, 앱 내부 재생 링크, 전환 피드백, 80px 라디오 바, 숏폼 플레이어 수명주기·48px 홈 버튼; 전체 E2E 72개 통과 |
+| MOBILE-02 | 배포 후 숏폼·전환 회귀 수정 | browser-verified | 실제 YouTube iframe opacity 1, 좌측 홈 108×52px·147ms, 카드→롱폼 단일 채널 조회·108ms 실측 |
 | PREVIEW-01 | Vercel Preview OAuth·Gemini 실검증 | preview-verified | Supabase Preview redirect 등록 후 OAuth 상세 복귀, Free 사용량 0→1, 실제 요약·새로고침 캐시 통과 |
 | QA-01 | 디자인·기능·코드 3단계 검수 | preview-verified | 로컬 감사와 Draft PR #36 CI Playwright 68개·unit 185개·build·VHK 통과 |
 | QA-01-1 | 주요 화면 디자인 시각 검수 | browser-verified | 홈·채널·롱폼·숏폼·라이브·확장 라디오 393/1440px 캡처, 숏폼 포스터·외부 메타 보완 |

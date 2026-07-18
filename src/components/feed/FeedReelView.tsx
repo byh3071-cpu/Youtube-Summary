@@ -111,7 +111,13 @@ function ReelSlide({
         height: "100%",
         width: "100%",
         videoId,
-        playerVars: { autoplay: playbackPolicy.autoplay ? 1 : 0, mute: 0, rel: 0, modestbranding: 1 },
+        playerVars: {
+          autoplay: playbackPolicy.autoplay ? 1 : 0,
+          mute: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+        },
         events: {
           onReady(ev: { target: { playVideo?: () => void } }) {
             setPlayerMounted(true);
@@ -167,11 +173,13 @@ function ReelSlide({
       ) : null}
       {videoId ? (
         <div
-          id={playerId}
-          className="relative z-10 h-full w-full transition-opacity duration-200 motion-reduce:transition-none"
+          data-testid="youtube-player-surface"
+          className="absolute inset-0 z-10 h-full w-full transition-opacity duration-200 motion-reduce:transition-none"
           style={{ opacity: useApiPlayer && playerReady ? 1 : 0 }}
           aria-hidden={!useApiPlayer || !playerReady}
-        />
+        >
+          <div id={playerId} className="h-full w-full" />
+        </div>
       ) : null}
       {showPlayer && !playerReady ? (
         <span className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-label="영상 불러오는 중">
