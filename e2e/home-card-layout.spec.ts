@@ -46,6 +46,26 @@ test.describe("YouTube-style home card body", () => {
     await capture(page, testInfo, "home-card-mobile-393");
   });
 
+  test("mobile card opens in-app playback and keeps actions visually connected", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const card = page.getByTestId("youtube-card").first();
+    await expect(card).toBeVisible({ timeout: 30_000 });
+
+    const playbackLink = card.locator("a").first();
+    await expect(playbackLink).toHaveAttribute("href", /viewMode=longform/);
+    await expect(playbackLink).toHaveAttribute("href", /watch=/);
+    await expect(playbackLink).not.toHaveAttribute("target", "_blank");
+
+    const summary = card.getByTestId("youtube-card-summary-action");
+    const radio = card.getByTestId("youtube-card-mobile-radio");
+    const summaryBox = await summary.boundingBox();
+    const radioBox = await radio.boundingBox();
+    expect(summaryBox).not.toBeNull();
+    expect(radioBox).not.toBeNull();
+    expect(radioBox!.x - (summaryBox!.x + summaryBox!.width)).toBeLessThanOrEqual(16);
+  });
+
   test("desktop keeps a dense grid and aligned first-row cards", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await openHomeWithCards(page);

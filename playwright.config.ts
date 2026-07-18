@@ -22,13 +22,15 @@ export default defineConfig({
     {
       name: "desktop-chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: /mobile-.*\.spec\.ts/,
+      // 전체 경로의 worktree 이름에 `mobile-*`가 포함돼도 테스트가 사라지지 않도록
+      // 파일 basename이 mobile-*.spec.ts인 경우에만 제외한다.
+      testIgnore: /[/\\]mobile-[^/\\]*\.spec\.ts$/,
     },
     {
       // 393x851 — 감사 기준(393x852)과 동급. 모바일 전용 스펙 + 공통 스모크만 실행.
       name: "mobile-chromium",
       use: { ...devices["Pixel 5"] },
-      testMatch: /(mobile-.*|smoke)\.spec\.ts/,
+      testMatch: /[/\\](mobile-[^/\\]*|smoke)\.spec\.ts$/,
     },
     // WebKit(iOS Safari) 모바일은 Windows/CI 안정성·비용 문제로 자동화하지 않는다.
     // 실기기 검증은 docs/MOBILE_QA_CHECKLIST.md 수동 항목을 따른다.

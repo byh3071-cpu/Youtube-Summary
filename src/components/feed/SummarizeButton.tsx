@@ -76,7 +76,7 @@ export default function SummarizeButton({ videoId, fullWidth, compact }: Props) 
   };
 
   const buttonClass = compact
-    ? "inline-flex min-h-11 min-w-0 justify-self-start items-center gap-1.5 rounded-full border border-(--ai-accent)/20 bg-(--ai-accent)/8 px-3 py-1.5 text-xs font-semibold text-(--ai-accent) transition-colors hover:border-(--ai-accent)/35 hover:bg-(--ai-accent)/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ai-accent)/30"
+    ? `inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-full border border-(--ai-accent)/20 bg-(--ai-accent)/8 px-3 py-1.5 text-xs font-semibold text-(--ai-accent) transition-colors hover:border-(--ai-accent)/35 hover:bg-(--ai-accent)/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ai-accent)/30 ${fullWidth ? "w-full justify-center" : "justify-self-start"}`
     : `${fullWidth ? "flex w-full min-w-0 justify-center" : "inline-flex whitespace-nowrap"} min-h-[44px] items-center gap-1.5 rounded-full bg-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-purple-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/60 dark:bg-purple-500 dark:hover:bg-purple-600`;
 
   const summaryPanel = isOpen && typeof document !== "undefined"

@@ -36,6 +36,15 @@ test.describe("mobile ux", () => {
       .toBe("메뉴 열기");
   });
 
+  test("subscription channels show avatars in the mobile drawer", async ({ page }) => {
+    await gotoHydratedHome(page);
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const dialog = page.getByRole("dialog", { name: "메뉴" });
+    const firstChannel = dialog.locator('a[href*="source="]').first();
+    await expect(firstChannel).toBeVisible();
+    await expect(firstChannel.locator("img")).toBeVisible();
+  });
+
   test("Q&A input and submit button are not covered by the radio footer", async ({ page }) => {
     await gotoHydratedHome(page);
     await page.getByRole("button", { name: "피드 Q&A 열기" }).click();

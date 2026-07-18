@@ -146,6 +146,20 @@ test.describe("responsive app shell", () => {
     }
   });
 
+  test("mobile reel home control is a reliable 48px target", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.goto("/?viewMode=shortform&watch=FFSH0000000", { waitUntil: "domcontentloaded" });
+    const home = page.getByRole("link", { name: /종료하고 홈으로 이동/ });
+    await expect(home).toBeVisible({ timeout: 30_000 });
+    const box = await home.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(48);
+    expect(box!.width).toBeGreaterThanOrEqual(48);
+    await home.click();
+    await expect(page).not.toHaveURL(/viewMode=/);
+    await expect(page).not.toHaveURL(/watch=/);
+  });
+
   test("shortform and live use mode-specific media frames", async ({ page }) => {
     for (const viewport of [
       { width: 393, height: 852 },
@@ -199,6 +213,57 @@ test.describe("responsive app shell", () => {
       await expect(content).toHaveAttribute("data-autoplay", autoplay);
       await expect(content).toHaveAttribute("data-advance-on-end", advanceOnEnd);
     }
+  });
+
+  test("shortform reuses its player after leaving and returning to a slide", async ({ page }) => {
+    await page.addInitScript(() => {
+      class MockPlayer {
+        private events: {
+          onReady?: (event: { target: MockPlayer }) => void;
+          onStateChange?: (event: { data: number }) => void;
+        };
+
+        constructor(elementId: string, options: { events?: MockPlayer["events"] }) {
+          this.events = options.events ?? {};
+          const host = document.getElementById(elementId);
+          const iframe = document.createElement("iframe");
+          iframe.dataset.e2eYoutubePlayer = elementId;
+          iframe.style.width = "100%";
+          iframe.style.height = "100%";
+          host?.replaceWith(iframe);
+          queueMicrotask(() => this.events.onReady?.({ target: this }));
+        }
+
+        playVideo() {
+          this.events.onStateChange?.({ data: 1 });
+        }
+
+        pauseVideo() {
+          this.events.onStateChange?.({ data: 2 });
+        }
+      }
+
+      Object.defineProperty(window, "YT", {
+        configurable: true,
+        value: {
+          Player: MockPlayer,
+          PlayerState: { ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 },
+        },
+      });
+    });
+
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.goto("/?viewMode=shortform", { waitUntil: "domcontentloaded" });
+    const content = page.getByTestId("reel-content");
+    const firstMedia = page.getByTestId("reel-media").first();
+    await expect(firstMedia).toHaveAttribute("data-player-ready", "true", { timeout: 10_000 });
+    await expect(page.locator('iframe[data-e2e-youtube-player="reel-yt-0"]')).toHaveCount(1);
+
+    await content.evaluate((element) => { element.scrollTop = element.clientHeight; });
+    await expect(page.getByTestId("reel-media").nth(1)).toHaveAttribute("data-player-ready", "true", { timeout: 10_000 });
+    await content.evaluate((element) => { element.scrollTop = 0; });
+    await expect(firstMedia).toHaveAttribute("data-player-ready", "true");
+    await expect(page.locator('iframe[data-e2e-youtube-player="reel-yt-0"]')).toHaveCount(1);
   });
 
   test("longform uses a browse-first list and opens a 16:9 watch view", async ({ page }) => {
@@ -312,7 +377,12 @@ test.describe("responsive app shell", () => {
       expect(playerBox!.x).toBeGreaterThanOrEqual(0);
       expect(playerBox!.x + playerBox!.width).toBeLessThanOrEqual(viewport.width);
       expect(playerBox!.y + playerBox!.height).toBeLessThanOrEqual(viewport.height);
-      expect(playerBox!.height).toBeLessThanOrEqual(viewport.width < 768 ? 72 : 96);
+      if (viewport.width < 768) {
+        expect(playerBox!.height).toBeGreaterThanOrEqual(80);
+        expect(playerBox!.height).toBeLessThanOrEqual(96);
+      } else {
+        expect(playerBox!.height).toBeLessThanOrEqual(96);
+      }
 
       const buttonBoxes = await player.locator("button:visible").evaluateAll((buttons) =>
         buttons.map((button) => {

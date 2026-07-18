@@ -214,7 +214,7 @@ export function RadioPlaylistDrawer({ drawerOpen, setDrawerOpen }: RadioPlaylist
       panelRole="dialog"
       panelAriaLabel="재생 대기열"
       panelTestId="radio-queue-panel"
-      panelClassName="scroll-lock-stable-right fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+1px)] left-3 right-3 flex max-h-[72dvh] flex-col overflow-hidden rounded-t-[24px] border border-b-0 border-(--border-subtle) bg-(--surface-raised) shadow-[0_-20px_60px_rgba(15,23,42,0.18)] md:bottom-[5.75rem] md:left-auto md:right-6 md:w-[420px] md:max-h-[calc(100dvh-7.5rem)] md:rounded-2xl md:border md:shadow-[var(--shadow-lg)]"
+      panelClassName="scroll-lock-stable-right fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+1px)] left-3 right-3 flex max-h-[72dvh] flex-col overflow-hidden rounded-t-[24px] border border-b-0 border-(--border-subtle) bg-(--surface-raised) shadow-[0_-20px_60px_rgba(15,23,42,0.18)] md:bottom-[5.75rem] md:left-auto md:right-6 md:w-[420px] md:max-h-[calc(100dvh-7.5rem)] md:rounded-2xl md:border md:shadow-[var(--shadow-lg)]"
     >
       <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-(--text-secondary)/25 md:hidden" aria-hidden />
 
