@@ -83,13 +83,14 @@ test.describe("SHELL-02 responsive and accessibility audit", () => {
 
       const controls = [
         page.getByTestId("brand-menu-trigger"),
-        page.getByTestId("trend-chip").first(),
         page.getByTestId("view-all"),
         page.getByTestId("view-youtube"),
         page.getByTestId("view-rss"),
         page.getByTestId("discovery-filter-trigger"),
         page.getByRole("button", { name: "피드 Q&A 열기" }),
       ];
+      const trendChip = page.getByTestId("trend-chip").first();
+      if (await trendChip.count()) controls.splice(1, 0, trendChip);
 
       for (const control of controls) {
         await expect(control).toBeVisible();

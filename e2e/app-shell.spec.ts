@@ -50,7 +50,7 @@ test.describe("responsive app shell", () => {
     expect(drawerBox!.width).toBeCloseTo(288, 0);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const loginBox = await drawer.getByRole("button", { name: /Google.*로그인/ }).boundingBox();
+    const loginBox = await drawer.getByTestId("login-control").boundingBox();
     expect(loginBox).not.toBeNull();
     expect(loginBox!.y + loginBox!.height).toBeLessThanOrEqual(852);
   });
@@ -63,8 +63,13 @@ test.describe("responsive app shell", () => {
     ]) {
       await page.setViewportSize(viewport);
       await page.goto("/", { waitUntil: "domcontentloaded" });
+      await page.locator('[data-testid="discovery-toolbar"][data-hydrated="true"]').waitFor({
+        state: "visible",
+        timeout: 30_000,
+      });
       const card = page.getByTestId("youtube-card").first();
       await expect(card).toBeVisible({ timeout: 30_000 });
+      await expect.poll(async () => (await card.boundingBox())?.width ?? 0).toBeGreaterThan(0);
       const before = await card.boundingBox();
       await page.getByTestId("brand-menu-trigger").click();
       await expect(page.getByRole("dialog", { name: "메뉴" })).toBeVisible();

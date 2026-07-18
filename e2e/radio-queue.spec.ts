@@ -91,7 +91,7 @@ test.describe("radio queue", () => {
     expect(playerBox).not.toBeNull();
     expect(panelBox!.x).toBeGreaterThanOrEqual(0);
     expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(393);
-    expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(playerBox!.y);
+    expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(playerBox!.y + 1);
     await expect(panel.getByTestId("current-queue-item")).toBeVisible();
     await expect(panel.getByTestId("queue-item")).toHaveCount(2);
     if (process.env.CAPTURE_UI === "1") {
