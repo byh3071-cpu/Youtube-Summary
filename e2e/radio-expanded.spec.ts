@@ -150,8 +150,7 @@ test.describe("expanded radio player", () => {
       timeout: 30_000,
     });
 
-    const thumbnailUrl = await page.getByTestId("youtube-card").first().locator("img").first().getAttribute("src");
-    const videoId = decodeURIComponent(thumbnailUrl ?? "").match(/\/vi\/([^/]+)/)?.[1];
+    const videoId = await page.getByTestId("youtube-card").first().getAttribute("data-video-id");
     expect(videoId).toBeTruthy();
     await page.evaluate((id) => {
       localStorage.setItem("focus_feed_watch_history_v1", JSON.stringify({

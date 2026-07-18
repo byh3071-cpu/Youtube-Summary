@@ -4,6 +4,7 @@ import { defaultSources, FeedSource } from "./sources";
 import { fetchYouTubeFeed, getYouTubeConfigurationStatus, YouTubeFetchStatus } from "./youtube";
 import { fetchRssFeed } from "./rss";
 import type { FeedCategory } from "../types/feed";
+import { buildE2eFeedFixtures, shouldUseE2eFeedFixtures } from "./e2e-feed-fixtures";
 
 export interface MergedFeedResult {
     items: FeedItem[];
@@ -42,6 +43,16 @@ function dedupeItems(items: FeedItem[]): FeedItem[] {
 }
 
 export async function getMergedFeed(sources: FeedSource[] = defaultSources): Promise<MergedFeedResult> {
+    if (shouldUseE2eFeedFixtures()) {
+        return {
+            items: buildE2eFeedFixtures(sources),
+            sourceStatus: {
+                youtube: "ready",
+                rss: "ready",
+            },
+        };
+    }
+
     const youtubeSources = sources.filter((source) => source.type === "YouTube");
     const rssSources = sources.filter((source) => source.type === "RSS");
 

@@ -38,7 +38,7 @@ test.describe("YouTube-style home card body", () => {
     expect(sheetBox).not.toBeNull();
     expect(sheetBox!.width).toBeCloseTo(393, 0);
     expect(sheetBox!.y + sheetBox!.height).toBeCloseTo(852, 0);
-    await page.getByRole("button", { name: "닫기" }).click();
+    await sheet.getByRole("button", { name: "닫기", exact: true }).click();
     await expect(sheet).toBeHidden();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);

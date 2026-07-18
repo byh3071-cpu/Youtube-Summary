@@ -273,6 +273,10 @@ test.describe("responsive app shell", () => {
   test("shortform actions stay above the active radio player", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.goto("/?viewMode=shortform", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-testid="reel-content"][data-hydrated="true"]').waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
     const actions = page.getByTestId("reel-actions").first();
     await expect(actions).toBeVisible({ timeout: 30_000 });
     await actions.locator("button").first().click();

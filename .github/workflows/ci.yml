@@ -26,4 +26,5 @@ jobs:
       - run: npm run test:e2e
         env:
           CI: true
+          FOCUS_FEED_E2E_FIXTURES: "1"
       - run: npm run vhk:policy

@@ -116,6 +116,7 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
   return (
     <article
       data-testid="youtube-card"
+      data-video-id={item.id}
       className="group relative flex h-full min-w-0 flex-col bg-transparent"
     >
       <a
