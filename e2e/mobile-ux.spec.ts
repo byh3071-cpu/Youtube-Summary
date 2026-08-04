@@ -75,14 +75,22 @@ test.describe("mobile ux", () => {
       return {
         left: rect.left,
         right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
         center: rect.left + rect.width / 2,
+        centerY: rect.top + rect.height / 2,
         viewportCenter: window.innerWidth / 2,
+        viewportCenterY: window.innerHeight / 2,
         viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
       };
     });
     expect(Math.abs(bounds.center - bounds.viewportCenter)).toBeLessThanOrEqual(1);
+    expect(Math.abs(bounds.centerY - bounds.viewportCenterY)).toBeLessThanOrEqual(1);
     expect(bounds.left).toBeGreaterThanOrEqual(0);
     expect(bounds.right).toBeLessThanOrEqual(bounds.viewportWidth);
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.bottom).toBeLessThanOrEqual(bounds.viewportHeight);
 
     for (const control of [
       dialog.getByLabel("카테고리"),
