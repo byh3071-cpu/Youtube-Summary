@@ -353,10 +353,11 @@ export async function resolveYouTubeChannel(parsed: { type: "channelId"; channel
   }
   try {
     return await withTimeout(
-      (async () => {
+      async (signal) => {
         const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
           // 채널명·아바타는 거의 안 바뀌므로 24시간 캐시 — 페이지 SSR 시 아바타 해석 비용 절감
           next: { revalidate: 86400 },
+          signal,
         });
         if (!res.ok) return null;
         const data = (await res.json()) as {
@@ -380,7 +381,7 @@ export async function resolveYouTubeChannel(parsed: { type: "channelId"; channel
           channelName: channel.snippet.title,
           avatarUrl: thumb,
         };
-      })(),
+      },
       8_000,
       "YouTube channels.list timeout after 8000ms",
     );
@@ -433,14 +434,15 @@ export async function getVideoChannelId(videoId: string): Promise<string | null>
   });
   try {
     return await withTimeout(
-      (async () => {
+      async (signal) => {
         const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
           next: { revalidate: 86400 },
+          signal,
         });
         if (!res.ok) return null;
         const data = (await res.json()) as { items?: Array<{ snippet?: { channelId?: string } }> };
         return data.items?.[0]?.snippet?.channelId ?? null;
-      })(),
+      },
       8_000,
       "YouTube videos.list timeout after 8000ms",
     );

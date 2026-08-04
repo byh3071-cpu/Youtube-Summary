@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X, Loader2, Plus } from "lucide-react";
@@ -34,6 +34,11 @@ export default function AddChannelModal({
   const [category, setCategory] = useState<FeedCategory>("기타");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
 
   const addChannel = useCallback(async () => {
     const trimmed = input.trim();
@@ -211,5 +216,5 @@ export default function AddChannelModal({
     </ModalTransition>
   );
 
-  return typeof document === "undefined" ? modal : createPortal(modal, document.body);
+  return portalTarget ? createPortal(modal, portalTarget) : modal;
 }

@@ -49,7 +49,14 @@ describe("getVideoChannelId", () => {
 
   it("videos.list 응답이 멈추면 8초 후 null로 종료한다", async () => {
     vi.useFakeTimers();
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    let requestSignal: AbortSignal | null | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+        requestSignal = init?.signal;
+        return new Promise<Response>(() => {});
+      }),
+    );
     const { getVideoChannelId } = await importWithApiKey();
 
     let settled = false;
@@ -67,6 +74,7 @@ describe("getVideoChannelId", () => {
 
     expect(settled).toBe(true);
     expect(result).toBeNull();
+    expect(requestSignal?.aborted).toBe(true);
   });
 
   it("videos.list 본문이 멈춰도 전체 8초 안에 null로 종료한다", async () => {
