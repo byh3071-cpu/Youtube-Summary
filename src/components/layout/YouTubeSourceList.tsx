@@ -20,6 +20,8 @@ interface Props {
   items: FeedSource[];
   selectedSourceId?: string;
   latestVideoBySource?: Record<string, string>;
+  onSelect?: () => void;
+  showRemoveActions?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -33,6 +35,8 @@ export default function YouTubeSourceList({
   items,
   selectedSourceId,
   latestVideoBySource,
+  onSelect,
+  showRemoveActions = false,
 }: Props) {
   const router = useRouter();
   const [now] = useState(() => Date.now());
@@ -104,6 +108,7 @@ export default function YouTubeSourceList({
               href={{ pathname: "/", query: { source: item.id } }}
               onClick={() => {
                 if (latest) markSourceSeen(item.id, latest);
+                onSelect?.();
               }}
               className={`min-w-0 flex-1 flex items-center justify-between gap-2 py-0.5 text-sm transition-colors ${isActive ? "font-medium text-(--notion-fg)" : "text-(--notion-fg)/80 hover:text-(--notion-fg)"}`}
             >
@@ -131,7 +136,7 @@ export default function YouTubeSourceList({
             <button
               type="button"
               onClick={(e) => handleRemove(e, item.id)}
-              className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 opacity-0 transition-opacity hover:bg-(--notion-gray) hover:text-red-600 group-hover:opacity-100 group-focus-within:opacity-100 touch-manipulation"
+              className={`flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 transition-opacity hover:bg-(--notion-gray) hover:text-red-600 touch-manipulation ${showRemoveActions ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
               aria-label={`${item.name} 채널 목록에서 제거`}
             >
               <Trash2 size={14} />
