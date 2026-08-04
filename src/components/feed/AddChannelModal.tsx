@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X, Loader2, Plus } from "lucide-react";
 import { ModalTransition } from "@/components/ui/ModalTransition";
@@ -106,7 +107,7 @@ export default function AddChannelModal({
     }
   }, [input, category, onClose, onAdded, router]);
 
-  return (
+  const modal = (
     <ModalTransition
       open={open}
       onClose={onClose}
@@ -209,4 +210,6 @@ export default function AddChannelModal({
       </div>
     </ModalTransition>
   );
+
+  return typeof document === "undefined" ? modal : createPortal(modal, document.body);
 }
