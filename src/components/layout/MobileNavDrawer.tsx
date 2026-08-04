@@ -9,6 +9,7 @@ import { LoginButton } from "@/components/auth/LoginButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { defaultSources } from "@/lib/sources";
 import AddChannelButton from "@/components/feed/AddChannelButton";
+import YouTubeSourceList from "@/components/layout/YouTubeSourceList";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
@@ -142,23 +143,15 @@ export default function MobileNavDrawer({
               </span>
             </div>
             <div className="space-y-0.5">
-              {ytSources.map((item) => (
-                <Link
-                  key={item.id}
-                  href={linkTo(item.id)}
-                  onClick={() => { onNavigate?.(); onClose(); }}
-                  className={`flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
-                >
-                  <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-(--surface-raised) text-[11px] font-bold text-(--text-secondary) ring-1 ring-(--border-subtle)">
-                    {item.avatarUrl ? (
-                      <Image src={item.avatarUrl} alt="" fill sizes="32px" className="object-cover" />
-                    ) : (
-                      item.name.trim().slice(0, 2)
-                    )}
-                  </span>
-                  <span className="truncate">{item.name}</span>
-                </Link>
-              ))}
+              <YouTubeSourceList
+                items={ytSources}
+                selectedSourceId={selectedSourceId}
+                onSelect={() => {
+                  onNavigate?.();
+                  onClose();
+                }}
+                showRemoveActions
+              />
               <div className="pt-1">
                 <AddChannelButton />
               </div>

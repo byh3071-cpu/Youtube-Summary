@@ -45,6 +45,32 @@ test.describe("mobile ux", () => {
     await expect(firstChannel.locator("img")).toBeVisible();
   });
 
+  test("subscription channels can be removed from the mobile drawer", async ({ page }) => {
+    await gotoHydratedHome(page);
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+
+    const drawer = page.getByRole("dialog", { name: "메뉴" });
+    const removeButton = drawer.getByRole("button", {
+      name: "드로우앤드류 (DrawAndrew) 채널 목록에서 제거",
+    });
+    await expect(removeButton).toBeVisible();
+
+    const deleteResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "DELETE" &&
+        response.url().includes("/api/custom-sources?sourceId="),
+    );
+    await removeButton.click();
+    const deleteResponse = await deleteResponsePromise;
+    expect(deleteResponse.ok()).toBe(true);
+
+    await expect(drawer).toBeVisible();
+    await expect(removeButton).toBeHidden();
+    await expect(
+      drawer.getByText("드로우앤드류 (DrawAndrew)", { exact: true }),
+    ).toBeHidden();
+  });
+
   test("channel add dialog stays centered and usable outside the mobile drawer", async ({ page }) => {
     await gotoHydratedHome(page);
     await page.getByRole("button", { name: "메뉴 열기" }).click();
