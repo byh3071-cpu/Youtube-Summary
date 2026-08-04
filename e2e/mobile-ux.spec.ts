@@ -45,6 +45,78 @@ test.describe("mobile ux", () => {
     await expect(firstChannel.locator("img")).toBeVisible();
   });
 
+  test("channel add dialog stays centered and usable outside the mobile drawer", async ({ page }) => {
+    await gotoHydratedHome(page);
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+
+    const drawer = page.getByRole("dialog", { name: "메뉴" });
+    // iOS Safari는 Framer Motion의 translate3d(0, 0, 0)을 애니메이션 뒤에도
+    // 유지할 수 있다. transformed ancestor가 fixed 자식의 containing block이 되는
+    // 실제 기기 조건을 Chromium에서도 재현한다.
+    await expect
+      .poll(() => drawer.evaluate((element) => getComputedStyle(element).transform))
+      .toBe("none");
+    await drawer.evaluate((element) => {
+      element.style.setProperty("transform", "translate3d(0, 0, 0)", "important");
+    });
+    await expect
+      .poll(() => drawer.evaluate((element) => getComputedStyle(element).transform))
+      .not.toBe("none");
+    await drawer.getByRole("button", { name: "채널 추가" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "YouTube 채널 추가" });
+    await expect(dialog).toBeVisible();
+    await expect
+      .poll(() => drawer.evaluate((element) => getComputedStyle(element).transform))
+      .not.toBe("none");
+
+    const bounds = await dialog.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        center: rect.left + rect.width / 2,
+        viewportCenter: window.innerWidth / 2,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    expect(Math.abs(bounds.center - bounds.viewportCenter)).toBeLessThanOrEqual(1);
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.viewportWidth);
+
+    for (const control of [
+      dialog.getByLabel("카테고리"),
+      dialog.getByLabel("채널·영상 주소 또는 @핸들"),
+      dialog.getByRole("button", { name: "취소" }),
+      dialog.getByRole("button", { name: "추가", exact: true }),
+    ]) {
+      const isReachable = await control.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        );
+        return hit === element || element.contains(hit) || !!hit?.contains(element);
+      });
+      expect(isReachable).toBe(true);
+    }
+
+    await dialog.getByRole("button", { name: "취소" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole("button", { name: "채널 추가" })).toBeFocused();
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.position))
+      .toBe("fixed");
+
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.position))
+      .toBe("");
+    await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeFocused();
+  });
+
   test("Q&A input and submit button are not covered by the radio footer", async ({ page }) => {
     await gotoHydratedHome(page);
     await page.getByRole("button", { name: "피드 Q&A 열기" }).click();

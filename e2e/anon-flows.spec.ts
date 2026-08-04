@@ -38,7 +38,7 @@ test.describe("anonymous flows", () => {
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();
 
     // 새로고침 후에도 localStorage로 유지
-    await page.reload();
+    await page.reload({ waitUntil: "commit" });
     await expect(page.getByRole("button", { name: /^(편집|닫기|접기)$/ })).toBeVisible({ timeout: 30000 });
     await page.getByTestId("discovery-filter-trigger").click();
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();

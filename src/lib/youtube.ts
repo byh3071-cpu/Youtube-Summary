@@ -1,5 +1,5 @@
 import { FeedItem } from "../types/feed";
-import { fetchWithTimeout } from "./fetch-timeout";
+import { fetchWithTimeout, withTimeout } from "./fetch-timeout";
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const REVALIDATE_SECONDS = 7200;
@@ -352,32 +352,38 @@ export async function resolveYouTubeChannel(parsed: { type: "channelId"; channel
     params.set("forHandle", parsed.handle.startsWith("@") ? parsed.handle : `@${parsed.handle}`);
   }
   try {
-    const res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
-      // 채널명·아바타는 거의 안 바뀌므로 24시간 캐시 — 페이지 SSR 시 아바타 해석 비용 절감
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      items?: Array<{
-        id?: string;
-        snippet?: {
-          title?: string;
-          thumbnails?: {
-            default?: { url?: string };
-            medium?: { url?: string };
-            high?: { url?: string };
-          };
+    return await withTimeout(
+      (async () => {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?${params.toString()}`, {
+          // 채널명·아바타는 거의 안 바뀌므로 24시간 캐시 — 페이지 SSR 시 아바타 해석 비용 절감
+          next: { revalidate: 86400 },
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as {
+          items?: Array<{
+            id?: string;
+            snippet?: {
+              title?: string;
+              thumbnails?: {
+                default?: { url?: string };
+                medium?: { url?: string };
+                high?: { url?: string };
+              };
+            };
+          }>;
         };
-      }>;
-    };
-    const channel = data.items?.[0];
-    if (!channel?.id || !channel.snippet?.title) return null;
-    const thumb = pickBestThumbnail(channel.snippet.thumbnails);
-    return {
-      channelId: channel.id,
-      channelName: channel.snippet.title,
-      avatarUrl: thumb,
-    };
+        const channel = data.items?.[0];
+        if (!channel?.id || !channel.snippet?.title) return null;
+        const thumb = pickBestThumbnail(channel.snippet.thumbnails);
+        return {
+          channelId: channel.id,
+          channelName: channel.snippet.title,
+          avatarUrl: thumb,
+        };
+      })(),
+      8_000,
+      "YouTube channels.list timeout after 8000ms",
+    );
   } catch {
     return null;
   }
@@ -426,12 +432,18 @@ export async function getVideoChannelId(videoId: string): Promise<string | null>
     key: YOUTUBE_API_KEY,
   });
   try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { items?: Array<{ snippet?: { channelId?: string } }> };
-    return data.items?.[0]?.snippet?.channelId ?? null;
+    return await withTimeout(
+      (async () => {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {
+          next: { revalidate: 86400 },
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as { items?: Array<{ snippet?: { channelId?: string } }> };
+        return data.items?.[0]?.snippet?.channelId ?? null;
+      })(),
+      8_000,
+      "YouTube videos.list timeout after 8000ms",
+    );
   } catch {
     return null;
   }

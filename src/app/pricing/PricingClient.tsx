@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function PricingClient({
   isLoggedIn,
@@ -10,12 +11,13 @@ export default function PricingClient({
   isLoggedIn: boolean;
   currentPlan: string | null;
 }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubscribe = async () => {
     if (!isLoggedIn) {
-      window.location.href = "/login?next=/pricing";
+      router.push("/login?next=/pricing");
       return;
     }
     setError(null);
