@@ -2,7 +2,14 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 async function openHomeWithCards(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await expect(page.getByTestId("youtube-card").first()).toBeVisible({ timeout: 30_000 });
+  await page.locator('[data-testid="discovery-toolbar"][data-hydrated="true"]').waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+  const cards = page.getByTestId("youtube-card");
+  await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  await expect(cards.nth(1)).toBeVisible({ timeout: 30_000 });
+  await expect(cards.first().getByTestId("youtube-card-thumbnail")).toBeVisible({ timeout: 30_000 });
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
@@ -10,6 +17,18 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 }
 
 test.describe("YouTube-style home card body", () => {
+  test("serves feed thumbnails without the Vercel image optimizer", async ({ page }) => {
+    await openHomeWithCards(page);
+
+    const thumbnail = page
+      .getByTestId("youtube-card")
+      .first()
+      .getByTestId("youtube-card-thumbnail")
+      .locator("img");
+
+    await expect(thumbnail).toHaveAttribute("src", "/images/og/og-image.png");
+  });
+
   test("mobile uses one column with 16:9 thumbnails and no overflow", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await openHomeWithCards(page);

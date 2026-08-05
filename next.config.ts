@@ -39,6 +39,8 @@ const nextConfig: NextConfig = {
     "192.168.219.102",
   ],
   images: {
+    // Vercel optimizer quota exhaustion returns 402 for uncached feed thumbnails.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
