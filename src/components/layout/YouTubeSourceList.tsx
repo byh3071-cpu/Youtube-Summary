@@ -20,7 +20,7 @@ interface Props {
   items: FeedSource[];
   selectedSourceId?: string;
   latestVideoBySource?: Record<string, string>;
-  onSelect?: () => void;
+  onSelect?: (sourceId: string) => void;
   showRemoveActions?: boolean;
 }
 
@@ -106,9 +106,10 @@ export default function YouTubeSourceList({
           >
             <Link
               href={{ pathname: "/", query: { source: item.id } }}
+              aria-current={isActive ? "page" : undefined}
               onClick={() => {
                 if (latest) markSourceSeen(item.id, latest);
-                onSelect?.();
+                onSelect?.(item.id);
               }}
               className={`min-w-0 flex-1 flex items-center justify-between gap-2 py-0.5 text-sm transition-colors ${isActive ? "font-medium text-(--notion-fg)" : "text-(--notion-fg)/80 hover:text-(--notion-fg)"}`}
             >

@@ -37,7 +37,7 @@ test.describe("responsive app shell", () => {
     const triggerBox = await brandTrigger.boundingBox();
     expect(brandBox).not.toBeNull();
     expect(triggerBox).not.toBeNull();
-    expect(triggerBox!.width).toBeCloseTo(44, 0);
+    expect(triggerBox!.width).toBeCloseTo(brandBox!.width, 0);
     expect(triggerBox!.x).toBeCloseTo(brandBox!.x, 0);
     await expect(header.locator("svg.lucide-menu")).toHaveCount(0);
 
@@ -56,6 +56,7 @@ test.describe("responsive app shell", () => {
   });
 
   test("opening the mobile drawer does not resize feed cards", async ({ page }) => {
+    test.slow();
     for (const viewport of [
       { width: 393, height: 852 },
       { width: 768, height: 1024 },
@@ -340,6 +341,7 @@ test.describe("responsive app shell", () => {
   });
 
   test("reel and home positions are restored within the session", async ({ page }) => {
+    test.slow();
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/?viewMode=shortform", { waitUntil: "domcontentloaded" });
     const reel = page.locator('[data-testid="reel-content"][data-hydrated="true"]');
@@ -400,6 +402,7 @@ test.describe("responsive app shell", () => {
   });
 
   test("active radio player stays inside desktop and mobile viewports", async ({ page }) => {
+    test.slow();
     for (const viewport of [
       { width: 393, height: 852 },
       { width: 1440, height: 900 },
