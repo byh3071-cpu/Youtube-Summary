@@ -2,7 +2,10 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 async function openHomeWithCards(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await expect(page.getByTestId("youtube-card").first()).toBeVisible({ timeout: 30_000 });
+  const cards = page.getByTestId("youtube-card");
+  await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+  await expect(cards.nth(1)).toBeVisible({ timeout: 30_000 });
+  await expect(cards.first().getByTestId("youtube-card-thumbnail")).toBeVisible({ timeout: 30_000 });
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
@@ -19,7 +22,7 @@ test.describe("YouTube-style home card body", () => {
       .getByTestId("youtube-card-thumbnail")
       .locator("img");
 
-    await expect(thumbnail).not.toHaveAttribute("src", /\/_next\/image/);
+    await expect(thumbnail).toHaveAttribute("src", "/images/og/og-image.png");
   });
 
   test("mobile uses one column with 16:9 thumbnails and no overflow", async ({ page }, testInfo) => {
