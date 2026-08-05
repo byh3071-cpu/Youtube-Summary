@@ -285,7 +285,7 @@ test.describe("mobile ux", () => {
       window.fetch = (input, init) => {
         if (init?.method === "DELETE" && String(input).includes("/api/custom-sources")) {
           return new Promise<Response>((_resolve, reject) => {
-            init.signal?.addEventListener(
+            init?.signal?.addEventListener(
               "abort",
               () => reject(new DOMException("Aborted", "AbortError")),
               { once: true },
