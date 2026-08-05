@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RotateCcw, X } from "lucide-react";
+import { hiddenSourceIdsReducer } from "@/components/layout/channel-removal-state";
 import type { FeedSource } from "@/lib/sources";
 
 const UNDO_WINDOW_MS = 5_000;
@@ -11,10 +12,6 @@ const SUCCESS_NOTICE_MS = 2_000;
 
 type RemovalPhase = "undo" | "deleting" | "success" | "error";
 type PendingRemoval = { source: FeedSource; phase: RemovalPhase; error?: string };
-type HiddenSourceIdsAction =
-  | { type: "hide"; sourceId: string }
-  | { type: "show"; sourceId: string }
-  | { type: "prune"; sourceIds: readonly string[] };
 
 interface ChannelRemovalContextValue {
   hiddenSourceIds: ReadonlySet<string>;
@@ -27,19 +24,6 @@ interface ChannelRemovalContextValue {
 }
 
 const ChannelRemovalContext = createContext<ChannelRemovalContextValue | null>(null);
-
-function hiddenSourceIdsReducer(
-  current: ReadonlySet<string>,
-  action: HiddenSourceIdsAction,
-): ReadonlySet<string> {
-  if (action.type === "hide") return new Set(current).add(action.sourceId);
-  if (action.type === "show") {
-    const next = new Set(current);
-    next.delete(action.sourceId);
-    return next;
-  }
-  return new Set([...current].filter((sourceId) => action.sourceIds.includes(sourceId)));
-}
 
 export function useChannelRemoval() {
   const context = useContext(ChannelRemovalContext);
@@ -187,10 +171,10 @@ export function ChannelRemovalProvider({
           data-testid="channel-removal-notice"
           role="status"
           aria-live="polite"
-          className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+7rem)] z-[90] mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-(--border-subtle) bg-(--surface-raised) p-3 text-sm shadow-xl sm:inset-x-auto sm:right-6 sm:bottom-24 sm:w-[min(26rem,calc(100vw-3rem))]"
+          className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+7.25rem)] z-[90] mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-(--border-subtle) bg-(--surface-raised) p-3 text-sm shadow-xl lg:inset-x-auto lg:right-6 lg:bottom-24 lg:w-[min(26rem,calc(100vw-3rem))]"
         >
           {pending.phase === "deleting" ? <Loader2 size={18} className="shrink-0 animate-spin" aria-hidden /> : <RotateCcw size={18} className="shrink-0" aria-hidden />}
-          <p className="min-w-0 flex-1">
+          <p className="min-w-0 flex-1 [overflow-wrap:anywhere]">
             {pending.phase === "undo" && `${pending.source.name} 채널을 삭제할 예정이에요.`}
             {pending.phase === "deleting" && `${pending.source.name} 채널을 삭제하는 중이에요.`}
             {pending.phase === "success" && `${pending.source.name} 채널을 삭제했어요.`}

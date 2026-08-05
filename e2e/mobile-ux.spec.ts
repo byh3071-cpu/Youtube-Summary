@@ -44,6 +44,30 @@ async function gotoHydratedHome(page: Page) {
   await expect(page.getByRole("button", { name: /^(편집|닫기|접기)$/ })).toBeVisible({ timeout: 30000 });
 }
 
+async function showRadioPlayerForLayout(page: Page) {
+  const addButton = page.getByRole("button", { name: "라디오에 추가" }).first();
+  if (await addButton.isVisible().catch(() => false)) {
+    await addButton.click();
+  } else {
+    // 외부 피드가 없는 로컬 E2E에서도 실제 RadioFooterControls의 반응형 높이와
+    // safe-area padding을 같은 Tailwind 클래스로 재현해 충돌 검증을 결정적으로 유지한다.
+    await page.evaluate(() => {
+      const fixture = document.createElement("footer");
+      fixture.dataset.testid = "radio-player";
+      fixture.setAttribute("aria-label", "라디오 플레이어 레이아웃 픽스처");
+      fixture.className = "fixed inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]";
+      fixture.innerHTML = [
+        '<div class="relative md:hidden"><div class="h-20"></div></div>',
+        '<div class="hidden min-h-[84px] md:grid"></div>',
+      ].join("");
+      document.body.append(fixture);
+    });
+  }
+  const player = page.getByTestId("radio-player");
+  await expect(player).toBeVisible();
+  return player;
+}
+
 test.describe("mobile ux", () => {
   test("mobile menu locks body scroll, restores focus and scroll on close", async ({ page }) => {
     await gotoHydratedHome(page);
@@ -96,7 +120,7 @@ test.describe("mobile ux", () => {
     await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
 
     await expect(drawer.getByText(rowLabel, { exact: true })).toBeHidden({ timeout: 100 });
-    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제할 예정이에요");
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제할 예정이에요", { timeout: 100 });
     expect(deleteCalls).toBe(0);
 
     await page.getByTestId("channel-removal-undo").click();
@@ -179,6 +203,11 @@ test.describe("mobile ux", () => {
     await clickWithChannelRemovalTimestamp(page, page.getByTestId("channel-removal-retry"));
     await expect(channelRow).toBeHidden();
 
+    const retryResponseReceived = page.waitForResponse(
+      (response) => response.request().method() === "DELETE"
+        && response.url().includes("/api/custom-sources?sourceId=")
+        && response.status() === 200,
+    );
     const retryRequest = page.waitForRequest(
       (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
     );
@@ -191,6 +220,56 @@ test.describe("mobile ux", () => {
     expect(timing.deletes[0] - timing.clicks[0]).toBeGreaterThanOrEqual(5_000);
     expect(timing.deletes[1] - timing.clicks[1]).toBeGreaterThanOrEqual(5_000);
     releaseRetryResponse();
+    await retryResponseReceived;
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제했어요");
+  });
+
+  test("network failure restores the row and Retry can complete", async ({ page }) => {
+    let releaseSuccess!: () => void;
+    const successRelease = new Promise<void>((resolve) => {
+      releaseSuccess = resolve;
+    });
+    let markSuccessResponseFinished!: () => void;
+    const successResponseFinished = new Promise<void>((resolve) => {
+      markSuccessResponseFinished = resolve;
+    });
+    await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      await successRelease;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+      markSuccessResponseFinished();
+    });
+    await gotoHydratedHome(page);
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+
+    await page.evaluate(() => {
+      const nativeFetch = window.fetch.bind(window);
+      let rejectNextDelete = true;
+      window.fetch = (input, init) => {
+        if (rejectNextDelete && init?.method === "DELETE" && String(input).includes("/api/custom-sources")) {
+          rejectNextDelete = false;
+          return Promise.reject(new TypeError("network unavailable"));
+        }
+        return nativeFetch(input, init);
+      };
+    });
+    await page.clock.install();
+
+    const drawer = page.getByTestId("mobile-nav-drawer");
+    const rowLabel = "드로우앤드류 (DrawAndrew)";
+    const channelRow = drawer.getByText(rowLabel, { exact: true });
+    await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
+    await page.clock.runFor(5_000);
+
+    await expect(channelRow).toBeVisible();
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("network unavailable");
+    await page.getByTestId("channel-removal-retry").click();
+    await expect(channelRow).toBeHidden();
+
+    await page.clock.runFor(5_000);
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하는 중이에요");
+    releaseSuccess();
+    await successResponseFinished;
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제했어요");
   });
 
   test("timed out channel removal restores the row", async ({ page }) => {
@@ -226,6 +305,28 @@ test.describe("mobile ux", () => {
     await expect(page.getByTestId("channel-removal-notice")).toContainText("응답이 늦어");
   });
 
+  test("long server error stays inside a 320px viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    const longError = `delete-${"x".repeat(180)}`;
+    await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: longError }),
+      });
+    });
+    await gotoHydratedHome(page);
+    await page.clock.install();
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    await page.getByTestId("mobile-nav-drawer").getByRole("button", { name: /채널 목록에서 제거/ }).first().click();
+    await page.clock.runFor(5_000);
+
+    const notice = page.getByTestId("channel-removal-notice");
+    await expect(notice).toContainText(longError);
+    expect(await notice.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  });
+
   test("removal notice stays above the mobile player with accessible controls", async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     let releaseDelete!: () => void;
@@ -237,9 +338,7 @@ test.describe("mobile ux", () => {
       await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "delete failed" }) });
     });
     await gotoHydratedHome(page);
-    await page.getByRole("button", { name: "라디오에 추가" }).first().click();
-    const player = page.getByTestId("radio-player");
-    await expect(player).toBeVisible();
+    const player = await showRadioPlayerForLayout(page);
 
     await page.clock.install();
     await page.getByRole("button", { name: "메뉴 열기" }).click();
@@ -275,6 +374,24 @@ test.describe("mobile ux", () => {
       expect(box!.width).toBeGreaterThanOrEqual(44);
       expect(box!.height).toBeGreaterThanOrEqual(44);
     }
+  });
+
+  test("removal notice keeps tablet safe-area spacing above the radio player", async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await gotoHydratedHome(page);
+    const player = await showRadioPlayerForLayout(page);
+
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    await page.getByTestId("mobile-nav-drawer").getByRole("button", { name: /채널 목록에서 제거/ }).first().click();
+    const notice = page.getByTestId("channel-removal-notice");
+    await expect(notice).toBeVisible();
+
+    const noticeBox = await notice.boundingBox();
+    const playerBox = await player.boundingBox();
+    expect(noticeBox).not.toBeNull();
+    expect(playerBox).not.toBeNull();
+    const gap = playerBox!.y - (noticeBox!.y + noticeBox!.height);
+    expect(gap).toBeGreaterThanOrEqual(24);
   });
 
   test("removal notice remains inside the desktop viewport", async ({ page }) => {
