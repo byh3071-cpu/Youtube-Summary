@@ -10,6 +10,18 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 }
 
 test.describe("YouTube-style home card body", () => {
+  test("serves feed thumbnails without the Vercel image optimizer", async ({ page }) => {
+    await openHomeWithCards(page);
+
+    const thumbnail = page
+      .getByTestId("youtube-card")
+      .first()
+      .getByTestId("youtube-card-thumbnail")
+      .locator("img");
+
+    await expect(thumbnail).not.toHaveAttribute("src", /\/_next\/image/);
+  });
+
   test("mobile uses one column with 16:9 thumbnails and no overflow", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await openHomeWithCards(page);
