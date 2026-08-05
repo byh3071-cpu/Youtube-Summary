@@ -27,6 +27,14 @@ const youtubeStatusTone = {
   request_failed: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300",
 } as const;
 
+function normalizeRoute(route: string) {
+  const [pathname, query = ""] = route.split("?");
+  const params = new URLSearchParams(query);
+  params.sort();
+  const normalizedQuery = params.toString();
+  return normalizedQuery ? `${pathname}?${normalizedQuery}` : pathname;
+}
+
 export default function MobileNavDrawer({
   open,
   onClose,
@@ -48,12 +56,19 @@ export default function MobileNavDrawer({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const viewMode = searchParams?.get("viewMode") ?? null;
+  const query = searchParams?.toString() ?? "";
+  const currentRoute = normalizeRoute(query ? `${pathname}?${query}` : pathname);
 
   const linkTo = (source?: string) => {
     const params = new URLSearchParams();
     if (source) params.set("source", source);
     const q = params.toString();
     return q ? `/?${q}` : "/";
+  };
+
+  const handleNavigation = (href: string) => {
+    if (normalizeRoute(href) !== currentRoute) onNavigate?.();
+    onClose();
   };
 
   return (
@@ -114,7 +129,8 @@ export default function MobileNavDrawer({
               <Link
                 key={href}
                 href={href}
-                onClick={() => { onNavigate?.(); onClose(); }}
+                onClick={() => handleNavigation(href)}
+                aria-current={active ? "page" : undefined}
                 className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "font-medium text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
               >
                 <Icon size={18} className="shrink-0" />
@@ -146,10 +162,7 @@ export default function MobileNavDrawer({
               <YouTubeSourceList
                 items={ytSources}
                 selectedSourceId={selectedSourceId}
-                onSelect={() => {
-                  onNavigate?.();
-                  onClose();
-                }}
+                onSelect={(sourceId) => handleNavigation(linkTo(sourceId))}
                 showRemoveActions
               />
               <div className="pt-1">
@@ -163,11 +176,11 @@ export default function MobileNavDrawer({
               보관함
             </p>
             <div className="space-y-0.5">
-              <Link href="/playlists" onClick={() => { onNavigate?.(); onClose(); }} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
+              <Link href="/playlists" onClick={() => handleNavigation("/playlists")} aria-current={pathname === "/playlists" ? "page" : undefined} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <ListMusic size={18} className="shrink-0 text-(--notion-fg)/70" />
                 내 플레이리스트
               </Link>
-              <Link href="/bookmarks" onClick={() => { onNavigate?.(); onClose(); }} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
+              <Link href="/bookmarks" onClick={() => handleNavigation("/bookmarks")} aria-current={pathname === "/bookmarks" ? "page" : undefined} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <Bookmark size={18} className="shrink-0 text-(--notion-fg)/70" />
                 북마크
               </Link>
@@ -184,7 +197,8 @@ export default function MobileNavDrawer({
                 <Link
                   key={item.id}
                   href={linkTo(item.id)}
-                  onClick={() => { onNavigate?.(); onClose(); }}
+                  onClick={() => handleNavigation(linkTo(item.id))}
+                  aria-current={selectedSourceId === item.id ? "page" : undefined}
                   className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm ${selectedSourceId === item.id ? "bg-(--surface-subtle) font-semibold text-(--text-primary)" : "text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)"}`}
                 >
                   <span className="truncate">{item.name}</span>

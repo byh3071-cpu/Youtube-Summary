@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import MobileNavDrawer from "./MobileNavDrawer";
@@ -53,19 +52,13 @@ export default function MobileHeaderWithNav({
               data-testid="brand-menu-trigger"
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="absolute top-1/2 left-0 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl hover:bg-(--surface-subtle)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
+              className="absolute top-1/2 left-0 z-10 inline-flex h-11 w-full -translate-y-1/2 items-center justify-center rounded-xl hover:bg-(--surface-subtle)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
               aria-label="메뉴 열기"
               aria-expanded={drawerOpen}
               aria-controls="mobile-navigation-drawer"
             >
               <span className="sr-only">메뉴 열기</span>
             </button>
-            <Link
-              href="/"
-              onClick={startNavigation}
-              className="absolute inset-y-0 right-0 left-11 z-10 rounded-r-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--playback-accent)/45"
-              aria-label="Focus Feed 홈"
-            />
           </div>
           <div className="min-w-0 flex-1" aria-hidden />
         </div>

@@ -63,7 +63,7 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
             <main
                 id="main"
                 tabIndex={-1}
-                className={`min-w-0 flex-1 touch-pan-y overscroll-y-contain ${
+                className={`min-w-0 flex-1 [touch-action:pan-y_pinch-zoom] overscroll-y-contain ${
                     reelMode ? "px-0 pt-0 pb-0" : "px-2 pt-2 pb-28 sm:px-4 sm:pt-4 sm:pb-32 md:px-6 lg:px-8"
                 }`}
             >
