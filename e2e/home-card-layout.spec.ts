@@ -2,6 +2,10 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 async function openHomeWithCards(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.locator('[data-testid="discovery-toolbar"][data-hydrated="true"]').waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
   const cards = page.getByTestId("youtube-card");
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
   await expect(cards.nth(1)).toBeVisible({ timeout: 30_000 });
