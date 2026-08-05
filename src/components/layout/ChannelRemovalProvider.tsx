@@ -6,6 +6,8 @@ import { Loader2, RotateCcw, X } from "lucide-react";
 import type { FeedSource } from "@/lib/sources";
 
 const UNDO_WINDOW_MS = 5_000;
+const DELETE_TIMEOUT_MS = 12_000;
+const SUCCESS_NOTICE_MS = 2_000;
 
 type RemovalPhase = "undo" | "deleting" | "success" | "error";
 type PendingRemoval = { source: FeedSource; phase: RemovalPhase; error?: string };
@@ -60,6 +62,7 @@ export function ChannelRemovalProvider({
   const pendingRef = useRef<PendingRemoval | null>(null);
   const undoTimerRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const successTimerRef = useRef<number | null>(null);
 
   const setPendingRemoval = useCallback((next: PendingRemoval | null) => {
     pendingRef.current = next;
@@ -67,18 +70,35 @@ export function ChannelRemovalProvider({
   }, []);
 
   const commitRemoval = useCallback(async (source: FeedSource) => {
-    const deleting = { source, phase: "deleting" as const };
-    setPendingRemoval(deleting);
+    setPendingRemoval({ source, phase: "deleting" });
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    const response = await fetch(`/api/custom-sources?sourceId=${encodeURIComponent(source.id)}`, {
-      method: "DELETE",
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error("채널 삭제 요청에 실패했습니다.");
-    if (pendingRef.current?.source.id !== source.id) return;
-    setPendingRemoval({ source, phase: "success" });
-    router.refresh();
+    const timeoutId = window.setTimeout(() => controller.abort(), DELETE_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(`/api/custom-sources?sourceId=${encodeURIComponent(source.id)}`, {
+        method: "DELETE",
+        signal: controller.signal,
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(body?.error ?? "채널 삭제 요청에 실패했습니다.");
+      if (pendingRef.current?.source.id !== source.id) return;
+      setPendingRemoval({ source, phase: "success" });
+      router.refresh();
+    } catch (error) {
+      if (pendingRef.current?.source.id !== source.id) return;
+      dispatchHiddenSourceIds({ type: "show", sourceId: source.id });
+      setPendingRemoval({
+        source,
+        phase: "error",
+        error: error instanceof Error && error.name !== "AbortError"
+          ? error.message
+          : "응답이 늦어 삭제하지 못했어요.",
+      });
+    } finally {
+      window.clearTimeout(timeoutId);
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+    }
   }, [router, setPendingRemoval]);
 
   const requestRemoval = useCallback((source: FeedSource) => {
@@ -105,21 +125,45 @@ export function ChannelRemovalProvider({
   const retryRemoval = useCallback(() => {
     const current = pendingRef.current;
     if (current?.phase === "error") {
-      void commitRemoval(current.source);
+      setPendingRemoval(null);
+      requestRemoval(current.source);
     }
-  }, [commitRemoval]);
+  }, [requestRemoval, setPendingRemoval]);
 
   const dismissNotice = useCallback(() => {
-    if (pendingRef.current?.phase !== "success") return;
+    const phase = pendingRef.current?.phase;
+    if (phase !== "success" && phase !== "error") return;
+    if (successTimerRef.current !== null) {
+      window.clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
     setPendingRemoval(null);
   }, [setPendingRemoval]);
 
   useEffect(() => {
     return () => {
       if (undoTimerRef.current !== null) window.clearTimeout(undoTimerRef.current);
+      if (successTimerRef.current !== null) window.clearTimeout(successTimerRef.current);
       abortControllerRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (pending?.phase !== "success") return;
+    const sourceId = pending.source.id;
+    successTimerRef.current = window.setTimeout(() => {
+      if (pendingRef.current?.source.id === sourceId && pendingRef.current.phase === "success") {
+        setPendingRemoval(null);
+      }
+      successTimerRef.current = null;
+    }, SUCCESS_NOTICE_MS);
+    return () => {
+      if (successTimerRef.current !== null) {
+        window.clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
+      }
+    };
+  }, [pending, setPendingRemoval]);
 
   useEffect(() => {
     dispatchHiddenSourceIds({ type: "prune", sourceIds });
@@ -147,8 +191,9 @@ export function ChannelRemovalProvider({
           {pending.phase === "deleting" ? <Loader2 size={18} className="shrink-0 animate-spin" aria-hidden /> : <RotateCcw size={18} className="shrink-0" aria-hidden />}
           <p className="min-w-0 flex-1">
             {pending.phase === "undo" && `${pending.source.name} 채널을 삭제할 예정이에요.`}
-            {pending.phase === "deleting" && "채널을 삭제하고 있어요."}
-            {pending.phase === "success" && "채널을 삭제했어요."}
+            {pending.phase === "deleting" && `${pending.source.name} 채널을 삭제하는 중이에요.`}
+            {pending.phase === "success" && `${pending.source.name} 채널을 삭제했어요.`}
+            {pending.phase === "error" && (pending.error ?? "채널을 삭제하지 못했어요.")}
           </p>
           {pending.phase === "undo" ? (
             <button
@@ -159,6 +204,25 @@ export function ChannelRemovalProvider({
             >
               실행 취소
             </button>
+          ) : pending.phase === "error" ? (
+            <>
+              <button
+                type="button"
+                data-testid="channel-removal-retry"
+                onClick={retryRemoval}
+                className="shrink-0 rounded-md px-2 py-1 font-semibold text-(--playback-accent) hover:bg-(--surface-subtle)"
+              >
+                다시 시도
+              </button>
+              <button
+                type="button"
+                onClick={dismissNotice}
+                className="shrink-0 rounded-md p-1 text-(--text-secondary) hover:bg-(--surface-subtle)"
+                aria-label="채널 삭제 알림 닫기"
+              >
+                <X size={16} aria-hidden />
+              </button>
+            </>
           ) : pending.phase === "success" ? (
             <button
               type="button"

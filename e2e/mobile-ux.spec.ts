@@ -69,17 +69,14 @@ test.describe("mobile ux", () => {
     expect(deleteCalls).toBe(0);
   });
 
-  test("channel removal waits five seconds and locks actions while deleting", async ({ page }) => {
-    let deleteCalls = 0;
-    let fulfillDelete: (() => Promise<void>) | undefined;
+  test("channel removal commits after five seconds and reports progress", async ({ page }) => {
+    let releaseResponse!: () => void;
+    const release = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
     await page.route("**/api/custom-sources?sourceId=*", async (route) => {
-      deleteCalls += 1;
-      await new Promise<void>((resolve) => {
-        fulfillDelete = async () => {
-          await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
-          resolve();
-        };
-      });
+      await release;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
     });
 
     await gotoHydratedHome(page);
@@ -88,43 +85,71 @@ test.describe("mobile ux", () => {
     const drawer = page.getByTestId("mobile-nav-drawer");
     await drawer.getByRole("button", { name: "드로우앤드류 (DrawAndrew) 채널 목록에서 제거" }).click();
 
-    await expect(drawer.getByText("드로우앤드류 (DrawAndrew)", { exact: true })).toBeHidden({ timeout: 100 });
-    await page.clock.fastForward(4_999);
-    expect(deleteCalls).toBe(0);
-
-    await page.clock.fastForward(1);
-    await expect.poll(() => deleteCalls).toBe(1);
-    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하고 있어요");
+    const deleteRequest = page.waitForRequest(
+      (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
+    );
+    await page.clock.fastForward(5_000);
+    await deleteRequest;
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하는 중이에요");
     await expect(page.getByRole("button", { name: "채널 삭제 알림 닫기" })).toBeHidden();
     await expect(drawer.getByRole("button", { name: "EO Korea 채널 목록에서 제거" })).toBeDisabled();
 
-    await fulfillDelete?.();
+    releaseResponse();
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제했어요");
+    await page.clock.fastForward(2_000);
+    await expect(page.getByTestId("channel-removal-notice")).toBeHidden();
   });
 
-  test("subscription channels can be removed from the mobile drawer", async ({ page }) => {
+  test("failed channel removal restores the row and offers retry", async ({ page }) => {
+    await page.route("**/api/custom-sources?sourceId=*", (route) =>
+      route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "delete failed" }) }),
+    );
     await gotoHydratedHome(page);
+    await page.clock.install();
     await page.getByRole("button", { name: "메뉴 열기" }).click();
 
-    const drawer = page.getByRole("dialog", { name: "메뉴" });
-    const removeButton = drawer.getByRole("button", {
-      name: "드로우앤드류 (DrawAndrew) 채널 목록에서 제거",
+    const drawer = page.getByTestId("mobile-nav-drawer");
+    const rowLabel = "드로우앤드류 (DrawAndrew)";
+    const channelRow = drawer.getByText(rowLabel, { exact: true });
+    await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
+    await page.clock.fastForward(5_000);
+
+    await expect(channelRow).toBeVisible();
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("delete failed");
+    await expect(page.getByTestId("channel-removal-retry")).toBeVisible();
+  });
+
+  test("timed out channel removal restores the row", async ({ page }) => {
+    await gotoHydratedHome(page);
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const drawer = page.getByTestId("mobile-nav-drawer");
+    const rowLabel = "드로우앤드류 (DrawAndrew)";
+    const channelRow = drawer.getByText(rowLabel, { exact: true });
+    const removeButton = drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` });
+
+    await page.evaluate(() => {
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        if (init?.method === "DELETE" && String(input).includes("/api/custom-sources")) {
+          return new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          });
+        }
+        return nativeFetch(input, init);
+      };
     });
-    await expect(removeButton).toBeVisible();
-
-    const deleteResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes("/api/custom-sources?sourceId="),
-    );
+    await page.clock.install();
     await removeButton.click();
-    const deleteResponse = await deleteResponsePromise;
-    expect(deleteResponse.ok()).toBe(true);
+    await page.clock.fastForward(5_000);
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하는 중이에요");
+    await page.clock.fastForward(12_000);
 
-    await expect(drawer).toBeVisible();
-    await expect(removeButton).toBeHidden();
-    await expect(
-      drawer.getByText("드로우앤드류 (DrawAndrew)", { exact: true }),
-    ).toBeHidden();
+    await expect(channelRow).toBeVisible();
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("응답이 늦어");
   });
 
   test("channel add dialog stays centered and usable outside the mobile drawer", async ({ page }) => {
