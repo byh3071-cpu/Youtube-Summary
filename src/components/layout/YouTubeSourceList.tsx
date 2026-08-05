@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link, { useLinkStatus } from "next/link";
-import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
+import { useChannelRemoval } from "@/components/layout/ChannelRemovalProvider";
 import type { FeedSource } from "@/lib/sources";
 
 const LAST_SEEN_SOURCE_KEY = "focus_feed_last_seen_source";
@@ -38,8 +38,9 @@ export default function YouTubeSourceList({
   onSelect,
   showRemoveActions = false,
 }: Props) {
-  const router = useRouter();
+  const { hiddenSourceIds, pendingSourceId, requestRemoval } = useChannelRemoval();
   const [now] = useState(() => Date.now());
+  const visibleItems = items.filter((item) => !hiddenSourceIds.has(item.id));
   const [lastSeen, setLastSeen] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
     try {
@@ -70,23 +71,15 @@ export default function YouTubeSourceList({
     });
   };
 
-  const handleRemove = async (e: React.MouseEvent, sourceId: string) => {
+  const handleRemove = (e: React.MouseEvent, source: FeedSource) => {
     e.preventDefault();
     e.stopPropagation();
-    // 쿠키 갱신(Set-Cookie)은 서버가 담당하므로 응답을 기다린 뒤 새로고침해야 반영된다
-    try {
-      await fetch(`/api/custom-sources?sourceId=${encodeURIComponent(sourceId)}`, {
-        method: "DELETE",
-      });
-    } catch {
-      // 네트워크 오류 시에도 refresh로 현재 상태 재동기화
-    }
-    router.refresh();
+    requestRemoval(source);
   };
 
   return (
     <div className="space-y-1">
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = selectedSourceId === item.id;
         const latest = latestVideoBySource?.[item.id];
         const isRecent =
@@ -136,7 +129,9 @@ export default function YouTubeSourceList({
             </Link>
             <button
               type="button"
-              onClick={(e) => handleRemove(e, item.id)}
+              onClick={(e) => handleRemove(e, item)}
+              disabled={pendingSourceId !== null}
+              aria-busy={pendingSourceId === item.id}
               className={`flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-(--notion-fg)/40 transition-opacity hover:bg-(--notion-gray) hover:text-red-600 touch-manipulation ${showRemoveActions ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
               aria-label={`${item.name} 채널 목록에서 제거`}
             >

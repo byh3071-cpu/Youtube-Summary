@@ -6,6 +6,7 @@ import CustomSourcesSync from "@/components/feed/CustomSourcesSync";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 import AuthErrorBanner from "@/components/ui/AuthErrorBanner";
 import AuthSuccessBanner from "@/components/ui/AuthSuccessBanner";
+import { ChannelRemovalProvider } from "@/components/layout/ChannelRemovalProvider";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
@@ -25,6 +26,7 @@ interface LayoutProps {
 
 export default function AppLayout({ children, sourceStatus, selectedSourceId, selectedCategory, youtubeSources, latestVideoBySource, authError, authErrorHint, authSuccess, reelMode }: LayoutProps) {
     return (
+        <ChannelRemovalProvider sourceIds={(youtubeSources ?? []).map((source) => source.id)}>
         <div className="flex min-h-screen flex-col bg-(--notion-bg) text-(--notion-fg)">
             <a
                 href="#main"
@@ -77,5 +79,6 @@ export default function AppLayout({ children, sourceStatus, selectedSourceId, se
             {!reelMode && <ScrollToTop />}
             </div>
         </div>
+        </ChannelRemovalProvider>
     );
 }

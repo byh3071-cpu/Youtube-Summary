@@ -45,6 +45,30 @@ test.describe("mobile ux", () => {
     await expect(firstChannel.locator("img")).toBeVisible();
   });
 
+  test("channel removal hides immediately and undo prevents DELETE", async ({ page }) => {
+    let deleteCalls = 0;
+    await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      deleteCalls += 1;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    });
+
+    await gotoHydratedHome(page);
+    await page.clock.install();
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const drawer = page.getByTestId("mobile-nav-drawer");
+    const rowLabel = "드로우앤드류 (DrawAndrew)";
+    await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
+
+    await expect(drawer.getByText(rowLabel, { exact: true })).toBeHidden();
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제할 예정이에요");
+    expect(deleteCalls).toBe(0);
+
+    await page.getByTestId("channel-removal-undo").click();
+    await expect(drawer.getByText(rowLabel, { exact: true })).toBeVisible();
+    await page.clock.fastForward(5_000);
+    expect(deleteCalls).toBe(0);
+  });
+
   test("subscription channels can be removed from the mobile drawer", async ({ page }) => {
     await gotoHydratedHome(page);
     await page.getByRole("button", { name: "메뉴 열기" }).click();
