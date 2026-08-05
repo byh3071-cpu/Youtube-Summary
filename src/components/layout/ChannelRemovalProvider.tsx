@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RotateCcw, X } from "lucide-react";
 import type { FeedSource } from "@/lib/sources";
@@ -9,6 +9,10 @@ const UNDO_WINDOW_MS = 5_000;
 
 type RemovalPhase = "undo" | "deleting" | "success" | "error";
 type PendingRemoval = { source: FeedSource; phase: RemovalPhase; error?: string };
+type HiddenSourceIdsAction =
+  | { type: "hide"; sourceId: string }
+  | { type: "show"; sourceId: string }
+  | { type: "prune"; sourceIds: readonly string[] };
 
 interface ChannelRemovalContextValue {
   hiddenSourceIds: ReadonlySet<string>;
@@ -21,6 +25,19 @@ interface ChannelRemovalContextValue {
 }
 
 const ChannelRemovalContext = createContext<ChannelRemovalContextValue | null>(null);
+
+function hiddenSourceIdsReducer(
+  current: ReadonlySet<string>,
+  action: HiddenSourceIdsAction,
+): ReadonlySet<string> {
+  if (action.type === "hide") return new Set(current).add(action.sourceId);
+  if (action.type === "show") {
+    const next = new Set(current);
+    next.delete(action.sourceId);
+    return next;
+  }
+  return new Set([...current].filter((sourceId) => action.sourceIds.includes(sourceId)));
+}
 
 export function useChannelRemoval() {
   const context = useContext(ChannelRemovalContext);
@@ -38,7 +55,7 @@ export function ChannelRemovalProvider({
   sourceIds: readonly string[];
 }) {
   const router = useRouter();
-  const [hiddenSourceIds, setHiddenSourceIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [hiddenSourceIds, dispatchHiddenSourceIds] = useReducer(hiddenSourceIdsReducer, new Set<string>());
   const [pending, setPending] = useState<PendingRemoval | null>(null);
   const pendingRef = useRef<PendingRemoval | null>(null);
   const undoTimerRef = useRef<number | null>(null);
@@ -59,13 +76,14 @@ export function ChannelRemovalProvider({
       signal: controller.signal,
     });
     if (!response.ok) throw new Error("채널 삭제 요청에 실패했습니다.");
+    if (pendingRef.current?.source.id !== source.id) return;
     setPendingRemoval({ source, phase: "success" });
     router.refresh();
   }, [router, setPendingRemoval]);
 
   const requestRemoval = useCallback((source: FeedSource) => {
     if (pendingRef.current) return;
-    setHiddenSourceIds((current) => new Set(current).add(source.id));
+    dispatchHiddenSourceIds({ type: "hide", sourceId: source.id });
     setPendingRemoval({ source, phase: "undo" });
     undoTimerRef.current = window.setTimeout(() => {
       undoTimerRef.current = null;
@@ -80,11 +98,7 @@ export function ChannelRemovalProvider({
       window.clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
-    setHiddenSourceIds((current) => {
-      const next = new Set(current);
-      next.delete(sourceId);
-      return next;
-    });
+    dispatchHiddenSourceIds({ type: "show", sourceId });
     setPendingRemoval(null);
   }, [setPendingRemoval]);
 
@@ -96,7 +110,7 @@ export function ChannelRemovalProvider({
   }, [commitRemoval]);
 
   const dismissNotice = useCallback(() => {
-    if (pendingRef.current?.phase === "undo") return;
+    if (pendingRef.current?.phase !== "success") return;
     setPendingRemoval(null);
   }, [setPendingRemoval]);
 
@@ -108,16 +122,8 @@ export function ChannelRemovalProvider({
   }, []);
 
   useEffect(() => {
-    const current = pendingRef.current;
-    if (current?.phase === "success" && !sourceIds.includes(current.source.id)) {
-      setHiddenSourceIds((hidden) => {
-        const next = new Set(hidden);
-        next.delete(current.source.id);
-        return next;
-      });
-      setPendingRemoval(null);
-    }
-  }, [sourceIds, setPendingRemoval]);
+    dispatchHiddenSourceIds({ type: "prune", sourceIds });
+  }, [sourceIds]);
 
   const value = useMemo<ChannelRemovalContextValue>(() => ({
     hiddenSourceIds,
@@ -153,7 +159,7 @@ export function ChannelRemovalProvider({
             >
               실행 취소
             </button>
-          ) : (
+          ) : pending.phase === "success" ? (
             <button
               type="button"
               onClick={dismissNotice}
@@ -162,7 +168,7 @@ export function ChannelRemovalProvider({
             >
               <X size={16} aria-hidden />
             </button>
-          )}
+          ) : null}
         </div>
       )}
     </ChannelRemovalContext.Provider>

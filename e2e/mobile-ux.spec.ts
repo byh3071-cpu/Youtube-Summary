@@ -59,7 +59,7 @@ test.describe("mobile ux", () => {
     const rowLabel = "드로우앤드류 (DrawAndrew)";
     await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
 
-    await expect(drawer.getByText(rowLabel, { exact: true })).toBeHidden();
+    await expect(drawer.getByText(rowLabel, { exact: true })).toBeHidden({ timeout: 100 });
     await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제할 예정이에요");
     expect(deleteCalls).toBe(0);
 
@@ -67,6 +67,38 @@ test.describe("mobile ux", () => {
     await expect(drawer.getByText(rowLabel, { exact: true })).toBeVisible();
     await page.clock.fastForward(5_000);
     expect(deleteCalls).toBe(0);
+  });
+
+  test("channel removal waits five seconds and locks actions while deleting", async ({ page }) => {
+    let deleteCalls = 0;
+    let fulfillDelete: (() => Promise<void>) | undefined;
+    await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      deleteCalls += 1;
+      await new Promise<void>((resolve) => {
+        fulfillDelete = async () => {
+          await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+          resolve();
+        };
+      });
+    });
+
+    await gotoHydratedHome(page);
+    await page.clock.install();
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const drawer = page.getByTestId("mobile-nav-drawer");
+    await drawer.getByRole("button", { name: "드로우앤드류 (DrawAndrew) 채널 목록에서 제거" }).click();
+
+    await expect(drawer.getByText("드로우앤드류 (DrawAndrew)", { exact: true })).toBeHidden({ timeout: 100 });
+    await page.clock.fastForward(4_999);
+    expect(deleteCalls).toBe(0);
+
+    await page.clock.fastForward(1);
+    await expect.poll(() => deleteCalls).toBe(1);
+    await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하고 있어요");
+    await expect(page.getByRole("button", { name: "채널 삭제 알림 닫기" })).toBeHidden();
+    await expect(drawer.getByRole("button", { name: "EO Korea 채널 목록에서 제거" })).toBeDisabled();
+
+    await fulfillDelete?.();
   });
 
   test("subscription channels can be removed from the mobile drawer", async ({ page }) => {
