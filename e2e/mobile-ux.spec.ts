@@ -1,4 +1,40 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
+
+type ChannelRemovalTiming = {
+  clicks: number[];
+  deletes: number[];
+};
+
+async function installChannelRemovalTiming(page: Page) {
+  await page.evaluate(() => {
+    const timing: ChannelRemovalTiming = { clicks: [], deletes: [] };
+    (window as Window & { __channelRemovalTiming?: ChannelRemovalTiming }).__channelRemovalTiming = timing;
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      if (init?.method === "DELETE" && String(input).includes("/api/custom-sources")) {
+        timing.deletes.push(Date.now());
+      }
+      return nativeFetch(input, init);
+    };
+  });
+}
+
+async function clickWithChannelRemovalTimestamp(page: Page, target: Locator) {
+  await target.evaluate((element) => {
+    element.addEventListener("click", () => {
+      const timing = (window as Window & { __channelRemovalTiming?: ChannelRemovalTiming }).__channelRemovalTiming;
+      timing?.clicks.push(Date.now());
+    }, { once: true });
+  });
+  await target.click();
+}
+
+async function channelRemovalTiming(page: Page) {
+  return page.evaluate(() => {
+    const timing = (window as Window & { __channelRemovalTiming?: ChannelRemovalTiming }).__channelRemovalTiming;
+    return { clicks: timing?.clicks ?? [], deletes: timing?.deletes ?? [] };
+  });
+}
 
 // 뷰포트는 playwright.config.ts의 mobile-chromium 프로젝트(Pixel 5 ≈ 393x851)가 제공한다.
 
@@ -87,7 +123,8 @@ test.describe("mobile ux", () => {
     const drawer = page.getByTestId("mobile-nav-drawer");
     const rowLabel = "드로우앤드류 (DrawAndrew)";
     const channelRow = drawer.getByText(rowLabel, { exact: true });
-    await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
+    await installChannelRemovalTiming(page);
+    await clickWithChannelRemovalTimestamp(page, drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }));
 
     const deleteRequest = page.waitForRequest(
       (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
@@ -97,6 +134,8 @@ test.describe("mobile ux", () => {
     await page.clock.runFor(100);
     await deleteRequest;
     await expect.poll(() => deleteCalls).toBe(1);
+    const timing = await channelRemovalTiming(page);
+    expect(timing.deletes[0] - timing.clicks[0]).toBeGreaterThanOrEqual(5_000);
     await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하는 중이에요");
     await expect(page.getByRole("button", { name: "채널 삭제 알림 닫기" })).toBeHidden();
     await expect(drawer.getByRole("button", { name: "EO Korea 채널 목록에서 제거" })).toBeDisabled();
@@ -130,13 +169,14 @@ test.describe("mobile ux", () => {
     const drawer = page.getByTestId("mobile-nav-drawer");
     const rowLabel = "드로우앤드류 (DrawAndrew)";
     const channelRow = drawer.getByText(rowLabel, { exact: true });
-    await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
+    await installChannelRemovalTiming(page);
+    await clickWithChannelRemovalTimestamp(page, drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }));
     await page.clock.runFor(5_000);
 
     await expect(channelRow).toBeVisible();
     await expect(page.getByTestId("channel-removal-notice")).toContainText("delete failed");
     await expect(page.getByTestId("channel-removal-retry")).toBeVisible();
-    await page.getByTestId("channel-removal-retry").click();
+    await clickWithChannelRemovalTimestamp(page, page.getByTestId("channel-removal-retry"));
     await expect(channelRow).toBeHidden();
 
     const retryRequest = page.waitForRequest(
@@ -147,6 +187,9 @@ test.describe("mobile ux", () => {
     await page.clock.runFor(100);
     await retryRequest;
     await expect.poll(() => deleteCalls).toBe(2);
+    const timing = await channelRemovalTiming(page);
+    expect(timing.deletes[0] - timing.clicks[0]).toBeGreaterThanOrEqual(5_000);
+    expect(timing.deletes[1] - timing.clicks[1]).toBeGreaterThanOrEqual(5_000);
     releaseRetryResponse();
   });
 
@@ -239,7 +282,8 @@ test.describe("mobile ux", () => {
     await gotoHydratedHome(page);
     const sidebar = page.getByTestId("desktop-sidebar");
     const remove = sidebar.getByRole("button", { name: /채널 목록에서 제거/ }).first();
-    await remove.locator("..").hover();
+    const channelRow = remove.locator("..");
+    await channelRow.hover();
     await remove.click();
 
     const notice = page.getByTestId("channel-removal-notice");
