@@ -186,7 +186,8 @@ export function ChannelRemovalProvider({
         <div
           data-testid="channel-removal-notice"
           role="status"
-          className="fixed inset-x-3 bottom-5 z-[90] mx-auto flex max-w-md items-center gap-3 rounded-xl border border-(--border-subtle) bg-(--surface-raised) px-4 py-3 text-sm shadow-lg"
+          aria-live="polite"
+          className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+7rem)] z-[90] mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-(--border-subtle) bg-(--surface-raised) p-3 text-sm shadow-xl sm:inset-x-auto sm:right-6 sm:bottom-24 sm:w-[min(26rem,calc(100vw-3rem))]"
         >
           {pending.phase === "deleting" ? <Loader2 size={18} className="shrink-0 animate-spin" aria-hidden /> : <RotateCcw size={18} className="shrink-0" aria-hidden />}
           <p className="min-w-0 flex-1">
@@ -200,7 +201,7 @@ export function ChannelRemovalProvider({
               type="button"
               data-testid="channel-removal-undo"
               onClick={undoRemoval}
-              className="shrink-0 rounded-md px-2 py-1 font-semibold text-(--playback-accent) hover:bg-(--surface-subtle)"
+              className="min-h-11 min-w-11 shrink-0 touch-manipulation rounded-md px-2 py-1 font-semibold text-(--playback-accent) hover:bg-(--surface-subtle) focus-visible:ring-2"
             >
               실행 취소
             </button>
@@ -210,14 +211,14 @@ export function ChannelRemovalProvider({
                 type="button"
                 data-testid="channel-removal-retry"
                 onClick={retryRemoval}
-                className="shrink-0 rounded-md px-2 py-1 font-semibold text-(--playback-accent) hover:bg-(--surface-subtle)"
+                className="min-h-11 min-w-11 shrink-0 touch-manipulation rounded-md px-2 py-1 font-semibold text-(--playback-accent) hover:bg-(--surface-subtle) focus-visible:ring-2"
               >
                 다시 시도
               </button>
               <button
                 type="button"
                 onClick={dismissNotice}
-                className="shrink-0 rounded-md p-1 text-(--text-secondary) hover:bg-(--surface-subtle)"
+                className="min-h-11 min-w-11 shrink-0 touch-manipulation rounded-md p-1 text-(--text-secondary) hover:bg-(--surface-subtle) focus-visible:ring-2"
                 aria-label="채널 삭제 알림 닫기"
               >
                 <X size={16} aria-hidden />
@@ -227,7 +228,7 @@ export function ChannelRemovalProvider({
             <button
               type="button"
               onClick={dismissNotice}
-              className="shrink-0 rounded-md p-1 text-(--text-secondary) hover:bg-(--surface-subtle)"
+              className="min-h-11 min-w-11 shrink-0 touch-manipulation rounded-md p-1 text-(--text-secondary) hover:bg-(--surface-subtle) focus-visible:ring-2"
               aria-label="채널 삭제 알림 닫기"
             >
               <X size={16} aria-hidden />

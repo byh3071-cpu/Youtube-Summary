@@ -92,9 +92,9 @@ test.describe("mobile ux", () => {
     const deleteRequest = page.waitForRequest(
       (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
     );
-    await page.clock.runFor(4_999);
+    await page.clock.runFor(4_900);
     expect(deleteCalls).toBe(0);
-    await page.clock.runFor(1);
+    await page.clock.runFor(100);
     await deleteRequest;
     await expect.poll(() => deleteCalls).toBe(1);
     await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하는 중이에요");
@@ -142,9 +142,9 @@ test.describe("mobile ux", () => {
     const retryRequest = page.waitForRequest(
       (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
     );
-    await page.clock.runFor(4_999);
+    await page.clock.runFor(4_900);
     expect(deleteCalls).toBe(1);
-    await page.clock.runFor(1);
+    await page.clock.runFor(100);
     await retryRequest;
     await expect.poll(() => deleteCalls).toBe(2);
     releaseRetryResponse();
@@ -181,6 +181,75 @@ test.describe("mobile ux", () => {
 
     await expect(channelRow).toBeVisible();
     await expect(page.getByTestId("channel-removal-notice")).toContainText("응답이 늦어");
+  });
+
+  test("removal notice stays above the mobile player with accessible controls", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    let releaseDelete!: () => void;
+    const deletePending = new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+    });
+    await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      await deletePending;
+      await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "delete failed" }) });
+    });
+    await gotoHydratedHome(page);
+    await page.getByRole("button", { name: "라디오에 추가" }).first().click();
+    const player = page.getByTestId("radio-player");
+    await expect(player).toBeVisible();
+
+    await page.clock.install();
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const drawer = page.getByTestId("mobile-nav-drawer");
+    await drawer.getByRole("button", { name: /채널 목록에서 제거/ }).first().click();
+
+    const notice = page.getByTestId("channel-removal-notice");
+    await expect(notice).toBeVisible();
+    await expect(notice).toHaveAttribute("role", "status");
+    await expect(notice).toHaveAttribute("aria-live", "polite");
+    const undoBox = await page.getByTestId("channel-removal-undo").boundingBox();
+    expect(undoBox).not.toBeNull();
+    expect(undoBox!.width).toBeGreaterThanOrEqual(44);
+    expect(undoBox!.height).toBeGreaterThanOrEqual(44);
+
+    const noticeBox = await notice.boundingBox();
+    const playerBox = await player.boundingBox();
+    expect(noticeBox).not.toBeNull();
+    expect(playerBox).not.toBeNull();
+    expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(playerBox!.y);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+
+    await page.clock.fastForward(5_000);
+    await expect(notice).toContainText("삭제하는 중이에요");
+    await expect(notice.locator(".animate-spin")).toHaveAttribute("aria-hidden", "true");
+    releaseDelete();
+    await expect(page.getByTestId("channel-removal-retry")).toBeVisible();
+    const retryBox = await page.getByTestId("channel-removal-retry").boundingBox();
+    const close = page.getByRole("button", { name: "채널 삭제 알림 닫기" });
+    const closeBox = await close.boundingBox();
+    for (const box of [retryBox, closeBox]) {
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test("removal notice remains inside the desktop viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await gotoHydratedHome(page);
+    const sidebar = page.getByTestId("desktop-sidebar");
+    const remove = sidebar.getByRole("button", { name: /채널 목록에서 제거/ }).first();
+    await remove.locator("..").hover();
+    await remove.click();
+
+    const notice = page.getByTestId("channel-removal-notice");
+    await expect(notice).toBeVisible();
+    const box = await notice.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(1440);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(900);
   });
 
   test("channel add dialog stays centered and usable outside the mobile drawer", async ({ page }) => {
