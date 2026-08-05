@@ -70,11 +70,13 @@ test.describe("mobile ux", () => {
   });
 
   test("channel removal commits after five seconds and reports progress", async ({ page }) => {
+    let deleteCalls = 0;
     let releaseResponse!: () => void;
     const release = new Promise<void>((resolve) => {
       releaseResponse = resolve;
     });
     await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      deleteCalls += 1;
       await release;
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
     });
@@ -83,13 +85,18 @@ test.describe("mobile ux", () => {
     await page.clock.install();
     await page.getByRole("button", { name: "메뉴 열기" }).click();
     const drawer = page.getByTestId("mobile-nav-drawer");
-    await drawer.getByRole("button", { name: "드로우앤드류 (DrawAndrew) 채널 목록에서 제거" }).click();
+    const rowLabel = "드로우앤드류 (DrawAndrew)";
+    const channelRow = drawer.getByText(rowLabel, { exact: true });
+    await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
 
     const deleteRequest = page.waitForRequest(
       (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
     );
-    await page.clock.fastForward(5_000);
+    await page.clock.runFor(4_999);
+    expect(deleteCalls).toBe(0);
+    await page.clock.runFor(1);
     await deleteRequest;
+    await expect.poll(() => deleteCalls).toBe(1);
     await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제하는 중이에요");
     await expect(page.getByRole("button", { name: "채널 삭제 알림 닫기" })).toBeHidden();
     await expect(drawer.getByRole("button", { name: "EO Korea 채널 목록에서 제거" })).toBeDisabled();
@@ -98,12 +105,24 @@ test.describe("mobile ux", () => {
     await expect(page.getByTestId("channel-removal-notice")).toContainText("삭제했어요");
     await page.clock.fastForward(2_000);
     await expect(page.getByTestId("channel-removal-notice")).toBeHidden();
+    await expect(channelRow).toBeHidden();
   });
 
   test("failed channel removal restores the row and offers retry", async ({ page }) => {
-    await page.route("**/api/custom-sources?sourceId=*", (route) =>
-      route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "delete failed" }) }),
-    );
+    let deleteCalls = 0;
+    let releaseRetryResponse!: () => void;
+    const retryResponse = new Promise<void>((resolve) => {
+      releaseRetryResponse = resolve;
+    });
+    await page.route("**/api/custom-sources?sourceId=*", async (route) => {
+      deleteCalls += 1;
+      if (deleteCalls === 1) {
+        await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "delete failed" }) });
+        return;
+      }
+      await retryResponse;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    });
     await gotoHydratedHome(page);
     await page.clock.install();
     await page.getByRole("button", { name: "메뉴 열기" }).click();
@@ -112,11 +131,23 @@ test.describe("mobile ux", () => {
     const rowLabel = "드로우앤드류 (DrawAndrew)";
     const channelRow = drawer.getByText(rowLabel, { exact: true });
     await drawer.getByRole("button", { name: `${rowLabel} 채널 목록에서 제거` }).click();
-    await page.clock.fastForward(5_000);
+    await page.clock.runFor(5_000);
 
     await expect(channelRow).toBeVisible();
     await expect(page.getByTestId("channel-removal-notice")).toContainText("delete failed");
     await expect(page.getByTestId("channel-removal-retry")).toBeVisible();
+    await page.getByTestId("channel-removal-retry").click();
+    await expect(channelRow).toBeHidden();
+
+    const retryRequest = page.waitForRequest(
+      (request) => request.method() === "DELETE" && request.url().includes("/api/custom-sources?sourceId="),
+    );
+    await page.clock.runFor(4_999);
+    expect(deleteCalls).toBe(1);
+    await page.clock.runFor(1);
+    await retryRequest;
+    await expect.poll(() => deleteCalls).toBe(2);
+    releaseRetryResponse();
   });
 
   test("timed out channel removal restores the row", async ({ page }) => {
