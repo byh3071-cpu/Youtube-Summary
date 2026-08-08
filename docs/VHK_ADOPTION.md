@@ -1,6 +1,6 @@
 ---
 id: focus-feed-vhk-adoption
-date: 2026-06-12
+date: 2026-08-08
 tags: [focus-feed, vhk, agents, security, verification]
 ---
 
@@ -10,9 +10,9 @@ tags: [focus-feed, vhk, agents, security, verification]
 
 VHK는 Focus Feed의 유일한 품질 판정기가 아니라 에이전트 규칙, 실행 증거, 보안 스캔과 인수인계를 보조하는 계층으로 사용한다.
 
-프로젝트의 목표 버전은 `@byh3071/vhk@2.6.0`이다. 전역 설치 여부와 관계없이 모든 에이전트와 CI가 같은 버전을 사용해야 한다.
+프로젝트의 목표 버전은 `@byh3071/vhk@2.13.0`이다. 전역 설치 여부와 관계없이 모든 에이전트와 CI가 같은 버전을 사용해야 한다.
 
-> ⚠️ **임시 상태 (2026-06-12):** 현재 의존성은 npm 버전이 아니라 로컬 경로(`file:../Yohan-System-Project/vhk`)다. 사유와 복구 절차는 아래 [2026-06-12 — v2.6.0 로컬 연결 전환] 섹션 참고.
+**활성 할일 SoT**는 `goals/*.md`다. 제품 이력은 `docs/MILESTONES.md`, 방향·제외 목록은 `docs/PROJECT_DIRECTION.md`다. (과거 `file:` 로컬 연결·2.6.0 목표는 이력 — 아래 2026-06-12 절.)
 
 ## 도입 범위
 
@@ -24,7 +24,7 @@ VHK는 Focus Feed의 유일한 품질 판정기가 아니라 에이전트 규칙
 | `mission` | 선택 | 범위가 명확한 독립 작업에서만 사용 |
 | `context`, `brief` | 선택 | 에이전트 핸드오프가 필요할 때 사용 |
 | `review`, `preflight`, `testmap` | 선택 | 릴리스 또는 위험 변경에서 보조 신호로 사용 |
-| `goal init` | 보류 | 기존 `docs/MILESTONES.md`와 중복될 수 있음 |
+| `goal` / `goal init` | 사용 | 개인용 활성 백로그(`goals/1`~`5`). 이력 마일스톤과 역할 분리 |
 | `mcp-init` | 보류 | 기존 에이전트 설정 검토 전 자동 생성 금지 |
 | `sync` | 기본 금지 | 기존 `AGENTS.md`, `CLAUDE.md`, Cursor 규칙 재생성 위험 |
 | `start`, `init` | 금지 | 이미 운영 중인 기존 저장소 |
