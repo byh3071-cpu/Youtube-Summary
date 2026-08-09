@@ -394,6 +394,7 @@ export async function resolveYouTubeChannel(parsed: { type: "channelId"; channel
 export interface VideoSnippet {
   title: string;
   description: string;
+  channelName?: string;
 }
 
 export async function getVideoSnippet(videoId: string): Promise<VideoSnippet | null> {
@@ -410,12 +411,15 @@ export async function getVideoSnippet(videoId: string): Promise<VideoSnippet | n
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { items?: Array<{ snippet?: { title?: string; description?: string } }> };
+    const data = (await res.json()) as {
+      items?: Array<{ snippet?: { title?: string; description?: string; channelTitle?: string } }>;
+    };
     const snippet = data.items?.[0]?.snippet;
     if (!snippet?.title) return null;
     return {
       title: snippet.title,
       description: snippet.description ?? "",
+      channelName: snippet.channelTitle,
     };
   } catch {
     return null;

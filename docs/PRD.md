@@ -49,6 +49,7 @@ tags: [focus-feed, prd, product]
 13. **탐색 UX**: 글로벌 피드는 검색→트렌드 키워드→콘텐츠 종류·상세 필터를 하나의 탐색 패널로 제공한다. `전체/유튜브/RSS` 전환은 이미 내려받은 피드를 클라이언트에서 즉시 필터링하고 URL만 History API로 동기화한다.
 14. **영상 모드**: YouTube 카드 탭은 외부 사이트 대신 앱 내부 재생으로 연결한다. 롱폼은 `/?viewMode=longform&watch={videoId}` 상세로 진입하고 자동재생하지 않으며, 숏폼은 모바일 자동재생 정책을 만족하도록 무음으로 시작해 해당 영상의 9:16 세로 스냅 위치에서 자동재생하고 종료 시 다음 영상으로 이동한다. 라이브는 16:9 재생 화면으로 진입하되 종료 시 자동으로 넘기지 않는다. 외부 YouTube 열기는 카드 더보기의 보조 행동으로 유지한다.
 15. **상세 AI 요약**: 롱폼과 확장 라디오의 AI 요약은 영상 위를 덮지 않는 외부 패널/시트로 표시한다. 미생성·로딩·로그인 필요·성공·오류·로컬 캐시 복원 상태를 제공한다.
+16. **지식 캡처(P0)**: 사용자는 카드·롱폼 상세·`/capture` 공유 진입점에서 YouTube 영상을 한 번 눌러 **지식 대기열**에 넣는다. Focus Feed는 영상 제목·채널·정규 URL·설명란의 시간표/참고 링크만 선별한 소스 가이드를 저장하고, 실제 NotebookLM 처리·요약 품질 검사·brain/Notion 반영은 별도 worker가 맡는다.
 
 ## 4.1 피드 Q&A (M5)
 
@@ -61,6 +62,24 @@ tags: [focus-feed, prd, product]
 | Free 일일 한도 | `FREE_DAILY_FEED_QA`(기본 5), `usage_daily.feed_qa_count` (`docs/supabase-migrations/002_usage_daily_feed_qa.sql`). |
 | 저장 | 서버에 **대화 영구 저장 없음**; 클라이언트 스레드는 `localStorage` + 마크다운 복사. **Todoist**는 첫 질문 텍스트로 빠른 추가 링크만 제공(OAuth 미연동). |
 | 모델 | Gemini Flash 계열(`src/app/actions/feed-qa.ts`). |
+
+## 4.2 지식 캡처 P0 (M12)
+
+| 항목 | 정책 |
+|------|------|
+| 접수 | **POST만** `knowledge_jobs` 행을 만든다. `/capture`의 GET·PWA share target·iPhone 단축어는 확인 화면만 열며, 사용자가 [지식으로 담기]를 눌러야 한다. 접수는 로그인 쿠키 세션의 enqueue RPC가 auth.uid·멱등·active 10건·일 50건을 원자 검증하고, table 직접 write는 닫는다. 조회는 인증을 확인한 서버 route가 service role로 `user_id`를 강제하고 허용 필드만 반환하며, 브라우저의 원본 table SELECT는 닫는다. |
+| 멱등 | 사용자+YouTube video ID가 같은 요청은 새 행을 만들지 않고 기존 상태를 돌려준다. API burst 제한 뒤 enqueue RPC가 DB 멱등·quota를 먼저 확정한다. 준비가 끝난 중복은 외부 메타를 다시 조회하지 않고, 첫 요청이 끊긴 미완료 예약만 같은 행에서 보강을 재개한다. |
+| 보존 | 제목·채널·정규 URL·설명란에서 선별한 시간표/참고 링크만 `source_guide`에 넣는다. CTA·광고·문의 문구와 전체 자막은 Focus Feed DB에 저장하지 않는다. |
+| 상태 | 내부 상태는 `queued → processing → review_required → approving → completed`와 `action_required/failed/cancelled`다. 최초 조회는 영상 ID를 최대 50개씩 순차 처리한다. 대기·처리 중 ID만 15초에서 최대 120초까지 backoff polling하고 숨은 탭에서는 늦춘다. 창으로 돌아오면 모든 상태를 새로 읽는다. 담김·처리 중·검토 필요·승인 적재 중·완료·조치 필요·실패·취소를 그대로 표시한다. |
+| 검토 | `/knowledge`의 `review_required` 항목은 요약·핵심 요점·사실/해석/권고 분리·영상 시작/중간/끝 커버리지·불확실성을 접어서 보여 준다. 목록 응답에는 검토 가능 여부만 포함하고, 펼칠 때 본인 `job_id`로 상세 API를 호출한다. 검증된 사실과 구간 근거는 공개 자막에서 실제 위치가 확인된 20단어 이하 짧은 발췌와 YouTube 타임스탬프 링크로 원본 확인이 가능하다. 품질 점수는 `자동 구조 검증`으로 표시하며 외부 사실 진위를 보증하지 않는다고 명시한다. 브라우저 API는 허용 목록만 직렬화하고 로컬 review 경로·source/transcript hash·NotebookLM 내부 ID·원문 전체를 반환하지 않는다. 검토가 끝나면 사용자는 승인·보류 명령을 복사해 집의 Codex에 전달하며, Focus Feed가 Brain에 직접 기록하지 않는다. |
+| 경계 | Focus Feed는 Notion·Git·NotebookLM에 직접 쓰지 않는다. enqueue는 `capture_ready=false` 예약만 만들고, 메타 보강 RPC가 완료된 행만 worker가 claim한다. `docs/supabase-migrations/012_knowledge_jobs.sql`은 최대 3건 claim, 작업별 최대 3회 시도, 현재 lease token 기반 checkpoint·연장·완료를 제공한다. 다음 단계는 yohan-mcp의 단일 `knowledge` CLI가 처리한다. |
+| 후속 전이 | `review_required → approving → completed`는 Control Tower의 사람 결정을 받은 yohan-mcp 승인 명령이 맡는다. DB RPC가 approval token·intent hash를 CAS하고, 사람 메모는 Git 제외 로컬 intent에만 고정해 RESOURCE/SUMMARY pair의 중간 crash를 복구한다. `action_required`·`failed`는 인증·자막·접근 제한·한도·처리 지연별 다음 행동을 `/knowledge`에 표시한다. 조치 후 재처리는 service-role 전용 `015_knowledge_job_retry.sql` RPC와 `knowledge retry <job-id>`만 사용하며, 허용된 실패·3회 미만만 queued로 돌리고 기존 NotebookLM source ID·hash는 보존한다. 처리 준비가 끝난 기존 job은 버튼을 비활성화하고, 중단된 예약은 [처리 준비 다시 시도]로 같은 행을 복구한다. |
+| iPhone | iOS는 PWA share target을 신뢰하지 않는다. YouTube 공유 → “FF 지식 담기” 단축어 → `/capture?url=...` → 사용자 확인 순서를 사용한다. PWA share target은 `/capture` 하나로 받고 같은 화면에서 지식 담기와 채널 추가를 선택한다. |
+| 적용 | `012_knowledge_jobs.sql`은 새 설치용 기준선이다. 운영 이력은 legacy 설치에 `014_knowledge_jobs_legacy_upgrade.sql`을 적용한 뒤 `015_knowledge_job_retry.sql`을 적용한 것이며, 인증된 worker가 기존 NotebookLM source를 재사용한 canary를 `review_required`까지 처리했다. `016_knowledge_job_approval_cas_hardening.sql`과 기존 authenticated 원본 table SELECT를 닫는 `017_knowledge_jobs_browser_read_hardening.sql`은 준비만 됐고 아직 적용하지 않았으며, 이 문서는 현재 live DB 재검증을 주장하지 않는다. Brain 적재는 항목별 사람 승인 전까지 계속 막는다. |
+
+## 4.3 지식 처리 요청 P1 (M12 후속)
+
+`013_knowledge_process_requests.sql`, process-request API/UI, Realtime bridge는 P1로 연기했다. 현재 P0 코드·SQL·운영 이력에는 포함하지 않는다.
 
 ## 5. 비기능·품질
 
@@ -142,3 +161,7 @@ tags: [focus-feed, prd, product]
 | 2026-07-18 | M11 Draft PR #36 전체 CI와 Vercel Preview Google OAuth·롱폼 상세 복귀·Gemini 실제 요약·사용량·캐시 검증 완료 |
 | 2026-07-18 | 병합 후 모바일 후속: 구독 채널 아바타, 고화질 썸네일 선택, 카드 앱 내부 재생, 전환 로딩 피드백, 80px 라디오 바, 숏폼 iframe 가시성 래퍼·좌측 52px 홈 버튼·단일 채널 재생 조회 보완 |
 | 2026-07-18 | 숏폼 재생 정책 보완: 데스크톱·모바일 모두 무음 자동재생으로 시작하고 YouTube 종료 이벤트에서 다음 숏폼을 자동재생하도록 검증 |
+| 2026-07-27 | 지식 캡처 P0: `/capture` 확인형 공유 진입점·영상 화면 CTA·멱등 `knowledge_jobs` 스키마와 worker lease 계약을 추가. 운영 DB 적용·NotebookLM canary는 별도 승인 전 보류. |
+| 2026-08-05 | 지식 대기열 화면·처리 요청 P1 계약을 추가. 브라우저 직접 연결과 polling을 금지하고, Realtime bridge는 P0 canary 10건 뒤 활성화하도록 분리. |
+| 2026-08-07 | 최종 적대 리뷰에 따라 service-role 전용 단건 retry 계약, attempt ceiling, source ID/hash 보존 및 worker 산출물 초기화를 `015_knowledge_job_retry.sql`로 추가. 실제 DB 적용은 사람 승인 게이트로 유지. |
+| 2026-08-08 | 운영 Supabase에 015를 적용하고 기존 source ID 재사용 retry를 검증. `/knowledge`에 승인 전 요약·주장 유형·짧은 검증 발췌·타임스탬프·전 구간 커버리지·불확실성을 확인하는 상세 UI와 민감 필드 제거 API 계약을 추가. 목록/상세 조회를 분리하고 집 Codex용 승인·보류 요청 복사를 추가. |

@@ -8,6 +8,7 @@ import type { BookmarkEntry } from "./FeedClientContainer";
 import type { ContentStateInfo } from "@/app/actions/content-state";
 import { contentIdForItem } from "@/types/content-state";
 import Image from "next/image";
+import type { KnowledgeJobSummary } from "@/lib/knowledge-capture";
 
 const YOUTUBE_PAGE_SIZE = 60;
 const RSS_PAGE_SIZE = 30;
@@ -25,6 +26,8 @@ interface Props {
     onBookmarkChange?: () => void;
     contentStates?: Record<string, ContentStateInfo>;
     onContentStateChange?: () => void;
+    knowledgeJobs?: Record<string, KnowledgeJobSummary>;
+    onKnowledgeJobChange?: (job: KnowledgeJobSummary) => void;
     /** 소스 선택 시 해당 소스 총 개수 (유튜브/RSS 섹션 헤더에 표시) */
     totalCount?: number;
 }
@@ -71,7 +74,7 @@ function FeedListFlat({ items }: { items: FeedItemType[] }) {
     );
 }
 
-export default function FeedList({ items, hasActiveFilters = false, selectedSourceName, useTickerLayout = true, viewMode = "all", bookmarks = [], onBookmarkChange, contentStates = {}, onContentStateChange, totalCount }: Props) {
+export default function FeedList({ items, hasActiveFilters = false, selectedSourceName, useTickerLayout = true, viewMode = "all", bookmarks = [], onBookmarkChange, contentStates = {}, onContentStateChange, knowledgeJobs = {}, onKnowledgeJobChange, totalCount }: Props) {
     const [ytLimit, setYtLimit] = useState(YOUTUBE_PAGE_SIZE);
     const [rssLimit, setRssLimit] = useState(RSS_PAGE_SIZE);
 
@@ -162,6 +165,8 @@ export default function FeedList({ items, hasActiveFilters = false, selectedSour
                                                     onBookmarkChange={onBookmarkChange}
                                                     contentState={item.id ? contentStates[item.id] : undefined}
                                                     onContentStateChange={onContentStateChange}
+                                                    knowledgeJob={item.id ? knowledgeJobs[item.id] : undefined}
+                                                    onKnowledgeJobChange={onKnowledgeJobChange}
                                                 />
                                             </li>
                                         );

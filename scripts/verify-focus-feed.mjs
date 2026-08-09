@@ -3,6 +3,12 @@ import { spawnSync } from "node:child_process";
 const isWindows = process.platform === "win32";
 const npmCommand = isWindows ? "npm.cmd" : "npm";
 const release = process.argv.includes("--release");
+const skipHistory = process.argv.includes("--skip-history");
+
+if (skipHistory && !release) {
+  console.error("[verify] --skip-history is only valid with --release.");
+  process.exit(1);
+}
 
 function hasSupabaseVerificationEnv() {
   return Boolean(
@@ -15,7 +21,12 @@ function run(label, args) {
   console.log(`\n[verify] ${label}`);
   const result = spawnSync(npmCommand, args, {
     cwd: process.cwd(),
-    env: release ? { ...process.env, CI: "true" } : process.env,
+    // Release E2E must exercise the deterministic fixture routes too. CI=true
+    // alone switches the app out of its local fixture mode and makes this gate
+    // depend on unavailable external services.
+    env: release
+      ? { ...process.env, CI: "true", FOCUS_FEED_E2E_FIXTURES: "1" }
+      : process.env,
     shell: isWindows,
     stdio: "inherit",
   });
@@ -36,11 +47,21 @@ if (release) {
     ["Runtime smoke test", ["test"]],
     ["Playwright E2E", ["run", "test:e2e"]],
     ["npm audit high+", ["audit", "--audit-level=high"]],
-    ["Git history secret scan", ["run", "security:history"]],
   );
 
+  if (skipHistory) {
+    console.warn(
+      "\n[verify] Git history secret scan skipped. Before release, run: npm run verify:release:history",
+    );
+  } else {
+    gates.push(["Git history secret scan", ["run", "security:history"]]);
+  }
+
   if (hasSupabaseVerificationEnv()) {
-    gates.push(["Supabase schema", ["run", "verify:supabase"]]);
+    gates.push(
+      ["Supabase schema", ["run", "verify:supabase"]],
+      ["Knowledge Supabase contract", ["run", "verify:supabase:knowledge"]],
+    );
   } else {
     console.log("\n[verify] Supabase schema skipped: required server credentials are not present.");
   }
@@ -61,4 +82,10 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`\nFocus Feed verification PASS (${release ? "release" : "default"})`);
+const verificationScope = release
+  ? skipHistory
+    ? "release-app; Git history pending/required"
+    : "release"
+  : "default";
+
+console.log(`\nFocus Feed verification PASS (${verificationScope})`);

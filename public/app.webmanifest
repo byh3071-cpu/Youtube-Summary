@@ -5,7 +5,7 @@
   "start_url": "/",
   "display": "standalone",
   "share_target": {
-    "action": "/add",
+    "action": "/capture",
     "method": "GET",
     "params": {
       "title": "title",

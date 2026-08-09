@@ -119,6 +119,27 @@ tags: [focus-feed, roadmap, milestones]
 - [x] 다중 검수·CI 병합 게이트 (`QA-01`, Draft PR #36 전체 CI 통과).
 - 활성 상태·완료 조건·검증 증거: `docs/M11_EXECUTION_PLAN.md`.
 
+## M12 — 지식 캡처·대기열 P0 (2026-07-27~)
+
+- [x] Focus Feed 카드·롱폼 상세·공유 확인 화면을 같은 POST 접수 API로 연결.
+- [x] `012_knowledge_jobs.sql`: 사용자별 멱등·active/일 quota, 보강 완료 예약만 가져가는 3개 제한 atomic claim, 최대 3회 시도, lease checkpoint·완료 RPC, 사람 승인 token CAS(`review_required → approving → completed`)를 코드와 함께 준비.
+- [x] 영상 설명은 시간표·참고 링크 중심의 소스 가이드로만 선별하고, 전체 자막·Notion·Git 직접 쓰기는 차단.
+- [x] 접수는 로그인 쿠키 세션 enqueue RPC로 제한하고, 조회는 인증 확인 뒤 service-role 서버 route가 user_id와 응답 allowlist를 강제한다. 브라우저의 원본 table SELECT를 닫고 최대 50개 배치 조회·active ID backoff polling·7개 처리 상태 UI를 연결.
+- [x] enqueue→메타 보강 사이 worker 선점과 늦은 POST 상태 역행을 준비 완료 gate·updated_at 병합으로 차단하고, 중단된 예약 재시도를 연결.
+- [x] `012_knowledge_jobs.sql`은 새 설치용 기준선으로 보존한다. 현재 운영 이력은 012 재실행이 아니라 `014_knowledge_jobs_legacy_upgrade.sql` 적용 후 `015_knowledge_job_retry.sql` 적용이다.
+- [x] 운영 적용 전 read-only preflight와 비파괴 rollback 순서를 문서화하고, legacy worker RPC overload가 있으면 baseline 재실행을 금지.
+- [x] yohan-mcp worker의 checkpoint·NotebookLM source 사전 대조와 public 영상 2건 `review_required`(품질 100)까지 검증.
+- [ ] 사람 승인→Brain RESOURCE/SUMMARY write-once 검증은 항목별 승인 전까지 보류.
+- [x] `015_knowledge_job_retry.sql`: service-role 전용 단건 retry, 허용 실패 코드·3회 미만 제한, NotebookLM source ID/hash 보존 계약과 CLI를 코드·테스트로 준비.
+- [x] `015_knowledge_job_retry.sql`을 `014` 다음 사람 검토 후 운영 Supabase에 적용하고 action_required 1건을 기존 source ID로 재처리해 `review_required` 복구 검증.
+- [ ] `016_knowledge_job_approval_cas_hardening.sql`: `014`/`015` 뒤에 적용할 function-only CAS 강화본을 준비했으며, 이 저장소는 아직 운영 DB 적용이나 현재 live DB 재검증을 주장하지 않는다.
+- [ ] `017_knowledge_jobs_browser_read_hardening.sql`: 과거 014가 열어 둔 authenticated 원본 table SELECT와 select policy를 비파괴적으로 닫는 권한 강화본을 준비했으며, 운영 적용·postflight는 별도 사람 승인으로 남긴다.
+- [ ] P0 canary 10건 뒤 outbound Realtime 연속 구독·Windows 로그인 시작을 별도 승인으로 구현하고, PC offline 요청 및 다음 시작 시 15분 stale claim 회수를 실측.
+- [ ] iPhone 단축어 1개를 실제 기기에서 YouTube 공유 입력으로 검증.
+- [x] `/knowledge` 대기열·데스크톱/모바일 탐색 진입점과 지식 CTA 상태 표시를 준비.
+- [x] `/knowledge` 목록/상세 API를 분리하고 검토 항목에 요약·주장 유형·검증된 짧은 원문 발췌·타임스탬프·전 구간 커버리지·불확실성·집 Codex용 승인/보류 요청을 노출한다. 내부 경로·hash·NotebookLM ID·원문 전체를 제외하는 API 허용 목록을 검증.
+- [ ] `013_knowledge_process_requests.sql`: P1로 연기했으며 현재 저장소·운영 이력에 없다. stale worker가 같은 `worker_id`로 새 claim을 완료 처리하지 못하도록 claim fencing token을 추가한 뒤 별도 P1 계약과 UI를 구현.
+
 ## 변경 이력
 
 | date | 내용 |
@@ -130,3 +151,4 @@ tags: [focus-feed, roadmap, milestones]
 | 2026-07-12 | M10 검색 중심 탐색 UX: 상단 탐색 패널 통합, 보기 전환 서버 왕복 제거, 카드 요약 CTA 하단 정렬 |
 | 2026-07-12 | M10 후속: Tailwind dark 변형을 next-themes 클래스에 통일, RSS 카드 대비·중복 배지 수정, UI/UX 시각 보고서 |
 | 2026-07-16 | M11 기준선·main 동기화 후 실행 작업대장 도입. 홈·영상 모드·플레이어·앱 셸의 구현 상태와 Preview·라디오·최종 QA 잔여 Task를 분리 |
+| 2026-07-27 | M12 지식 캡처·대기열 P0 코드 계약 추가. 운영 DB/NotebookLM/iPhone 실기기 canary는 사람 승인 전 미실행. |
