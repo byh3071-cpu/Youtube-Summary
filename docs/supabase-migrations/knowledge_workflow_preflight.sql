@@ -59,7 +59,8 @@ with required_p0(signature) as (
     ('public.complete_knowledge_job(uuid,uuid,uuid,text,jsonb,smallint,jsonb,text,text)'),
     ('public.begin_knowledge_approval(uuid,uuid,text)'),
     ('public.complete_knowledge_approval(uuid,uuid,uuid,jsonb)'),
-    ('public.retry_knowledge_job(uuid,uuid)')
+    ('public.retry_knowledge_job(uuid,uuid)'),
+    ('public.invalidate_knowledge_review(uuid,uuid)')
 )
 select
   signature,
@@ -89,7 +90,8 @@ with required_p0_worker(signature) as (
     ('public.complete_knowledge_job(uuid,uuid,uuid,text,jsonb,smallint,jsonb,text,text)'),
     ('public.begin_knowledge_approval(uuid,uuid,text)'),
     ('public.complete_knowledge_approval(uuid,uuid,uuid,jsonb)'),
-    ('public.retry_knowledge_job(uuid,uuid)')
+    ('public.retry_knowledge_job(uuid,uuid)'),
+    ('public.invalidate_knowledge_review(uuid,uuid)')
 ), resolved as (
   select signature, to_regprocedure(signature) as oid
   from required_p0_worker
@@ -217,7 +219,9 @@ with expected_p0(oid) as (
     (to_regprocedure('public.checkpoint_knowledge_job(uuid,uuid,uuid,text,text,text,timestamptz,text,text,integer)')),
     (to_regprocedure('public.complete_knowledge_job(uuid,uuid,uuid,text,jsonb,smallint,jsonb,text,text)')),
     (to_regprocedure('public.begin_knowledge_approval(uuid,uuid,text)')),
-    (to_regprocedure('public.complete_knowledge_approval(uuid,uuid,uuid,jsonb)'))
+    (to_regprocedure('public.complete_knowledge_approval(uuid,uuid,uuid,jsonb)')),
+    (to_regprocedure('public.retry_knowledge_job(uuid,uuid)')),
+    (to_regprocedure('public.invalidate_knowledge_review(uuid,uuid)'))
 )
 select
   p.proname,
@@ -234,7 +238,9 @@ where n.nspname = 'public'
     'checkpoint_knowledge_job',
     'complete_knowledge_job',
     'begin_knowledge_approval',
-    'complete_knowledge_approval'
+    'complete_knowledge_approval',
+    'retry_knowledge_job',
+    'invalidate_knowledge_review'
   )
   and p.oid not in (select oid from expected_p0 where oid is not null)
 order by p.proname, identity_arguments;

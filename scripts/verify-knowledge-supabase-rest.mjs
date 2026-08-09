@@ -15,6 +15,7 @@ const p0Rpcs = [
   "begin_knowledge_approval",
   "complete_knowledge_approval",
   "retry_knowledge_job",
+  "invalidate_knowledge_review",
 ];
 const p1Rpcs = [
   "request_knowledge_processing",
