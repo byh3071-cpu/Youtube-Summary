@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Brain, Loader2 } from "lucide-react";
 import MobileNavDrawer from "./MobileNavDrawer";
+import { useKnowledgeOpenJobCount } from "./KnowledgeNavLink";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
@@ -21,6 +23,7 @@ export default function MobileHeaderWithNav({
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const openKnowledgeJobs = useKnowledgeOpenJobCount();
   const navigationTimeoutRef = useRef<number | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -61,6 +64,14 @@ export default function MobileHeaderWithNav({
             </button>
           </div>
           <div className="min-w-0 flex-1" aria-hidden />
+          <Link href="/knowledge" onClick={startNavigation} className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-(--text-secondary) hover:bg-(--surface-subtle)" aria-label={openKnowledgeJobs > 0 ? `지식 대기열, 열린 작업 ${openKnowledgeJobs}개` : "지식 대기열"}>
+            <Brain size={19} />
+            {openKnowledgeJobs > 0 && (
+              <span className="absolute top-0.5 right-0.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-(--notion-fg) px-1 text-[9px] font-bold leading-none text-(--notion-bg)" aria-hidden>
+                {openKnowledgeJobs > 99 ? "99+" : openKnowledgeJobs}
+              </span>
+            )}
+          </Link>
         </div>
       </header>
       {isNavigating && (

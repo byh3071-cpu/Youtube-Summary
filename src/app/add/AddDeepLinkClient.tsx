@@ -196,8 +196,8 @@ export default function AddDeepLinkClient() {
               : `${status.channel.channelName} 채널을 추가했어요.`}
           </div>
           <p className="mb-4 text-xs leading-relaxed text-(--notion-fg)/55">
-            팁: Focus Feed를 홈 화면에 추가(앱 설치)하면 유튜브 앱의 공유 버튼에서 바로 이
-            화면으로 올 수 있어요.
+            팁: 유튜브 앱에서 Focus Feed로 공유한 뒤, 지식 캡처 화면의 [이 영상의 채널을
+            피드에 추가]를 누르면 이 화면으로 올 수 있어요.
           </p>
           <Link
             href={`/?source=${encodeURIComponent(status.channel.channelId)}`}
@@ -229,8 +229,8 @@ export default function AddDeepLinkClient() {
           <ul className="mb-4 list-disc space-y-2 pl-5 text-(--notion-fg)/65">
             <li>
               <span className="font-medium text-(--notion-fg)">폰:</span> Focus Feed를 홈 화면에
-              추가하면, 유튜브 앱에서 공유 → Focus Feed로 채널을 추가할 수 있어요. (iOS는
-              미지원)
+              추가하면, 유튜브 앱에서 공유 → Focus Feed → [이 영상의 채널을 피드에 추가]
+              순서로 올 수 있어요. (iOS share target은 미지원)
             </li>
             <li>
               <span className="font-medium text-(--notion-fg)">데스크톱:</span> 아래 버튼을

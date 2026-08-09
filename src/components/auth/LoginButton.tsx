@@ -39,10 +39,16 @@ export function LoginButton() {
 
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (mounted) {
         setUser(session?.user ? { email: session.user.email ?? undefined } : null);
         setLoading(false);
+        if (event === "SIGNED_OUT") {
+          // 다른 탭 로그아웃·세션 만료도 사용자별 client state를 남기지 않는다.
+          // Auth 경계에서는 Next client state까지 폐기해야 하므로 hard navigation이 필요하다.
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign("/");
+        }
       }
     });
 
@@ -81,7 +87,15 @@ export function LoginButton() {
   const handleLogout = async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("LoginButton signOut error:", error);
+      return;
+    }
+    // 북마크·처리 상태처럼 사용자별 클라이언트 메모리를 다른 계정에 남기지 않는다.
+    // Auth 경계에서는 Next client state까지 폐기해야 하므로 hard navigation이 필요하다.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/");
   };
 
   if (loading) {

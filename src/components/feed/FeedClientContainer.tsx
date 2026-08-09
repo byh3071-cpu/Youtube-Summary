@@ -20,6 +20,14 @@ import { FEED_CATEGORIES } from "@/lib/sources";
 import { getContentStatesAction, type ContentStateInfo } from "@/app/actions/content-state";
 import { isItemVisibleUnderStateFilter } from "@/types/content-state";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
+import {
+  KNOWLEDGE_STATUS_QUERY_LIMIT,
+  knowledgeJobIsOpen,
+  mergeKnowledgeJobMaps,
+  notifyKnowledgeJobsChanged,
+  type KnowledgeJobMap,
+  type KnowledgeJobSummary,
+} from "@/lib/knowledge-capture";
 
 export type BookmarkEntry = {
   id: string;
@@ -30,6 +38,8 @@ export type BookmarkEntry = {
 };
 
 const HOME_SCROLL_STORAGE_KEY = "focus-feed:home-scroll-y";
+const KNOWLEDGE_STATUS_POLL_MS = 15_000;
+const KNOWLEDGE_STATUS_MAX_POLL_MS = 120_000;
 
 function filterByView(items: FeedItem[], view: ViewMode): FeedItem[] {
   if (view === "youtube") return items.filter((i) => i.source === "YouTube");
@@ -77,8 +87,13 @@ function FeedClientContainerContent({
     const [searchQuery, setSearchQuery] = useState("");
     const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
     const [contentStates, setContentStates] = useState<Record<string, ContentStateInfo>>({});
+    const [knowledgeJobs, setKnowledgeJobs] = useState<KnowledgeJobMap>({});
     const [stateFilter, setStateFilter] = useState<"all" | "queued" | "dismissed">("all");
     const isHydrated = useIsHydrated();
+    const knowledgeVideoIds = useMemo(
+        () => [...new Set(initialItems.filter((item) => item.source === "YouTube" && item.id).map((item) => item.id))],
+        [initialItems],
+    );
 
     useLayoutEffect(() => {
         if (isReelMode) return;
@@ -138,6 +153,34 @@ function FeedClientContainerContent({
         }
     }, []);
 
+    const fetchKnowledgeJobs = useCallback(async (
+        requestedVideoIds: string[] = knowledgeVideoIds,
+    ): Promise<KnowledgeJobMap | null> => {
+        if (requestedVideoIds.length === 0) return {};
+        try {
+            const batches: string[][] = [];
+            for (let index = 0; index < requestedVideoIds.length; index += KNOWLEDGE_STATUS_QUERY_LIMIT) {
+                batches.push(requestedVideoIds.slice(index, index + KNOWLEDGE_STATUS_QUERY_LIMIT));
+            }
+            const nextJobs: KnowledgeJobMap = {};
+            // 초기 피드가 커도 인증·DB 요청을 한꺼번에 폭발시키지 않는다.
+            for (const videoIds of batches) {
+                const params = new URLSearchParams({ videoIds: videoIds.join(",") });
+                const response = await fetch(`/api/knowledge/status?${params.toString()}`, {
+                    cache: "no-store",
+                });
+                if (!response.ok) return null;
+                const data = (await response.json()) as { jobs?: KnowledgeJobSummary[] };
+                const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+                for (const job of jobs) nextJobs[job.videoId] = job;
+            }
+            return nextJobs;
+        } catch {
+            // 비로그인·미설정·일시적 네트워크 오류는 피드 읽기를 막지 않는다.
+            return null;
+        }
+    }, [knowledgeVideoIds]);
+
     useEffect(() => {
         setSelectedCategory(initialCategory);
     }, [initialCategory]);
@@ -149,6 +192,93 @@ function FeedClientContainerContent({
     useEffect(() => {
         fetchContentStates();
     }, [fetchContentStates]);
+
+    useEffect(() => {
+        let cancelled = false;
+        void fetchKnowledgeJobs().then((nextJobs) => {
+            if (!cancelled && nextJobs) {
+                setKnowledgeJobs((previous) => mergeKnowledgeJobMaps(previous, nextJobs));
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [fetchKnowledgeJobs]);
+
+    const activeKnowledgeVideoIds = useMemo(
+        () => Object.values(knowledgeJobs)
+            .filter((job) => (job.captureReady && job.status === "queued") || job.status === "processing" || job.status === "approving")
+            .map((job) => job.videoId)
+            .sort(),
+        [knowledgeJobs],
+    );
+    const activeKnowledgeKey = activeKnowledgeVideoIds.join(",");
+    const activeKnowledgeVersion = activeKnowledgeVideoIds
+        .map((videoId) => `${videoId}:${knowledgeJobs[videoId]?.updatedAt ?? ""}`)
+        .join("|");
+
+    useEffect(() => {
+        if (!activeKnowledgeKey) return;
+        const videoIds = activeKnowledgeKey.split(",");
+        let cancelled = false;
+        let timer = 0;
+        let delay = KNOWLEDGE_STATUS_POLL_MS;
+        let lastVersion = activeKnowledgeVersion;
+
+        const poll = async () => {
+            if (document.visibilityState === "hidden") {
+                delay = Math.min(delay * 2, KNOWLEDGE_STATUS_MAX_POLL_MS);
+                timer = window.setTimeout(poll, delay);
+                return;
+            }
+            const nextJobs = await fetchKnowledgeJobs(videoIds);
+            if (cancelled) return;
+            if (nextJobs) {
+                setKnowledgeJobs((previous) => mergeKnowledgeJobMaps(previous, nextJobs));
+                if (Object.values(nextJobs).some((job) => !knowledgeJobIsOpen(job.status))) {
+                    notifyKnowledgeJobsChanged();
+                }
+                const nextVersion = Object.values(nextJobs)
+                    .map((job) => `${job.videoId}:${job.updatedAt}`)
+                    .sort()
+                    .join("|");
+                delay = nextVersion === lastVersion
+                    ? Math.min(delay * 2, KNOWLEDGE_STATUS_MAX_POLL_MS)
+                    : KNOWLEDGE_STATUS_POLL_MS;
+                lastVersion = nextVersion;
+            } else {
+                delay = Math.min(delay * 2, KNOWLEDGE_STATUS_MAX_POLL_MS);
+            }
+            timer = window.setTimeout(poll, delay);
+        };
+
+        timer = window.setTimeout(poll, KNOWLEDGE_STATUS_POLL_MS);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [activeKnowledgeKey, activeKnowledgeVersion, fetchKnowledgeJobs]);
+
+    useEffect(() => {
+        const refreshVisibleStatuses = () => {
+            if (document.visibilityState !== "visible") return;
+            void fetchKnowledgeJobs().then((nextJobs) => {
+                if (nextJobs) {
+                    setKnowledgeJobs((previous) => mergeKnowledgeJobMaps(previous, nextJobs));
+                }
+            });
+        };
+        window.addEventListener("focus", refreshVisibleStatuses);
+        document.addEventListener("visibilitychange", refreshVisibleStatuses);
+        return () => {
+            window.removeEventListener("focus", refreshVisibleStatuses);
+            document.removeEventListener("visibilitychange", refreshVisibleStatuses);
+        };
+    }, [fetchKnowledgeJobs]);
+
+    const handleKnowledgeJobChange = useCallback((job: KnowledgeJobSummary) => {
+        setKnowledgeJobs((previous) => mergeKnowledgeJobMaps(previous, { [job.videoId]: job }));
+    }, []);
 
     const handleCategoryChange = (category: FeedCategory | null) => {
         setSelectedCategory(category);
@@ -216,6 +346,8 @@ function FeedClientContainerContent({
                 initialWatchVideoId={initialWatchVideoId}
                 bookmarks={bookmarks}
                 onBookmarkChange={fetchBookmarks}
+                knowledgeJobs={knowledgeJobs}
+                onKnowledgeJobChange={handleKnowledgeJobChange}
             />
         );
     }
@@ -293,6 +425,8 @@ function FeedClientContainerContent({
                 onBookmarkChange={fetchBookmarks}
                 contentStates={contentStates}
                 onContentStateChange={fetchContentStates}
+                knowledgeJobs={knowledgeJobs}
+                onKnowledgeJobChange={handleKnowledgeJobChange}
                 totalCount={selectedSourceName ? filteredItems.length : undefined}
             />
 
