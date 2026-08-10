@@ -116,8 +116,9 @@ export async function POST(request: Request) {
 
   if (error) {
     if (isKnowledgeJobsUnavailableError(error)) {
+      console.error("[POST /api/knowledge/capture unavailable]", error.message);
       return Response.json(
-        { error: "지식 대기열 DB가 아직 보이지 않습니다. 운영자에게 012 적용 또는 schema cache 확인을 요청하세요." },
+        { error: "지식 대기열을 일시적으로 확인할 수 없습니다. 잠시 후 다시 시도해 주세요." },
         { status: 503 },
       );
     }

@@ -177,7 +177,7 @@ export default function MobileNavDrawer({
               보관함
             </p>
             <div className="space-y-0.5">
-              <KnowledgeNavLink mobile />
+              <KnowledgeNavLink mobile onClick={() => handleNavigation("/knowledge")} />
               <Link href="/playlists" onClick={() => handleNavigation("/playlists")} aria-current={pathname === "/playlists" ? "page" : undefined} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-subtle) hover:text-(--text-primary)">
                 <ListMusic size={18} className="shrink-0 text-(--notion-fg)/70" />
                 내 플레이리스트

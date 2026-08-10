@@ -29,6 +29,9 @@ describe("knowledge_jobs worker lease SQL 계약", () => {
     expect(migration).toContain("attempt_count = job.attempt_count + 1");
     expect(migration).toMatch(/where user_id = p_user_id\s+and capture_ready = true\s+and attempt_count < 3/);
     expect(migration).toContain("failure_code = 'max_attempts_exceeded'");
+    expect(migration).toMatch(
+      /failure_code = 'max_attempts_exceeded'[\s\S]*where user_id = p_user_id\s+and capture_ready = true\s+and attempt_count >= 3/i,
+    );
   });
 
   it("완료 전이는 처리 중 상태·같은 token·만료 전 lease를 모두 요구한다", () => {
@@ -80,8 +83,12 @@ describe("knowledge_jobs worker lease SQL 계약", () => {
   });
 
   it("worker RPC는 service_role 전용이다", () => {
-    expect(migration).toContain("grant execute on function public.claim_knowledge_jobs");
-    expect(migration).toContain("to service_role");
+    expect(migration).toMatch(
+      /grant execute on function public\.claim_knowledge_jobs\([^)]*\)\s*to service_role;/i,
+    );
+    expect(migration).not.toMatch(
+      /grant execute on function public\.claim_knowledge_jobs\([^)]*\)\s*to[^;]*authenticated/i,
+    );
   });
 
   it("사람 승인은 원자 CAS token으로 review_required에서 approving을 거쳐 완료한다", () => {
@@ -99,10 +106,11 @@ describe("knowledge_jobs worker lease SQL 계약", () => {
   });
 
   it("worker 완료 RPC는 approval CAS를 우회해 completed 또는 failed로 전이할 수 없다", () => {
-    const workerCompletion = migration.slice(
-      migration.indexOf("create or replace function public.complete_knowledge_job"),
-      migration.indexOf("create or replace function public.begin_knowledge_approval"),
-    );
+    const workerStart = migration.indexOf("create or replace function public.complete_knowledge_job");
+    const approvalStart = migration.indexOf("create or replace function public.begin_knowledge_approval");
+    expect(workerStart).toBeGreaterThanOrEqual(0);
+    expect(approvalStart).toBeGreaterThan(workerStart);
+    const workerCompletion = migration.slice(workerStart, approvalStart);
 
     expect(workerCompletion).toContain("p_status not in ('review_required', 'action_required')");
     expect(workerCompletion).toContain("completed_at = null");
@@ -120,5 +128,6 @@ describe("knowledge_jobs worker lease SQL 계약", () => {
     expect(migration).toContain("lease_token is null");
     expect(migration).toContain("attempt_count = 0");
     expect(migration).toContain("completed_at is null");
+    expect(migration).toContain("notify pgrst, 'reload schema'");
   });
 });

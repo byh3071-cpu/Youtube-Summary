@@ -65,6 +65,10 @@ Vercel production 환경의 `npm run verify:supabase:knowledge`도 `ok: true`,
 
 운영 이력은 legacy 설치에 `014_knowledge_jobs_legacy_upgrade.sql`을 적용한 뒤 `015_knowledge_job_retry.sql`을 적용한 순서다. `012_knowledge_jobs.sql`은 새 설치용 기준선으로만 유지하고, P1 `013_knowledge_process_requests.sql`은 현재 저장소·운영 이력에 없다. `016_knowledge_job_approval_cas_hardening.sql`과 과거 014의 authenticated 원본 SELECT를 닫는 `017_knowledge_jobs_browser_read_hardening.sql`은 준비만 되었고 아직 적용하지 않았다. 이 항목은 과거 적용 이력의 정리이며 현재 live DB 재검증을 주장하지 않는다.
 
+### 2026-08-10 후속 검증
+
+사람 승인으로 `017_knowledge_jobs_browser_read_hardening.sql`을 운영 DB에 적용했다. postflight에서 `anon`·`authenticated` 직접 SELECT 차단, 레거시 select policy 제거, service-role 전용 접근을 확인했다. `016`·`018` 함수의 정확한 시그니처와 service-role 권한은 read-only preflight로 재검증했으며, `018`의 실데이터 invalidation·재처리는 실행하지 않았다.
+
 # 지식 워크플로우 운영 전환 게이트
 
 ## 현재 판정

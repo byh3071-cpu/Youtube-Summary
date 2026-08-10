@@ -128,6 +128,30 @@ describe("지식 상태 응답 병합", () => {
     expect(merged.video_b.status).toBe("queued");
     expect(merged.video_c.status).toBe("completed");
   });
+
+  it("상태 전용 poll 응답은 목록에서 받은 표시 필드를 지우지 않는다", () => {
+    const current = job("video_a", "processing", "2026-08-01T00:01:00.000Z");
+    const merged = mergeKnowledgeJobMaps(
+      {
+        video_a: {
+          ...current,
+          sourceUrl: "https://www.youtube.com/watch?v=video_a",
+          title: "목록 제목",
+          channelName: "목록 채널",
+          failureCode: null,
+          reviewAvailable: true,
+        },
+      },
+      { video_a: job("video_a", "review_required", "2026-08-01T00:02:00.000Z") },
+    );
+
+    expect(merged.video_a).toMatchObject({
+      status: "review_required",
+      title: "목록 제목",
+      channelName: "목록 채널",
+      reviewAvailable: true,
+    });
+  });
 });
 
 describe("설명란 소스 가이드 정제", () => {
@@ -175,6 +199,7 @@ describe("조치 필요 안내", () => {
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_TIMEOUT" })).toContain("초과");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "TRANSCRIPT_DISABLED" })).toContain("비활성화");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "TRANSCRIPT_EVIDENCE_UNAVAILABLE" })).toContain("저장하지 않았습니다");
+    expect(knowledgeJobActionMessage({ ...base, failureCode: "PUBLIC_CAPTION_TIMESTAMPS_REQUIRED" })).toContain("재처리");
   });
 
   it("정상 처리 상태에는 조치 문구를 만들지 않는다", () => {
@@ -308,12 +333,39 @@ describe("검토 상세 공개 계약", () => {
       ecosystemApplications: [{ area: "Focus Feed", expectedEffect: "검토가 쉬워진다." }],
       twoWeekExperiment: { metric: "검토 시간과 수정 건수" },
       evidenceMap: [{ claimId: "F1", timestamps: ["[03:14]", "[04:04]"] }],
-      claims: [{ id: "F1", citation: "[03:14]", citationVerified: true }],
+      claims: [{ id: "F1", citation: "[03:14]", citationVerified: false }],
       coverage: [
         { part: "start", statement: "문제 제기" },
         { part: "middle", statement: "바이브 코딩" },
         { part: "end", statement: "사람마다 차이가 나는 이유" },
       ],
     });
+  });
+
+  it("근거 맵의 타임스탬프만으로 원문 검증 완료를 주장하지 않는다", () => {
+    const review = parseKnowledgeReviewDetail({
+      status: "review_required",
+      qualityScore: 95,
+      qualityReport: {},
+      result: {
+        draft: {
+          summary_format_version: 2,
+          summary: "검증 상태를 보수적으로 표시하는 충분히 긴 요약입니다.",
+          claims: [{ id: "F1", type: "fact", statement: "근거 맵에만 연결된 주장" }],
+          coverage: { start: "시작", middle: "중간", end: "끝" },
+          critical_analysis: "타임스탬프 존재와 의미 검증 완료를 구분해야 한다.",
+          ecosystem_applications: [{ area: "Focus Feed", application: "검증 표기를 보수적으로 표시한다." }],
+          two_week_experiment: {
+            hypothesis: "보수적 표기가 오판을 줄인다.",
+            action: "검토 화면을 확인한다.",
+            metric: "잘못된 검증 완료 표시 수",
+            stop_condition: "표시 오류가 남으면 재설계한다.",
+          },
+          evidence_map: [{ claim_id: "F1", timestamps: ["03:14"], note: "구조상 연결" }],
+        },
+      },
+    });
+
+    expect(review?.claims[0]).toMatchObject({ citation: "[03:14]", citationVerified: false });
   });
 });

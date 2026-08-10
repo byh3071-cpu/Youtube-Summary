@@ -341,7 +341,10 @@ select
   dependency.objsubid as dependent_subobject_id,
   dependency.deptype as dependency_type
 from legacy
-join pg_depend as dependency on dependency.refobjid = legacy.oid
+join pg_depend as dependency
+  on dependency.refclassid = 'pg_proc'::regclass
+ and dependency.refobjid = legacy.oid
+ and dependency.refobjsubid = 0
 where legacy.oid is not null
   and dependency.deptype not in ('i', 'e')
 order by legacy.signature, dependent_catalog, dependent_object_id;

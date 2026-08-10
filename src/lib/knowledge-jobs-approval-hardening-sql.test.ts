@@ -21,6 +21,7 @@ const releaseVerifier = readFileSync(
 
 describe("installed knowledge_jobs approval CAS hardening SQL contract", () => {
   it("replaces the existing worker RPC without modifying queued records", () => {
+    expect(migration).toMatch(/\bbegin;[\s\S]*\bcommit;\s*$/i);
     expect(migration).toMatch(/create or replace function public\.complete_knowledge_job\(/i);
     expect(migration).not.toMatch(/\b(?:insert|delete|truncate)\s+(?:into\s+)?public\.knowledge_jobs\b/i);
     expect(migration).toContain("p_status not in ('review_required', 'action_required')");
@@ -42,6 +43,8 @@ describe("installed knowledge_jobs approval CAS hardening SQL contract", () => {
     expect(preflight).toContain("status = ''completed''");
     expect(preflight).toContain("status = ''failed''");
     expect(preflight).toContain("as worker_restriction_hardened");
+    expect(preflight).toContain("dependency.refclassid = 'pg_proc'::regclass");
+    expect(preflight).toContain("dependency.refobjsubid = 0");
   });
 
   it("keeps required P0 RPC evidence separate from optional deferred P1 discovery", () => {

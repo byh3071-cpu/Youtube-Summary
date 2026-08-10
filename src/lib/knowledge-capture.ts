@@ -156,6 +156,8 @@ const KNOWLEDGE_ACTION_MESSAGES: Record<string, string> = {
   NLM_DRAFT_CONTRACT_INVALID: "NotebookLM 응답에 허용되지 않은 필드가 있어 저장하지 않았습니다. 처리기 업데이트가 필요합니다.",
   NLM_PROCESSING_FAILED: "NotebookLM 처리 중 오류가 발생했습니다. 집에서 Codex에 이 작업을 다시 처리해 달라고 요청해 주세요.",
   QUALITY_GATE_FAILED: "원문 커버리지나 타임스탬프가 부족해 자동 승인을 멈췄습니다.",
+  PUBLIC_CAPTION_TIMESTAMPS_REQUIRED:
+    "공개 자막 타임스탬프 근거가 없는 이전 요약입니다. 재처리하면 검증된 근거로 다시 만듭니다.",
   max_attempts_exceeded: "worker가 세 번 중단됐습니다. Codex에서 작업 상태를 점검해 주세요.",
 };
 
@@ -268,7 +270,7 @@ export function parseKnowledgeReviewDetail(input: {
       const id = reviewText(claim?.id, 80) ?? undefined;
       const mappedEvidence = id ? evidenceByClaimId.get(id) : undefined;
       const validCitation = reviewTimestamp(claim?.citation) ?? mappedEvidence?.timestamps[0];
-      const citationVerified = Boolean(validCitation) && (claim?.citation_verified === true || Boolean(mappedEvidence));
+      const citationVerified = Boolean(validCitation) && claim?.citation_verified === true;
       const evidenceExcerpt = type === "fact" && citationVerified
         ? reviewEvidenceExcerpt(claim?.evidence_quote ?? claim?.caption_quote ?? mappedEvidence?.note)
         : undefined;
@@ -290,8 +292,7 @@ export function parseKnowledgeReviewDetail(input: {
     const item = reviewRecord(rawItem);
     const statement = reviewText(item?.statement ?? rawItem, 4_000);
     if (!statement) return [];
-    const citation = reviewText(item?.citation, 16) ?? undefined;
-    const validCitation = citation && TIMESTAMP_PATTERN.test(citation) ? citation : undefined;
+    const validCitation = reviewTimestamp(item?.citation);
     const citationVerified = item?.citation_verified === true && Boolean(validCitation);
     const evidenceExcerpt = citationVerified
       ? reviewEvidenceExcerpt(item?.evidence_quote ?? item?.caption_quote)
@@ -395,7 +396,7 @@ export function mergeKnowledgeJobMaps(
     const previousTime = previous ? Date.parse(previous.updatedAt) : Number.NaN;
     const incomingTime = Date.parse(job.updatedAt);
     if (!previous || !Number.isFinite(previousTime) || !Number.isFinite(incomingTime) || incomingTime >= previousTime) {
-      merged[videoId] = job;
+      merged[videoId] = previous ? { ...previous, ...job } : job;
     }
   }
   return merged;

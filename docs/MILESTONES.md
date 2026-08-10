@@ -132,9 +132,9 @@ tags: [focus-feed, roadmap, milestones]
 - [ ] 사람 승인→Brain RESOURCE/SUMMARY write-once 검증은 항목별 승인 전까지 보류.
 - [x] `015_knowledge_job_retry.sql`: service-role 전용 단건 retry, 허용 실패 코드·3회 미만 제한, NotebookLM source ID/hash 보존 계약과 CLI를 코드·테스트로 준비.
 - [x] `015_knowledge_job_retry.sql`을 `014` 다음 사람 검토 후 운영 Supabase에 적용하고 action_required 1건을 기존 source ID로 재처리해 `review_required` 복구 검증.
-- [ ] `016_knowledge_job_approval_cas_hardening.sql`: `014`/`015` 뒤에 적용할 function-only CAS 강화본을 준비했으며, 이 저장소는 아직 운영 DB 적용이나 현재 live DB 재검증을 주장하지 않는다.
-- [ ] `017_knowledge_jobs_browser_read_hardening.sql`: 과거 014가 열어 둔 authenticated 원본 table SELECT와 select policy를 비파괴적으로 닫는 권한 강화본을 준비했으며, 운영 적용·postflight는 별도 사람 승인으로 남긴다.
-- [ ] `018_knowledge_review_invalidation.sql`: 강화 이전 엔진이 만든 불완전한 `review_required`를 service-role RPC로 `action_required`에 고정한 뒤 기존 source ID/hash를 보존해 재처리하는 계약을 준비했다. 이미 3회에 도달한 레거시 행은 metadata marker로 중복을 막으며 단 한 번만 마지막 교정 시도를 허용하고, 운영 적용·실데이터 전이는 별도 사람 승인으로 남긴다.
+- [x] `016_knowledge_job_approval_cas_hardening.sql`: 운영 DB의 worker 완료 RPC가 `review_required`/`action_required`만 허용하고 사람 승인 CAS를 우회하지 못함을 2026-08-10 read-only preflight로 재검증했다.
+- [x] `017_knowledge_jobs_browser_read_hardening.sql`: 사람 승인 후 운영 DB에 적용하고 `anon`·`authenticated` 직접 SELECT 차단, 레거시 select policy 제거, service-role 전용 접근을 postflight로 확인했다.
+- [x] `018_knowledge_review_invalidation.sql`: 운영 DB에서 invalidation/retry RPC의 정확한 시그니처와 service-role 전용 권한을 read-only preflight로 확인했다. 실데이터 invalidation·재처리는 이번 출시에서 실행하지 않았다.
 - [ ] P0 canary 10건 뒤 outbound Realtime 연속 구독·Windows 로그인 시작을 별도 승인으로 구현하고, PC offline 요청 및 다음 시작 시 15분 stale claim 회수를 실측.
 - [ ] iPhone 단축어 1개를 실제 기기에서 YouTube 공유 입력으로 검증.
 - [x] `/knowledge` 대기열·데스크톱/모바일 탐색 진입점과 지식 CTA 상태 표시를 준비.

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   getCurrentUserFromCookies: vi.fn(),
   getServerSupabaseClient: vi.fn(),
+  takeToken: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
@@ -14,6 +15,7 @@ vi.mock("@/lib/supabase-server-cookies", () => ({
 vi.mock("@/lib/supabase-server", () => ({
   getServerSupabaseClient: mocks.getServerSupabaseClient,
 }));
+vi.mock("@/lib/rate-limit", () => ({ takeToken: mocks.takeToken }));
 
 import { GET } from "./route";
 
@@ -52,6 +54,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.cookies.mockResolvedValue({ getAll: () => [] });
   mocks.getCurrentUserFromCookies.mockResolvedValue({ id: "user-a" });
+  mocks.takeToken.mockReturnValue({ ok: true });
 });
 
 describe("GET /api/knowledge/status", () => {
@@ -98,6 +101,16 @@ describe("GET /api/knowledge/status", () => {
         updatedAt: "2026-08-01T00:01:00.000Z",
       }],
     });
+  });
+
+  it("상태 polling burst는 DB 호출 전에 429와 Retry-After를 반환한다", async () => {
+    mocks.takeToken.mockReturnValue({ ok: false, retryAfterSec: 7 });
+
+    const response = await GET(makeRequest("abc_DEF-123"));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("7");
+    expect(mocks.getServerSupabaseClient).not.toHaveBeenCalled();
   });
 
   it.each(["42P01", "42703", "PGRST204", "PGRST205"])("migration 또는 schema cache 오류 %s는 503을 반환한다", async (code) => {

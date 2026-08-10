@@ -50,6 +50,7 @@ export default function CaptureDeepLinkClient() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const bookmarkletRef = useRef<HTMLAnchorElement>(null);
   const validVideo = extractYouTubeVideoId(url);
+  const matchingPreview = preview?.videoId === validVideo ? preview : null;
   const addChannelHref = validVideo ? `/add?url=${encodeURIComponent(url)}` : "/add";
   const activeJobId = state.kind === "done"
     && (state.job.status === "queued" || state.job.status === "processing")
@@ -67,11 +68,7 @@ export default function CaptureDeepLinkClient() {
   }, []);
 
   useEffect(() => {
-    if (!validVideo) {
-      setPreview(null);
-      setPreviewLoading(false);
-      return;
-    }
+    if (!validVideo) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -253,23 +250,23 @@ export default function CaptureDeepLinkClient() {
 
           {validVideo && (
             <div className="mt-4 overflow-hidden rounded-xl border border-(--notion-border) bg-(--notion-hover)/45">
-              {previewLoading && !preview ? (
+              {previewLoading && !matchingPreview ? (
                 <div className="flex min-h-24 items-center justify-center gap-2 px-4 text-sm text-(--notion-fg)/60" role="status">
                   <Loader2 size={16} className="animate-spin" aria-hidden /> 영상 정보 확인 중…
                 </div>
-              ) : preview ? (
+              ) : matchingPreview ? (
                 <div className="flex gap-3 p-3">
                   <Image
-                    src={preview.thumbnailUrl}
+                    src={matchingPreview.thumbnailUrl}
                     alt=""
                     width={160}
                     height={90}
                     className="h-[72px] w-32 shrink-0 rounded-lg object-cover sm:h-[90px] sm:w-40"
                   />
                   <div className="min-w-0 self-center">
-                    <p className="line-clamp-2 text-sm font-semibold leading-snug">{preview.title}</p>
+                    <p className="line-clamp-2 text-sm font-semibold leading-snug">{matchingPreview.title}</p>
                     <p className="mt-1 truncate text-xs text-(--notion-fg)/55">
-                      {preview.channelName ?? "채널 정보 확인 필요"}
+                      {matchingPreview.channelName ?? "채널 정보 확인 필요"}
                     </p>
                     <p className="mt-2 text-[11px] text-(--notion-fg)/50">기본값은 이 영상만 저장합니다.</p>
                   </div>

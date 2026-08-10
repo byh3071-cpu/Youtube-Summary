@@ -299,6 +299,7 @@ begin
     lease_owner = null,
     lease_expires_at = null
   where user_id = p_user_id
+    and capture_ready = true
     and attempt_count >= 3
     and (
       status = 'queued'
@@ -560,5 +561,7 @@ grant execute on function public.checkpoint_knowledge_job(uuid, uuid, uuid, text
 grant execute on function public.complete_knowledge_job(uuid, uuid, uuid, text, jsonb, smallint, jsonb, text, text) to service_role;
 grant execute on function public.begin_knowledge_approval(uuid, uuid, text) to service_role;
 grant execute on function public.complete_knowledge_approval(uuid, uuid, uuid, jsonb) to service_role;
+
+notify pgrst, 'reload schema';
 
 commit;

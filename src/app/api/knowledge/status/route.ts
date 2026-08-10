@@ -4,10 +4,12 @@ import {
 } from "@/lib/supabase-server-cookies";
 import { getServerSupabaseClient, type Database } from "@/lib/supabase-server";
 import {
+  KNOWLEDGE_STATUS_QUERY_LIMIT,
   parseKnowledgeStatusVideoIds,
   isKnowledgeJobsUnavailableError,
   type KnowledgeJobSummary,
 } from "@/lib/knowledge-capture";
+import { takeToken } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +40,16 @@ export async function GET(request: Request) {
   const videoIds = parseKnowledgeStatusVideoIds(new URL(request.url).searchParams.get("videoIds"));
   if (!videoIds) {
     return Response.json(
-      { error: "videoIds는 유효한 YouTube video ID를 최대 50개까지 받을 수 있어요." },
+      { error: `videoIds는 유효한 YouTube video ID를 최대 ${KNOWLEDGE_STATUS_QUERY_LIMIT}개까지 받을 수 있어요.` },
       { status: 400 },
+    );
+  }
+
+  const rateLimit = takeToken(`knowledge-status:${user.id}`, 60, 60_000);
+  if (!rateLimit.ok) {
+    return Response.json(
+      { error: "상태 조회 요청이 너무 잦아요. 잠시 후 다시 시도해 주세요." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSec) } },
     );
   }
 
@@ -61,7 +71,7 @@ export async function GET(request: Request) {
   if (error) {
     if (isKnowledgeJobsUnavailableError(error)) {
       return Response.json(
-        { error: "지식 대기열 DB가 아직 보이지 않습니다. 운영자에게 012 적용 또는 schema cache 확인을 요청하세요." },
+        { error: "지식 대기열을 일시적으로 확인할 수 없습니다. 잠시 후 다시 시도해 주세요." },
         { status: 503 },
       );
     }

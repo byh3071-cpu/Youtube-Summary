@@ -54,10 +54,11 @@ describe("knowledge_jobs legacy upgrade SQL contract", () => {
   });
 
   it("upgraded worker completion cannot bypass the approval CAS to publish", () => {
-    const workerCompletion = migration.slice(
-      migration.indexOf("create or replace function public.complete_knowledge_job"),
-      migration.indexOf("create or replace function public.begin_knowledge_approval"),
-    );
+    const workerStart = migration.indexOf("create or replace function public.complete_knowledge_job");
+    const approvalStart = migration.indexOf("create or replace function public.begin_knowledge_approval");
+    expect(workerStart).toBeGreaterThanOrEqual(0);
+    expect(approvalStart).toBeGreaterThan(workerStart);
+    const workerCompletion = migration.slice(workerStart, approvalStart);
 
     expect(workerCompletion).toContain("p_status not in ('review_required', 'action_required')");
     expect(workerCompletion).toContain("completed_at = null");

@@ -21,8 +21,11 @@ const serialize = (job: JobRow): KnowledgeJobSummary => ({
     ?? `https://www.youtube.com/watch?v=${encodeURIComponent(job.video_id)}`,
   title: job.title,
   channelName: job.channel_name,
-  status: job.status, failureCode: job.failure_code, captureReady: job.capture_ready,
-  createdAt: job.created_at, updatedAt: job.updated_at,
+  status: job.status,
+  failureCode: job.failure_code,
+  captureReady: job.capture_ready,
+  createdAt: job.created_at,
+  updatedAt: job.updated_at,
   reviewAvailable: job.status === "review_required" || job.status === "approving",
 });
 
@@ -33,9 +36,12 @@ export async function GET() {
   const supabase = getServerSupabaseClient();
   if (!supabase) return Response.json({ error: "지식 대기열 서버 설정이 아직 준비되지 않았어요." }, { status: 503 });
 
-  const { data, error } = await supabase.from("knowledge_jobs")
+  const { data, error } = await supabase
+    .from("knowledge_jobs")
     .select("id, video_id, source_url, title, channel_name, status, failure_code, capture_ready, created_at, updated_at")
-    .eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
   if (error) {
     if (isKnowledgeJobsUnavailableError(error)) return Response.json({ error: "지식 대기열 DB가 아직 준비되지 않았어요." }, { status: 503 });
     console.error("[GET /api/knowledge/jobs]", error.message);
