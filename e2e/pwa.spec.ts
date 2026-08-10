@@ -12,11 +12,21 @@ test.describe("pwa", () => {
     const manifest = (await res.json()) as {
       orientation?: string;
       icons: { src: string; sizes: string; type: string }[];
+      share_target?: {
+        action?: string;
+        method?: string;
+        params?: { title?: string; text?: string; url?: string };
+      };
     };
 
     // 데스크톱 PWA에서 세로 고정이 다시 생기면 안 된다.
     expect(manifest.orientation).toBeUndefined();
     expect(manifest.icons.length).toBeGreaterThanOrEqual(2);
+    expect(manifest.share_target).toEqual({
+      action: "/capture",
+      method: "GET",
+      params: { title: "title", text: "text", url: "url" },
+    });
 
     for (const icon of manifest.icons) {
       const iconRes = await request.get(icon.src);

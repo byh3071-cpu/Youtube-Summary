@@ -102,6 +102,7 @@ test.describe("mobile ux", () => {
     const dialog = page.getByRole("dialog", { name: "메뉴" });
     const firstChannel = dialog.locator('a[href*="source="]').first();
     await expect(firstChannel).toBeVisible();
+
     await expect(firstChannel.locator("img")).toBeVisible();
   });
 
@@ -535,6 +536,7 @@ test.describe("mobile ux", () => {
       page.getByRole("button", { name: "유튜브", exact: true }),
       page.getByRole("button", { name: "RSS", exact: true }),
       page.getByRole("button", { name: "피드 Q&A 열기" }),
+      page.getByRole("link", { name: "지식 대기열" }),
     ];
 
     for (const target of targets) {
@@ -542,6 +544,26 @@ test.describe("mobile ux", () => {
       const box = await target.boundingBox();
       expect(box, "target should have a bounding box").not.toBeNull();
       expect(box!.height, `${await target.evaluate((el) => el.textContent || el.getAttribute("aria-label"))} height`).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test("shared YouTube URL opens a two-choice knowledge capture screen", async ({ page }) => {
+    const sharedUrl = "https://youtu.be/abc_DEF-123?si=mobile-share";
+    await page.goto(`/capture?url=${encodeURIComponent(sharedUrl)}`);
+
+    await expect(page.getByRole("heading", { name: "Focus Feed 지식 캡처" })).toBeVisible();
+    await expect(page.getByLabel("YouTube 영상 링크")).toHaveValue(sharedUrl);
+
+    const capture = page.getByRole("button", { name: "지식으로 담기" });
+    const addChannel = page.getByRole("link", { name: "선택: 이 채널도 피드에 추가" });
+    await expect(capture).toBeVisible();
+    await expect(addChannel).toBeVisible();
+    await expect(addChannel).toHaveAttribute("href", /\/add\?url=/);
+
+    for (const target of [capture, addChannel]) {
+      const box = await target.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
     }
   });
 

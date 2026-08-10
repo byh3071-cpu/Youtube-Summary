@@ -53,4 +53,5 @@ tags: [focus-feed, qa, mobile, pwa]
 
 | 날짜 | 기기·OS | 결과 | 비고 |
 |------|---------|:----:|------|
+| 2026-08-06 | Playwright Pixel 5 393×851 · Chromium | PASS | production build 모바일 10/10. `/capture` 공유 URL·지식 대기열·44px·테마·overflow·아바타 fallback 포함. 비인증 로컬 자동화이며 OAuth·운영 DB·실기기 QA는 미확인. |
 | | | | |

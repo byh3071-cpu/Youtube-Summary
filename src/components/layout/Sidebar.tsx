@@ -11,6 +11,7 @@ import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import AddChannelButton from "@/components/feed/AddChannelButton";
 import SourceExportImport from "@/components/feed/SourceExportImport";
 import YouTubeSourceList from "@/components/layout/YouTubeSourceList";
+import KnowledgeNavLink from "@/components/layout/KnowledgeNavLink";
 import type { MergedFeedResult } from "@/lib/feed";
 import type { FeedSource } from "@/lib/sources";
 
@@ -115,6 +116,7 @@ export default function Sidebar({
                         보관함
                     </div>
                     <div className="space-y-0.5">
+                        <KnowledgeNavLink />
                         <Link
                             href="/playlists"
                             className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-(--text-secondary) hover:bg-(--surface-raised)/70 hover:text-(--text-primary)"

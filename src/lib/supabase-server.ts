@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { KnowledgeJobStatus } from "@/lib/knowledge-capture";
 
 // 우리가 사용할 DB 타입(테이블들)을 최소한으로 정의해 두면 좋습니다.
 export type Database = {
@@ -20,6 +21,7 @@ export type Database = {
           id?: number;
         };
         Update: Partial<Database["public"]["Tables"]["summaries"]["Row"]>;
+        Relationships: [];
       };
       playlists: {
         Row: {
@@ -37,6 +39,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["playlists"]["Row"]>;
+        Relationships: [];
       };
       user_plan: {
         Row: {
@@ -54,6 +57,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_plan"]["Row"]>;
+        Relationships: [];
       };
       usage_daily: {
         Row: {
@@ -75,6 +79,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["usage_daily"]["Row"]>;
+        Relationships: [];
       };
       bookmarks: {
         Row: {
@@ -96,6 +101,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["bookmarks"]["Row"]>;
+        Relationships: [];
       };
       teams: {
         Row: {
@@ -113,6 +119,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["teams"]["Row"]>;
+        Relationships: [];
       };
       team_members: {
         Row: {
@@ -130,6 +137,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["team_members"]["Row"]>;
+        Relationships: [];
       };
       team_invites: {
         Row: {
@@ -149,6 +157,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["team_invites"]["Row"]>;
+        Relationships: [];
       };
       trend_cache: {
         Row: {
@@ -164,6 +173,7 @@ export type Database = {
           generated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["trend_cache"]["Row"]>;
+        Relationships: [];
       };
       custom_sources: {
         Row: {
@@ -185,6 +195,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["custom_sources"]["Row"]>;
+        Relationships: [];
       };
       hidden_default_sources: {
         Row: {
@@ -198,6 +209,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["hidden_default_sources"]["Row"]>;
+        Relationships: [];
       };
       content_states: {
         Row: {
@@ -229,6 +241,125 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["content_states"]["Row"]>;
+        Relationships: [];
+      };
+      knowledge_jobs: {
+        Row: {
+          id: string;
+          user_id: string;
+          source_type: string;
+          source_key: string;
+          source_url: string;
+          video_id: string;
+          title: string;
+          channel_name: string | null;
+          source_guide: string;
+          metadata: unknown;
+          capture_ready: boolean;
+          tier: string;
+          status: KnowledgeJobStatus;
+          source_hash: string | null;
+          transcript_hash: string | null;
+          notebook_id: string | null;
+          notebook_name: string | null;
+          notebook_source_id: string | null;
+          notebook_source_added_at: string | null;
+          quality_score: number | null;
+          quality_report: unknown;
+          result: unknown;
+          failure_code: string | null;
+          failure_message: string | null;
+          approval_token: string | null;
+          approval_started_at: string | null;
+          approval_intent_hash: string | null;
+          lease_token: string | null;
+          lease_owner: string | null;
+          lease_expires_at: string | null;
+          attempt_count: number;
+          last_processed_at: string | null;
+          created_at: string;
+          updated_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          source_type?: string;
+          source_key: string;
+          source_url: string;
+          video_id: string;
+          title: string;
+          channel_name?: string | null;
+          source_guide?: string;
+          metadata?: unknown;
+          capture_ready?: boolean;
+          tier?: string;
+          status?: KnowledgeJobStatus;
+          source_hash?: string | null;
+          transcript_hash?: string | null;
+          notebook_id?: string | null;
+          notebook_name?: string | null;
+          notebook_source_id?: string | null;
+          notebook_source_added_at?: string | null;
+          quality_score?: number | null;
+          quality_report?: unknown;
+          result?: unknown;
+          failure_code?: string | null;
+          failure_message?: string | null;
+          approval_token?: string | null;
+          approval_started_at?: string | null;
+          approval_intent_hash?: string | null;
+          lease_token?: string | null;
+          lease_owner?: string | null;
+          lease_expires_at?: string | null;
+          attempt_count?: number;
+          last_processed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["knowledge_jobs"]["Row"]>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: {
+      enqueue_knowledge_job: {
+        Args: {
+          p_source_type: string;
+          p_source_key: string;
+          p_source_url: string;
+          p_video_id: string;
+          p_title: string;
+          p_channel_name?: string | null;
+          p_source_guide?: string;
+          p_metadata?: unknown;
+        };
+        Returns: Array<{
+          id: string;
+          video_id: string;
+          status: KnowledgeJobStatus;
+          created_at: string;
+          updated_at: string;
+          capture_ready: boolean;
+          created: boolean;
+        }>;
+      };
+      enrich_knowledge_job: {
+        Args: {
+          p_job_id: string;
+          p_title: string;
+          p_channel_name: string | null;
+          p_source_guide: string;
+        };
+        Returns: Array<{
+          id: string;
+          video_id: string;
+          status: KnowledgeJobStatus;
+          created_at: string;
+          updated_at: string;
+          capture_ready: boolean;
+        }>;
       };
     };
   };

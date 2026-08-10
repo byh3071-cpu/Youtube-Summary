@@ -10,6 +10,7 @@ import BookmarkButton from "./BookmarkButton";
 import ContentStateControl from "./ContentStateControl";
 import SummarizeButton from "./SummarizeButton";
 import InsightButton from "./InsightButton";
+import KnowledgeCaptureButton from "./KnowledgeCaptureButton";
 import { DeepDiveButton } from "./VideoDigestDrawer";
 import type { BookmarkEntry } from "./FeedClientContainer";
 import type { ContentStateInfo } from "@/app/actions/content-state";
@@ -17,6 +18,7 @@ import { getWatchProgress } from "@/lib/watch-history";
 import { useRadioQueueOptional } from "@/contexts/RadioQueueContext";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { HIT_AREA_44, ICON_ACTION_BTN } from "@/lib/ui";
+import type { KnowledgeJobSummary } from "@/lib/knowledge-capture";
 
 function formatTimeAgo(pubDate: string): string {
   const date = new Date(pubDate);
@@ -41,6 +43,8 @@ interface Props {
   onBookmarkChange?: () => void;
   contentState?: ContentStateInfo;
   onContentStateChange?: () => void;
+  knowledgeJob?: KnowledgeJobSummary | null;
+  onKnowledgeJobChange?: (job: KnowledgeJobSummary) => void;
 }
 
 function formatSeconds(sec: number): string {
@@ -54,7 +58,15 @@ function formatSeconds(sec: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentState, onContentStateChange }: Props) {
+export default function YouTubeCard({
+  item,
+  bookmark,
+  onBookmarkChange,
+  contentState,
+  onContentStateChange,
+  knowledgeJob,
+  onKnowledgeJobChange,
+}: Props) {
   const radio = useRadioQueueOptional();
   const [menuOpen, setMenuOpen] = useState(false);
   const isHydrated = useIsHydrated();
@@ -271,6 +283,14 @@ export default function YouTubeCard({ item, bookmark, onBookmarkChange, contentS
                   />
                 </div>
               )}
+              <KnowledgeCaptureButton
+                videoUrl={item.link}
+                title={item.title}
+                channelName={item.sourceName}
+                compact
+                job={knowledgeJob}
+                onJobChange={onKnowledgeJobChange}
+              />
               <div>
                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-(--notion-fg)/55 sm:text-xs">
                   더 알아보기

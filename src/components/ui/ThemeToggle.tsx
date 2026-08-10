@@ -17,6 +17,8 @@ export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
         return (
             <button
                 type="button"
+                disabled
+                aria-disabled="true"
                 className={`flex items-center text-(--notion-fg)/70 hover:bg-(--notion-hover) rounded-lg transition-colors ${iconOnly ? 'p-2 justify-center min-h-[44px] min-w-[44px]' : 'w-full justify-between gap-2 text-sm p-1.5 min-h-[44px] sm:min-h-0 touch-manipulation'}`}
                 aria-label="테마 전환"
             >

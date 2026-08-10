@@ -6,8 +6,10 @@ import { ArrowLeft, ExternalLink, Play } from "lucide-react";
 import type { FeedItem } from "@/types/feed";
 import AddToRadioButton from "./AddToRadioButton";
 import BookmarkButton from "./BookmarkButton";
+import KnowledgeCaptureButton from "./KnowledgeCaptureButton";
 import LongformSummaryPanel from "./LongformSummaryPanel";
 import type { BookmarkEntry } from "./FeedClientContainer";
+import type { KnowledgeJobSummary } from "@/lib/knowledge-capture";
 
 const LONGFORM_SCROLL_KEY = "focus-feed:longform-scroll-y";
 
@@ -16,6 +18,8 @@ interface Props {
   initialWatchVideoId?: string | null;
   bookmarks?: BookmarkEntry[];
   onBookmarkChange?: () => void;
+  knowledgeJobs?: Record<string, KnowledgeJobSummary>;
+  onKnowledgeJobChange?: (job: KnowledgeJobSummary) => void;
 }
 
 function formatDuration(seconds?: number) {
@@ -83,6 +87,8 @@ export default function LongformFeedView({
   initialWatchVideoId = null,
   bookmarks = [],
   onBookmarkChange,
+  knowledgeJobs = {},
+  onKnowledgeJobChange,
 }: Props) {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(initialWatchVideoId);
   const shouldRestoreListPosition = useRef(false);
@@ -177,6 +183,13 @@ export default function LongformFeedView({
                     videoId={selectedItem.id}
                     title={selectedItem.title}
                     className="min-h-11 px-4 text-sm"
+                  />
+                  <KnowledgeCaptureButton
+                    videoUrl={selectedItem.link}
+                    title={selectedItem.title}
+                    channelName={selectedItem.sourceName}
+                    job={knowledgeJobs[selectedItem.id]}
+                    onJobChange={onKnowledgeJobChange}
                   />
                   {onBookmarkChange && (
                     <BookmarkButton
