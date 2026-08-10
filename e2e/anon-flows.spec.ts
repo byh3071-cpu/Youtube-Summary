@@ -81,6 +81,7 @@ test.describe("anonymous flows", () => {
     await page.goto("/");
     const toggle = page.locator("aside").getByRole("button", { name: "테마 전환" });
     await expect(toggle).toBeVisible();
+    await expect(toggle).toBeEnabled();
 
     const wasDark = await page.evaluate(() => document.documentElement.classList.contains("dark"));
     await toggle.click();
