@@ -171,6 +171,10 @@ describe("조치 필요 안내", () => {
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_EVIDENCE_NOT_GROUNDED" })).toContain("원문·공개 자막");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_DRAFT_CONTRACT_INVALID" })).toContain("저장하지 않았습니다");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_PROCESSING_FAILED" })).toContain("다시 처리");
+    expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_AUTH_EXPIRED" })).toContain("만료");
+    expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_TIMEOUT" })).toContain("초과");
+    expect(knowledgeJobActionMessage({ ...base, failureCode: "TRANSCRIPT_DISABLED" })).toContain("비활성화");
+    expect(knowledgeJobActionMessage({ ...base, failureCode: "TRANSCRIPT_EVIDENCE_UNAVAILABLE" })).toContain("저장하지 않았습니다");
   });
 
   it("정상 처리 상태에는 조치 문구를 만들지 않는다", () => {
@@ -264,5 +268,52 @@ describe("검토 상세 공개 계약", () => {
       "https://www.youtube.com/watch?v=abc_DEF-123&t=65s",
     );
     expect(knowledgeCitationUrl("https://example.com/video", "[01:05]")).toBeNull();
+  });
+
+  it("V2 본문 필드와 별도 근거 맵을 허용 목록으로 변환한다", () => {
+    const review = parseKnowledgeReviewDetail({
+      status: "review_required",
+      qualityScore: 95,
+      qualityReport: { warnings: [] },
+      result: {
+        category: "2026-08 AI",
+        draft: {
+          summary_format_version: 2,
+          summary: "잔기술 암기보다 문제 정의와 검증 능력을 공부해야 한다.",
+          key_points: ["모델 성능", "문제 정의", "검증"],
+          creator_thesis: "AI 성능이 사용법 암기의 가치를 빠르게 낮춘다는 주장이다.",
+          audience_context: "댓글 미수집",
+          critical_analysis: "공부 중단이 아니라 학습 대상 전환으로 읽어야 한다.",
+          claims: [{ id: "F1", type: "fact", statement: "잔기술보다 AI 기본 성능의 영향이 커졌다." }],
+          coverage: { start: "문제 제기", middle: "바이브 코딩", end: "사람마다 차이가 나는 이유" },
+          ecosystem_applications: [{ area: "Focus Feed", application: "근거와 요약을 분리한다.", expected_effect: "검토가 쉬워진다." }],
+          two_week_experiment: {
+            hypothesis: "분리된 근거 맵이 검토 시간을 줄인다.",
+            action: "영상 다섯 편에 적용한다.",
+            metric: "검토 시간과 수정 건수",
+            stop_condition: "수정 건수가 줄지 않으면 중단한다.",
+          },
+          evidence_map: [{ claim_id: "F1", timestamps: ["03:14", "[04:04]"], note: "직접 발언" }],
+          uncertainties: ["댓글 미수집"],
+          yohan_relevance: "요한 생태계의 수집·검증·승격 흐름에 적용한다.",
+        },
+      },
+    });
+
+    expect(review).toMatchObject({
+      formatVersion: 2,
+      creatorThesis: expect.stringContaining("AI 성능"),
+      audienceContext: "댓글 미수집",
+      criticalAnalysis: expect.stringContaining("학습 대상"),
+      ecosystemApplications: [{ area: "Focus Feed", expectedEffect: "검토가 쉬워진다." }],
+      twoWeekExperiment: { metric: "검토 시간과 수정 건수" },
+      evidenceMap: [{ claimId: "F1", timestamps: ["[03:14]", "[04:04]"] }],
+      claims: [{ id: "F1", citation: "[03:14]", citationVerified: true }],
+      coverage: [
+        { part: "start", statement: "문제 제기" },
+        { part: "middle", statement: "바이브 코딩" },
+        { part: "end", statement: "사람마다 차이가 나는 이유" },
+      ],
+    });
   });
 });

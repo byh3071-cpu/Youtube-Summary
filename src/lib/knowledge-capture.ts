@@ -48,12 +48,33 @@ export interface KnowledgeJobSummary {
 export type KnowledgeClaimType = "fact" | "interpretation" | "recommendation";
 
 export interface KnowledgeReviewClaim {
+  id?: string;
   type: KnowledgeClaimType;
   statement: string;
   evidenceExcerpt?: string;
   citation?: string;
   citationVerified: boolean;
   requiresCrosscheck: boolean;
+}
+
+export interface KnowledgeEvidenceMapItem {
+  claimId: string;
+  statement: string;
+  timestamps: string[];
+  note?: string;
+}
+
+export interface KnowledgeEcosystemApplication {
+  area: string;
+  application: string;
+  expectedEffect?: string;
+}
+
+export interface KnowledgeTwoWeekExperiment {
+  hypothesis: string;
+  action: string;
+  metric: string;
+  stopCondition: string;
 }
 
 export interface KnowledgeReviewCoverage {
@@ -65,6 +86,7 @@ export interface KnowledgeReviewCoverage {
 }
 
 export interface KnowledgeReviewDetail {
+  formatVersion: 1 | 2;
   summary: string;
   keyPoints: string[];
   claims: KnowledgeReviewClaim[];
@@ -74,6 +96,12 @@ export interface KnowledgeReviewDetail {
   category: string;
   qualityScore?: number;
   qualityWarnings: string[];
+  creatorThesis?: string;
+  audienceContext?: string;
+  criticalAnalysis?: string;
+  ecosystemApplications: KnowledgeEcosystemApplication[];
+  twoWeekExperiment?: KnowledgeTwoWeekExperiment;
+  evidenceMap: KnowledgeEvidenceMapItem[];
 }
 
 export type KnowledgeJobMap = Record<string, KnowledgeJobSummary>;
@@ -104,6 +132,17 @@ export function notifyKnowledgeJobsChanged(): void {
 }
 
 const KNOWLEDGE_ACTION_MESSAGES: Record<string, string> = {
+  NLM_AUTH_REQUIRED: "NotebookLM 로그인이 필요합니다. 인증을 다시 연결한 뒤 재처리해 주세요.",
+  NLM_AUTH_EXPIRED: "저장된 NotebookLM 인증이 만료됐습니다. 다시 로그인한 뒤 재처리해 주세요.",
+  NLM_TIMEOUT: "NotebookLM 응답 시간이 초과됐습니다. 잠시 뒤 재처리해 주세요.",
+  NLM_RATE_LIMITED: "NotebookLM 요청 한도에 도달했습니다. 잠시 기다린 뒤 재처리해 주세요.",
+  NLM_TRANSPORT_FAILED: "NotebookLM 연결 프로세스가 끊겼습니다. CLI 상태를 확인한 뒤 재처리해 주세요.",
+  TRANSCRIPT_TIMEOUT: "YouTube 자막 요청 시간이 초과됐습니다. 잠시 뒤 재처리해 주세요.",
+  TRANSCRIPT_DISABLED: "이 영상은 공개 자막이 비활성화되어 자동 검증을 진행할 수 없습니다.",
+  TRANSCRIPT_UNAVAILABLE: "검증 가능한 공개 자막을 찾지 못했습니다.",
+  TRANSCRIPT_RATE_LIMITED: "YouTube 자막 요청 한도에 도달했습니다. 잠시 뒤 재처리해 주세요.",
+  TRANSCRIPT_FETCH_FAILED: "YouTube 자막을 가져오지 못했습니다. 연결 상태를 확인한 뒤 재처리해 주세요.",
+  TRANSCRIPT_EVIDENCE_UNAVAILABLE: "타임스탬프가 있는 원문 근거를 확보하지 못해 요약을 저장하지 않았습니다.",
   NOTEBOOKLM_AUTH_REQUIRED: "집 PC에서 NotebookLM 로그인을 다시 연결한 뒤 재처리해 주세요.",
   NOTEBOOKLM_CAPTION_UNAVAILABLE: "공개 자막이 없는 영상입니다. P0에서는 자동 전사를 하지 않아요.",
   NOTEBOOKLM_VIDEO_UNAVAILABLE: "비공개·삭제·접근 제한 영상인지 YouTube에서 확인해 주세요.",
@@ -153,6 +192,35 @@ function reviewTextList(value: unknown): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
+function reviewTimestamp(value: unknown): string | undefined {
+  const raw = reviewText(value, 16);
+  if (!raw) return undefined;
+  const wrapped = raw.startsWith("[") ? raw : `[${raw}]`;
+  return TIMESTAMP_PATTERN.test(wrapped) ? wrapped : undefined;
+}
+
+function reviewEcosystemApplications(value: unknown): KnowledgeEcosystemApplication[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 12).flatMap((item) => {
+    const record = reviewRecord(item);
+    const area = reviewText(record?.area, 160);
+    const application = reviewText(record?.application, 4_000);
+    if (!area || !application) return [];
+    const expectedEffect = reviewText(record?.expected_effect, 2_000) ?? undefined;
+    return [{ area, application, ...(expectedEffect ? { expectedEffect } : {}) }];
+  });
+}
+
+function reviewTwoWeekExperiment(value: unknown): KnowledgeTwoWeekExperiment | undefined {
+  const record = reviewRecord(value);
+  const hypothesis = reviewText(record?.hypothesis, 2_000);
+  const action = reviewText(record?.action, 3_000);
+  const metric = reviewText(record?.metric, 2_000);
+  const stopCondition = reviewText(record?.stop_condition, 2_000);
+  if (!hypothesis || !action || !metric || !stopCondition) return undefined;
+  return { hypothesis, action, metric, stopCondition };
+}
+
 function reviewEvidenceExcerpt(value: unknown): string | undefined {
   const text = reviewText(value, 1_000)?.replace(/\s+/g, " ");
   if (!text) return undefined;
@@ -176,6 +244,19 @@ export function parseKnowledgeReviewDetail(input: {
   const draft = reviewRecord(result?.draft);
   const summary = reviewText(draft?.summary);
   if (!summary) return undefined;
+  const formatVersion: 1 | 2 = draft?.summary_format_version === 2 ? 2 : 1;
+  const rawEvidenceMap = (Array.isArray(draft?.evidence_map) ? draft.evidence_map : [])
+    .slice(0, REVIEW_LIST_LIMIT)
+    .flatMap((value) => {
+      const item = reviewRecord(value);
+      const claimId = reviewText(item?.claim_id, 80);
+      const timestamps = (Array.isArray(item?.timestamps) ? item.timestamps : [])
+        .map(reviewTimestamp)
+        .filter((timestamp): timestamp is string => Boolean(timestamp));
+      if (!claimId || timestamps.length === 0) return [];
+      return [{ claimId, timestamps, note: reviewText(item?.note, 1_000) ?? undefined }];
+    });
+  const evidenceByClaimId = new Map(rawEvidenceMap.map((item) => [item.claimId, item]));
 
   const claims = (Array.isArray(draft?.claims) ? draft.claims : [])
     .slice(0, REVIEW_LIST_LIMIT)
@@ -184,13 +265,15 @@ export function parseKnowledgeReviewDetail(input: {
       const statement = reviewText(claim?.statement, 4_000);
       const type = claim?.type;
       if (!statement || !["fact", "interpretation", "recommendation"].includes(String(type))) return null;
-      const citation = reviewText(claim?.citation, 16) ?? undefined;
-      const validCitation = citation && TIMESTAMP_PATTERN.test(citation) ? citation : undefined;
-      const citationVerified = claim?.citation_verified === true && Boolean(validCitation);
+      const id = reviewText(claim?.id, 80) ?? undefined;
+      const mappedEvidence = id ? evidenceByClaimId.get(id) : undefined;
+      const validCitation = reviewTimestamp(claim?.citation) ?? mappedEvidence?.timestamps[0];
+      const citationVerified = Boolean(validCitation) && (claim?.citation_verified === true || Boolean(mappedEvidence));
       const evidenceExcerpt = type === "fact" && citationVerified
-        ? reviewEvidenceExcerpt(claim?.evidence_quote ?? claim?.caption_quote)
+        ? reviewEvidenceExcerpt(claim?.evidence_quote ?? claim?.caption_quote ?? mappedEvidence?.note)
         : undefined;
       return {
+        ...(id ? { id } : {}),
         type: type as KnowledgeClaimType,
         statement,
         ...(evidenceExcerpt ? { evidenceExcerpt } : {}),
@@ -203,8 +286,9 @@ export function parseKnowledgeReviewDetail(input: {
 
   const rawCoverage = reviewRecord(draft?.coverage);
   const coverage = (["start", "middle", "end"] as const).flatMap((part) => {
-    const item = reviewRecord(rawCoverage?.[part]);
-    const statement = reviewText(item?.statement, 4_000);
+    const rawItem = rawCoverage?.[part];
+    const item = reviewRecord(rawItem);
+    const statement = reviewText(item?.statement ?? rawItem, 4_000);
     if (!statement) return [];
     const citation = reviewText(item?.citation, 16) ?? undefined;
     const validCitation = citation && TIMESTAMP_PATTERN.test(citation) ? citation : undefined;
@@ -232,8 +316,15 @@ export function parseKnowledgeReviewDetail(input: {
     && input.qualityScore <= 100
     ? input.qualityScore
     : undefined;
+  const evidenceMap: KnowledgeEvidenceMapItem[] = rawEvidenceMap.map((item) => ({
+    claimId: item.claimId,
+    statement: claims.find((claim) => claim.id === item.claimId)?.statement ?? "연결된 주장 없음",
+    timestamps: item.timestamps,
+    ...(item.note ? { note: item.note } : {}),
+  }));
 
   return {
+    formatVersion,
     summary,
     keyPoints: reviewTextList(draft?.key_points),
     claims,
@@ -243,6 +334,12 @@ export function parseKnowledgeReviewDetail(input: {
     category: reviewText(result?.category, 160) ?? "YT · 미분류 · Inbox",
     qualityScore,
     qualityWarnings,
+    creatorThesis: reviewText(draft?.creator_thesis, 8_000) ?? undefined,
+    audienceContext: reviewText(draft?.audience_context, 8_000) ?? undefined,
+    criticalAnalysis: reviewText(draft?.critical_analysis, 8_000) ?? undefined,
+    ecosystemApplications: reviewEcosystemApplications(draft?.ecosystem_applications),
+    twoWeekExperiment: reviewTwoWeekExperiment(draft?.two_week_experiment),
+    evidenceMap,
   };
 }
 

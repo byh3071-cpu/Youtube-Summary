@@ -134,7 +134,59 @@ export default function KnowledgeReviewPanel({
         <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{review.summary}</p>
       </section>
 
-      {review.keyPoints.length > 0 && (
+      {review.formatVersion === 2 && (
+        <>
+          {review.creatorThesis && (
+            <section className="mt-5" aria-labelledby="review-creator-thesis-title">
+              <h3 id="review-creator-thesis-title" className="text-sm font-bold">제작자의 주장과 영상 논리</h3>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{review.creatorThesis}</p>
+            </section>
+          )}
+
+          <section className="mt-5" aria-labelledby="review-audience-context-title">
+            <h3 id="review-audience-context-title" className="text-sm font-bold">시청자 맥락</h3>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-(--text-secondary)">
+              {review.audienceContext ?? "댓글 미수집"}
+            </p>
+          </section>
+
+          {review.criticalAnalysis && (
+            <section className="mt-5 rounded-xl border border-(--border-subtle) px-4 py-4" aria-labelledby="review-critical-analysis-title">
+              <h3 id="review-critical-analysis-title" className="text-sm font-bold">비판적 판단</h3>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{review.criticalAnalysis}</p>
+            </section>
+          )}
+
+          {review.ecosystemApplications.length > 0 && (
+            <section className="mt-5" aria-labelledby="review-ecosystem-title">
+              <h3 id="review-ecosystem-title" className="text-sm font-bold">요한 생태계 적용</h3>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {review.ecosystemApplications.map((item) => (
+                  <div key={`${item.area}-${item.application}`} className="rounded-xl bg-(--surface-subtle) px-4 py-3">
+                    <p className="text-xs font-bold text-(--text-secondary)">{item.area}</p>
+                    <p className="mt-1 text-sm leading-6">{item.application}</p>
+                    {item.expectedEffect && <p className="mt-2 text-xs leading-5 text-(--text-secondary)">기대 효과: {item.expectedEffect}</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {review.twoWeekExperiment && (
+            <section className="mt-5 rounded-xl border border-(--border-subtle) px-4 py-4" aria-labelledby="review-experiment-title">
+              <h3 id="review-experiment-title" className="text-sm font-bold">2주 실험</h3>
+              <dl className="mt-3 grid gap-3 text-sm leading-6 sm:grid-cols-[6rem_1fr]">
+                <dt className="font-semibold text-(--text-secondary)">가설</dt><dd>{review.twoWeekExperiment.hypothesis}</dd>
+                <dt className="font-semibold text-(--text-secondary)">실행</dt><dd>{review.twoWeekExperiment.action}</dd>
+                <dt className="font-semibold text-(--text-secondary)">지표</dt><dd>{review.twoWeekExperiment.metric}</dd>
+                <dt className="font-semibold text-(--text-secondary)">중단 조건</dt><dd>{review.twoWeekExperiment.stopCondition}</dd>
+              </dl>
+            </section>
+          )}
+        </>
+      )}
+
+      {review.formatVersion !== 2 && review.keyPoints.length > 0 && (
         <section className="mt-5" aria-labelledby="review-points-title">
           <h3 id="review-points-title" className="text-sm font-bold">핵심 요점</h3>
           <ul className="mt-2 space-y-2">
@@ -148,7 +200,7 @@ export default function KnowledgeReviewPanel({
         </section>
       )}
 
-      {review.claims.length > 0 && (
+      {review.formatVersion !== 2 && review.claims.length > 0 && (
         <section className="mt-5" aria-labelledby="review-claims-title">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <h3 id="review-claims-title" className="text-sm font-bold">주장과 확인 근거</h3>
@@ -181,7 +233,7 @@ export default function KnowledgeReviewPanel({
         </section>
       )}
 
-      {review.coverage.length > 0 && (
+      {review.formatVersion !== 2 && review.coverage.length > 0 && (
         <section className="mt-5" aria-labelledby="review-coverage-title">
           <h3 id="review-coverage-title" className="text-sm font-bold">영상 전 구간 확인</h3>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -199,14 +251,14 @@ export default function KnowledgeReviewPanel({
         </section>
       )}
 
-      {review.relevance && (
+      {review.formatVersion !== 2 && review.relevance && (
         <section className="mt-5 rounded-xl border border-(--border-subtle) px-4 py-3" aria-labelledby="review-relevance-title">
           <h3 id="review-relevance-title" className="text-sm font-bold">AI가 제안한 적재 이유</h3>
           <p className="mt-2 text-sm leading-6">{review.relevance}</p>
         </section>
       )}
 
-      <section className="mt-5" aria-labelledby="review-uncertainty-title">
+      {review.formatVersion !== 2 && <section className="mt-5" aria-labelledby="review-uncertainty-title">
         <h3 id="review-uncertainty-title" className="text-sm font-bold">불확실성</h3>
         {noUncertaintyFlagged ? (
           <p className="mt-2 text-sm leading-6 text-(--text-secondary)">
@@ -217,7 +269,36 @@ export default function KnowledgeReviewPanel({
             {review.uncertainties.map((item) => <li key={item}>{item}</li>)}
           </ul>
         )}
-      </section>
+      </section>}
+
+      {review.formatVersion === 2 && (
+        <section className="mt-6 border-t border-(--border-subtle) pt-5" aria-labelledby="review-evidence-appendix-title">
+          <h3 id="review-evidence-appendix-title" className="text-sm font-bold">검증 부록</h3>
+          <p className="mt-1 text-xs leading-5 text-(--text-secondary)">본문 흐름을 방해하지 않도록 타임스탬프와 불확실성을 이곳에 모았습니다.</p>
+          <ol className="mt-3 space-y-2">
+            {review.evidenceMap.map((item) => (
+              <li key={item.claimId} className="rounded-xl bg-(--surface-subtle) px-4 py-3">
+                <p className="text-xs font-bold text-(--text-secondary)">{item.claimId}</p>
+                <p className="mt-1 text-sm leading-6">{item.statement}</p>
+                {item.note && <p className="mt-1 text-xs leading-5 text-(--text-secondary)">{item.note}</p>}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {item.timestamps.map((timestamp) => (
+                    <EvidenceLink key={timestamp} sourceUrl={sourceUrl} citation={timestamp} />
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ol>
+          <h4 className="mt-4 text-xs font-bold text-(--text-secondary)">불확실성·교차검증</h4>
+          {noUncertaintyFlagged ? (
+            <p className="mt-2 text-sm text-(--text-secondary)">별도로 표시된 불확실성이 없습니다.</p>
+          ) : (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+              {review.uncertainties.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          )}
+        </section>
+      )}
 
       <a
         href={sourceUrl}
