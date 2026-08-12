@@ -12,10 +12,35 @@ const migration = readFileSync(
   "utf8",
 );
 
-const approvedJobIds = [
-  "e8264ecd-269d-42a8-b1ec-65998d87dd62",
-  "be6f59de-691d-4461-9f6e-3c765330056b",
-  "63a4a8e4-503a-45fb-80a2-05d3a638df22",
+const preflight = readFileSync(
+  join(process.cwd(), "scripts", "preflight-semantic-canary-recovery.mjs"),
+  "utf8",
+);
+
+const mutationBlock = migration.match(/update public\.knowledge_jobs as job\s+set([\s\S]*?)\s+where job\.id/i)?.[1] ?? "";
+
+const approvedCanaries = [
+  [
+    "e8264ecd-269d-42a8-b1ec-65998d87dd62",
+    "dde61734-4133-412d-8d6f-e60b7a387c2f",
+    "9eee7573-89e7-4ed2-ab8a-d8cfcfbb9c4e",
+    "a59856452f06e014e2d04659b7d17f4f1d045d53697f2deb447c4bf7c1a2c57d",
+    "9efe06cd63696e3161f7c57898737ee069f10549215f49ade314b6e35cb479ff",
+  ],
+  [
+    "be6f59de-691d-4461-9f6e-3c765330056b",
+    "dde61734-4133-412d-8d6f-e60b7a387c2f",
+    "5187e4ec-4232-4276-aff5-be0cb387688c",
+    "64804b07c4bd1b9048964412dbe8e10e36dacd8dbdf29464bf986dc36c0cbf62",
+    "49d3f4144104c976218733f69cf24af8022c55890bbc956569dd8173f30175d7",
+  ],
+  [
+    "63a4a8e4-503a-45fb-80a2-05d3a638df22",
+    "dde61734-4133-412d-8d6f-e60b7a387c2f",
+    "4e185478-3cce-4387-97b5-e3d85d5dfa2c",
+    "e08441c396cf9029b4529e411e16ac74018a0aeba6ef0b59b5f80021928752ae",
+    "6cbe62d8ca806bca3f5b252507d8a86a935825f9106653499559b87815bb7c99",
+  ],
 ];
 
 describe("semantic JSON fence canary recovery SQL contract", () => {
@@ -32,9 +57,14 @@ describe("semantic JSON fence canary recovery SQL contract", () => {
   });
 
   it("can target only the three explicitly approved canaries", () => {
-    for (const jobId of approvedJobIds) expect(migration).toContain(`'${jobId}'::uuid`);
-    expect(migration.match(/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}/gi)).toHaveLength(3);
-    expect(migration).toMatch(/job\.id in \([\s\S]*?\)\s+and job\.capture_ready = true/i);
+    for (const canary of approvedCanaries) {
+      for (const value of canary) expect(migration).toContain(`'${value}'`);
+    }
+    expect(migration).toMatch(/approved\.job_id = job\.id/i);
+    expect(migration).toMatch(/approved\.notebook_id = job\.notebook_id/i);
+    expect(migration).toMatch(/approved\.notebook_source_id = job\.notebook_source_id/i);
+    expect(migration).toMatch(/approved\.source_hash = lower\(job\.source_hash\)/i);
+    expect(migration).toMatch(/approved\.transcript_hash = lower\(job\.transcript_hash\)/i);
   });
 
   it("requires the exact exhausted failure and complete preserved source identity", () => {
@@ -44,10 +74,7 @@ describe("semantic JSON fence canary recovery SQL contract", () => {
     expect(migration).toContain(
       "job.failure_message = 'Semantic evaluator returned malformed JSON.'",
     );
-    expect(migration).toContain("nullif(trim(job.notebook_id), '') is not null");
-    expect(migration).toContain("nullif(trim(job.notebook_source_id), '') is not null");
-    expect(migration).toContain("job.source_hash ~ '^[0-9a-fA-F]{64}$'");
-    expect(migration).toContain("job.transcript_hash ~ '^[0-9a-fA-F]{64}$'");
+    expect(migration).toContain("as approved(job_id, notebook_id, notebook_source_id, source_hash, transcript_hash)");
   });
 
   it("grants one final claim and records a non-repeatable audit marker", () => {
@@ -77,8 +104,8 @@ describe("semantic JSON fence canary recovery SQL contract", () => {
     ]) {
       expect(migration).toContain(field);
     }
-    expect(migration).not.toMatch(/notebook_(?:id|name|source_id|source_added_at)\s*=/i);
-    expect(migration).not.toMatch(/(?:source_hash|transcript_hash)\s*=/i);
+    expect(mutationBlock).not.toMatch(/notebook_(?:id|name|source_id|source_added_at)\s*=/i);
+    expect(mutationBlock).not.toMatch(/(?:source_hash|transcript_hash)\s*=/i);
   });
 
   it("is a transactional, function-only install with bounded DDL locks", () => {
@@ -89,5 +116,14 @@ describe("semantic JSON fence canary recovery SQL contract", () => {
     expect(migration).not.toMatch(/\b(?:insert|delete|truncate)\s+(?:into\s+)?public\.knowledge_jobs\b/i);
     expect(migration).not.toMatch(/select\s+public\.recover_knowledge_semantic_json_fence_canary/i);
     expect(migration).not.toContain("create or replace function public.retry_knowledge_job");
+  });
+
+  it("ships a fixed-job read-only preflight without mutation methods", () => {
+    for (const [jobId] of approvedCanaries) expect(preflight).toContain(`"${jobId}"`);
+    expect(preflight).toContain('.from("knowledge_jobs")');
+    expect(preflight).toContain('.in("id", approvedJobIds)');
+    expect(preflight).toContain("readOnly: true");
+    expect(preflight).not.toMatch(/\.(?:insert|update|upsert|delete)\s*\(/);
+    expect(preflight).not.toContain("SUPABASE_SERVICE_ROLE_KEY}");
   });
 });
