@@ -64,7 +64,7 @@ export default function MobileHeaderWithNav({
             </button>
           </div>
           <div className="min-w-0 flex-1" aria-hidden />
-          <Link href="/knowledge" onClick={startNavigation} className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-(--text-secondary) hover:bg-(--surface-subtle)" aria-label={openKnowledgeJobs > 0 ? `지식 대기열, 열린 작업 ${openKnowledgeJobs}개` : "지식 대기열"}>
+          <Link href="/knowledge" onClick={startNavigation} className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-(--text-secondary) hover:bg-(--surface-subtle)" aria-label={openKnowledgeJobs > 0 ? `지식함, 열린 작업 ${openKnowledgeJobs}개` : "지식함"}>
             <Brain size={19} />
             {openKnowledgeJobs > 0 && (
               <span className="absolute top-0.5 right-0.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-(--notion-fg) px-1 text-[9px] font-bold leading-none text-(--notion-bg)" aria-hidden>

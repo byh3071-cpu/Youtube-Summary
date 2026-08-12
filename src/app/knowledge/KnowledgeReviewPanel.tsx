@@ -49,7 +49,7 @@ function EvidenceExcerpt({ children }: { children?: string }) {
 function ReviewRequestButton({ jobId, action }: { jobId: string; action: "approve" | "defer" }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const command = `knowledge ${action} ${jobId}`;
-  const label = action === "approve" ? "승인 요청 복사" : "보류 요청 복사";
+  const label = action === "approve" ? "승인 명령 복사" : "보류 명령 복사";
 
   const copy = async () => {
     try {
@@ -61,11 +61,11 @@ function ReviewRequestButton({ jobId, action }: { jobId: string; action: "approv
   };
 
   return (
-    <div>
+    <div className="min-w-0 flex-1 sm:flex-none">
       <button
         type="button"
         onClick={() => void copy()}
-        className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${
+        className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto ${
           action === "approve"
             ? "bg-(--notion-fg) text-(--notion-bg) hover:opacity-90"
             : "border border-(--border-subtle) hover:bg-(--surface-subtle)"
@@ -100,18 +100,15 @@ export default function KnowledgeReviewPanel({
 
   return (
     <div className="mt-4 border-t border-(--border-subtle) pt-4">
-      <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
-        <div className="rounded-xl bg-(--surface-subtle) px-4 py-3">
-          <p className="text-xs font-semibold text-(--text-secondary)">자동 구조 검증</p>
-          <p className="mt-1 text-xl font-bold tabular-nums">
-            {review.qualityScore ?? "—"}<span className="text-xs font-medium text-(--text-secondary)">/100</span>
-          </p>
-        </div>
-        <div className="rounded-xl border border-(--border-subtle) px-4 py-3 text-xs leading-relaxed text-(--text-secondary)">
-          이 점수는 요약 구조, 영상 전 구간 커버리지, 원문과 타임스탬프의 정합성을 자동 검사한 결과예요.
-          외부 세계의 사실 여부나 결론의 정확성을 보증하지 않습니다.
-        </div>
-      </div>
+      <details className="group rounded-xl border border-(--border-subtle) bg-(--surface-subtle)">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold marker:hidden">
+          <span>자동 구조 검증</span>
+          <span className="tabular-nums">{review.qualityScore ?? "—"}<span className="text-xs font-medium text-(--text-secondary)">/100</span></span>
+        </summary>
+        <p className="border-t border-(--border-subtle) px-4 py-3 text-sm leading-6 text-(--text-secondary)">
+          요약 구조, 영상 전 구간, 원문과 타임스탬프의 정합성을 자동 검사한 점수예요. 사실 여부나 결론의 정확성을 보증하지는 않습니다.
+        </p>
+      </details>
 
       {review.qualityWarnings.length > 0 && (
         <div className="mt-3 flex gap-2 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
@@ -143,46 +140,49 @@ export default function KnowledgeReviewPanel({
             </section>
           )}
 
-          <section className="mt-5" aria-labelledby="review-audience-context-title">
-            <h3 id="review-audience-context-title" className="text-sm font-bold">시청자 맥락</h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-(--text-secondary)">
-              {review.audienceContext ?? "댓글 미수집"}
-            </p>
-          </section>
-
-          {review.criticalAnalysis && (
-            <section className="mt-5 rounded-xl border border-(--border-subtle) px-4 py-4" aria-labelledby="review-critical-analysis-title">
-              <h3 id="review-critical-analysis-title" className="text-sm font-bold">비판적 판단</h3>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{review.criticalAnalysis}</p>
-            </section>
-          )}
-
-          {review.ecosystemApplications.length > 0 && (
-            <section className="mt-5" aria-labelledby="review-ecosystem-title">
-              <h3 id="review-ecosystem-title" className="text-sm font-bold">요한 생태계 적용</h3>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {review.ecosystemApplications.map((item) => (
-                  <div key={`${item.area}-${item.application}`} className="rounded-xl bg-(--surface-subtle) px-4 py-3">
-                    <p className="text-xs font-bold text-(--text-secondary)">{item.area}</p>
-                    <p className="mt-1 text-sm leading-6">{item.application}</p>
-                    {item.expectedEffect && <p className="mt-2 text-xs leading-5 text-(--text-secondary)">기대 효과: {item.expectedEffect}</p>}
+          <details className="mt-5 rounded-xl border border-(--border-subtle)">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm font-bold marker:hidden">
+              판단과 활용 제안
+              <span className="text-xs font-medium text-(--text-secondary)">펼쳐보기</span>
+            </summary>
+            <div className="border-t border-(--border-subtle) px-4 pb-4">
+              <section className="mt-4" aria-labelledby="review-audience-context-title">
+                <h3 id="review-audience-context-title" className="text-sm font-bold">시청자 맥락</h3>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-(--text-secondary)">{review.audienceContext ?? "댓글 미수집"}</p>
+              </section>
+              {review.criticalAnalysis && (
+                <section className="mt-4" aria-labelledby="review-critical-analysis-title">
+                  <h3 id="review-critical-analysis-title" className="text-sm font-bold">비판적 판단</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{review.criticalAnalysis}</p>
+                </section>
+              )}
+              {review.ecosystemApplications.length > 0 && (
+                <section className="mt-4" aria-labelledby="review-ecosystem-title">
+                  <h3 id="review-ecosystem-title" className="text-sm font-bold">요한 생태계 적용</h3>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {review.ecosystemApplications.map((item) => (
+                      <div key={`${item.area}-${item.application}`} className="rounded-xl bg-(--surface-subtle) px-4 py-3">
+                        <p className="text-xs font-bold text-(--text-secondary)">{item.area}</p>
+                        <p className="mt-1 text-sm leading-6">{item.application}</p>
+                        {item.expectedEffect && <p className="mt-2 text-xs leading-5 text-(--text-secondary)">기대 효과: {item.expectedEffect}</p>}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {review.twoWeekExperiment && (
-            <section className="mt-5 rounded-xl border border-(--border-subtle) px-4 py-4" aria-labelledby="review-experiment-title">
-              <h3 id="review-experiment-title" className="text-sm font-bold">2주 실험</h3>
-              <dl className="mt-3 grid gap-3 text-sm leading-6 sm:grid-cols-[6rem_1fr]">
-                <dt className="font-semibold text-(--text-secondary)">가설</dt><dd>{review.twoWeekExperiment.hypothesis}</dd>
-                <dt className="font-semibold text-(--text-secondary)">실행</dt><dd>{review.twoWeekExperiment.action}</dd>
-                <dt className="font-semibold text-(--text-secondary)">지표</dt><dd>{review.twoWeekExperiment.metric}</dd>
-                <dt className="font-semibold text-(--text-secondary)">중단 조건</dt><dd>{review.twoWeekExperiment.stopCondition}</dd>
-              </dl>
-            </section>
-          )}
+                </section>
+              )}
+              {review.twoWeekExperiment && (
+                <section className="mt-4" aria-labelledby="review-experiment-title">
+                  <h3 id="review-experiment-title" className="text-sm font-bold">2주 실험</h3>
+                  <dl className="mt-3 grid gap-3 text-sm leading-6 sm:grid-cols-[6rem_1fr]">
+                    <dt className="font-semibold text-(--text-secondary)">가설</dt><dd>{review.twoWeekExperiment.hypothesis}</dd>
+                    <dt className="font-semibold text-(--text-secondary)">실행</dt><dd>{review.twoWeekExperiment.action}</dd>
+                    <dt className="font-semibold text-(--text-secondary)">지표</dt><dd>{review.twoWeekExperiment.metric}</dd>
+                    <dt className="font-semibold text-(--text-secondary)">중단 조건</dt><dd>{review.twoWeekExperiment.stopCondition}</dd>
+                  </dl>
+                </section>
+              )}
+            </div>
+          </details>
         </>
       )}
 
@@ -272,39 +272,45 @@ export default function KnowledgeReviewPanel({
       </section>}
 
       {review.formatVersion === 2 && (
-        <section className="mt-6 border-t border-(--border-subtle) pt-5" aria-labelledby="review-evidence-appendix-title">
-          <h3 id="review-evidence-appendix-title" className="text-sm font-bold">검증 부록</h3>
-          <p className="mt-1 text-xs leading-5 text-(--text-secondary)">본문 흐름을 방해하지 않도록 타임스탬프와 불확실성을 이곳에 모았습니다.</p>
-          <ol className="mt-3 space-y-2">
-            {review.evidenceMap.map((item) => (
-              <li key={item.claimId} className="rounded-xl bg-(--surface-subtle) px-4 py-3">
-                <p className="text-xs font-bold text-(--text-secondary)">{item.claimId}</p>
-                <p className="mt-1 text-sm leading-6">{item.statement}</p>
-                {item.note && <p className="mt-1 text-xs leading-5 text-(--text-secondary)">{item.note}</p>}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {item.timestamps.map((timestamp) => (
-                    <EvidenceLink key={timestamp} sourceUrl={sourceUrl} citation={timestamp} />
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ol>
-          <h4 className="mt-4 text-xs font-bold text-(--text-secondary)">불확실성·교차검증</h4>
-          {noUncertaintyFlagged ? (
-            <p className="mt-2 text-sm text-(--text-secondary)">별도로 표시된 불확실성이 없습니다.</p>
-          ) : (
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
-              {review.uncertainties.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          )}
-        </section>
+        <details className="mt-5 rounded-xl border border-(--border-subtle)">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-bold marker:hidden">
+            <span>타임스탬프와 검증 근거</span>
+            <span className="shrink-0 text-xs font-medium text-(--text-secondary)">{review.evidenceMap.length}개</span>
+          </summary>
+          <section className="border-t border-(--border-subtle) px-4 pb-4 pt-3" aria-labelledby="review-evidence-appendix-title">
+            <h3 id="review-evidence-appendix-title" className="sr-only">검증 부록</h3>
+            <p className="text-xs leading-5 text-(--text-secondary)">원본 구간과 불확실성을 확인하세요.</p>
+            <ol className="mt-3 space-y-2">
+              {review.evidenceMap.map((item) => (
+                <li key={item.claimId} className="rounded-xl bg-(--surface-subtle) px-4 py-3">
+                  <p className="text-xs font-bold text-(--text-secondary)">{item.claimId}</p>
+                  <p className="mt-1 text-sm leading-6">{item.statement}</p>
+                  {item.note && <p className="mt-1 text-xs leading-5 text-(--text-secondary)">{item.note}</p>}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {item.timestamps.map((timestamp) => (
+                      <EvidenceLink key={timestamp} sourceUrl={sourceUrl} citation={timestamp} />
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <h4 className="mt-4 text-xs font-bold text-(--text-secondary)">불확실성·교차검증</h4>
+            {noUncertaintyFlagged ? (
+              <p className="mt-2 text-sm text-(--text-secondary)">별도로 표시된 불확실성이 없습니다.</p>
+            ) : (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+                {review.uncertainties.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            )}
+          </section>
+        </details>
       )}
 
       <a
         href={sourceUrl}
         target="_blank"
         rel="noreferrer"
-        className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-(--border-subtle) px-4 text-sm font-semibold hover:bg-(--surface-subtle) focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-(--border-subtle) px-4 text-sm font-semibold hover:bg-(--surface-subtle) focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
       >
         원본 영상 전체 보기 <ExternalLink size={15} aria-hidden="true" />
       </a>
@@ -320,7 +326,7 @@ export default function KnowledgeReviewPanel({
             <p className="mt-2 text-sm leading-6 text-(--text-secondary)">
               아래 요청을 복사해 집의 Codex 채팅에 붙여넣으세요. 승인하기 전에는 Yohan Brain에 기록되지 않습니다.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <ReviewRequestButton jobId={jobId} action="approve" />
               <ReviewRequestButton jobId={jobId} action="defer" />
             </div>

@@ -536,7 +536,7 @@ test.describe("mobile ux", () => {
       page.getByRole("button", { name: "유튜브", exact: true }),
       page.getByRole("button", { name: "RSS", exact: true }),
       page.getByRole("button", { name: "피드 Q&A 열기" }),
-      page.getByRole("link", { name: "지식 대기열" }),
+      page.getByRole("link", { name: "지식함" }),
     ];
 
     for (const target of targets) {
@@ -551,11 +551,12 @@ test.describe("mobile ux", () => {
     const sharedUrl = "https://youtu.be/abc_DEF-123?si=mobile-share";
     await page.goto(`/capture?url=${encodeURIComponent(sharedUrl)}`);
 
-    await expect(page.getByRole("heading", { name: "Focus Feed 지식 캡처" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "지식으로 담기" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "이전 화면으로 돌아가기" })).toBeVisible();
     await expect(page.getByLabel("YouTube 영상 링크")).toHaveValue(sharedUrl);
 
     const capture = page.getByRole("button", { name: "지식으로 담기" });
-    const addChannel = page.getByRole("link", { name: "선택: 이 채널도 피드에 추가" });
+    const addChannel = page.getByRole("link", { name: "이 채널도 피드에 추가" });
     await expect(capture).toBeVisible();
     await expect(addChannel).toBeVisible();
     await expect(addChannel).toHaveAttribute("href", /\/add\?url=/);

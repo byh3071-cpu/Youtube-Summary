@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Brain, Check, ClipboardPaste, Loader2, Youtube } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Brain, Check, ClipboardPaste, Loader2 } from "lucide-react";
 import {
   extractYouTubeVideoId,
   knowledgeJobIsOpen,
@@ -39,6 +39,7 @@ function extractSharedUrl(params: URLSearchParams): string {
 }
 
 export default function CaptureDeepLinkClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialUrl = useMemo(
     () => extractSharedUrl(new URLSearchParams(searchParams?.toString())),
@@ -198,16 +199,30 @@ export default function CaptureDeepLinkClient() {
     }
   };
 
+  const goBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push("/");
+  };
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center gap-5 px-5 py-10 text-(--notion-fg)">
-      <div className="flex items-center gap-2">
-        <Youtube size={21} className="text-red-500" aria-hidden />
-        <Brain size={20} aria-hidden />
-        <h1 className="text-lg font-semibold">Focus Feed 지식 캡처</h1>
-      </div>
+    <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-4 px-4 pb-10 pt-[max(0.75rem,env(safe-area-inset-top))] text-(--notion-fg) sm:justify-center sm:gap-5 sm:px-5 sm:py-10">
+      <header className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="이전 화면으로 돌아가기"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-(--border-subtle) bg-(--surface-raised) hover:bg-(--surface-subtle) focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          <ArrowLeft size={20} aria-hidden="true" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold">지식으로 담기</h1>
+          <p className="mt-0.5 truncate text-sm text-(--text-secondary)">영상 링크를 확인하고 지식함에 저장해요.</p>
+        </div>
+      </header>
 
       {state.kind === "done" ? (
-        <section className="rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5">
+        <section className="rounded-2xl border border-(--notion-border) bg-(--surface-raised) p-5 shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-2 font-semibold">
             <Check size={18} aria-hidden />
             {state.created ? "지식 대기열에 담았어요." : "이미 지식 대기열에 있어요."}
@@ -219,17 +234,17 @@ export default function CaptureDeepLinkClient() {
             이제 worker가 NotebookLM 자료화와 품질 검사를 처리합니다. 사람 확인이 필요할 때만
             검토 대기 상태로 올립니다.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/knowledge" className="inline-flex min-h-11 items-center rounded-lg bg-(--notion-fg) px-4 py-2 text-sm font-medium text-(--notion-bg) hover:opacity-90">
-              지식 대기열 보기
+          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+            <Link href="/knowledge" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-(--notion-fg) px-4 py-2 text-sm font-semibold text-(--notion-bg) hover:opacity-90">
+              지식함 보기
             </Link>
-            <Link href="/" className="inline-flex min-h-11 items-center rounded-lg px-4 py-2 text-sm font-medium text-(--notion-fg)/70 hover:bg-(--notion-hover)">
+            <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-(--text-secondary) hover:bg-(--notion-hover)">
               Focus Feed로 돌아가기
             </Link>
           </div>
         </section>
       ) : (
-        <section className="rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5">
+        <section className="rounded-2xl border border-(--notion-border) bg-(--surface-raised) p-4 shadow-[var(--shadow-xs)] sm:p-5">
           <label htmlFor="knowledge-capture-url" className="mb-2 block text-sm font-semibold">
             YouTube 영상 링크
           </label>
@@ -242,7 +257,7 @@ export default function CaptureDeepLinkClient() {
             }}
             placeholder="https://www.youtube.com/watch?v=..."
             rows={3}
-            className="w-full resize-none rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 py-2.5 text-sm leading-relaxed focus:border-(--notion-fg)/30 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-(--notion-border) bg-(--notion-bg) px-3 py-3 text-base leading-relaxed focus:border-(--notion-fg)/30 focus:outline-none sm:text-sm"
           />
           <p className={`mt-2 text-xs ${validVideo ? "text-(--notion-fg)/55" : "text-amber-700 dark:text-amber-300"}`}>
             {validVideo ? "영상 URL을 확인했습니다. 아래 버튼을 눌러야 접수됩니다." : "YouTube 영상 URL을 붙여 넣어 주세요."}
@@ -294,26 +309,23 @@ export default function CaptureDeepLinkClient() {
             type="button"
             onClick={capture}
             disabled={!validVideo || state.kind === "submitting"}
-            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-(--notion-fg) px-4 py-2 text-sm font-semibold text-(--notion-bg) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-(--notion-fg) px-4 py-2 text-sm font-semibold text-(--notion-bg) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {state.kind === "submitting" ? <Loader2 size={17} className="animate-spin" aria-hidden /> : <Brain size={17} aria-hidden />}
             {state.kind === "submitting" ? "담는 중…" : "지식으로 담기"}
           </button>
           <Link
             href={addChannelHref}
-            className="ml-3 inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium text-(--notion-fg)/70 underline-offset-4 hover:underline"
+            className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-medium text-(--text-secondary) hover:bg-(--surface-subtle) sm:w-auto"
           >
-            선택: 이 채널도 피드에 추가
+            이 채널도 피드에 추가
           </Link>
         </section>
       )}
 
-      <section className="rounded-2xl border border-(--notion-border) bg-(--notion-bg) p-5 text-sm leading-relaxed text-(--notion-fg)/72">
-        <h2 className="m-0! text-base! font-semibold text-(--notion-fg)">빠른 사용</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5">
-          <li><strong>iPhone:</strong> YouTube 공유 → “FF 지식 담기” 단축어 → 이 화면에서 지식 담기 또는 채널 추가를 선택.</li>
-          <li><strong>데스크톱:</strong> 아래 버튼을 북마크바에 끌어 놓고 YouTube 영상에서 누르기.</li>
-        </ol>
+      <section className="hidden rounded-2xl border border-(--notion-border) bg-(--surface-raised) p-5 text-sm leading-relaxed text-(--text-secondary) sm:block">
+        <h2 className="m-0! text-base! font-semibold text-(--notion-fg)">데스크톱 빠른 캡처</h2>
+        <p className="mt-2">아래 버튼을 북마크바에 끌어 놓고 YouTube 영상에서 누르세요.</p>
         <a
           ref={bookmarkletRef}
           href="#"
