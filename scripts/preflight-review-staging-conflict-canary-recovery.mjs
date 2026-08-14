@@ -13,6 +13,7 @@ const expected = {
   failure_code: "NLM_PROCESSING_FAILED",
   failure_message: "기존 검토 후보와 새 결과가 달라 덮어쓰지 않았습니다.",
 };
+const CASE_INSENSITIVE_FIELDS = new Set(["id", "user_id", "source_hash", "transcript_hash"]);
 
 function loadLocalEnvironment() {
   const path = resolve(process.cwd(), ".env.local");
@@ -52,20 +53,50 @@ export function hasPriorStagingConflictRecoveryMarker(metadata) {
   return marker !== undefined && marker !== null && marker !== "";
 }
 
+export function matchesExpectedField(field, actual, expectedValue) {
+  if (actual === undefined || actual === null) return false;
+  const actualText = String(actual);
+  return CASE_INSENSITIVE_FIELDS.has(field)
+    ? actualText.toLowerCase() === expectedValue.toLowerCase()
+    : actualText === expectedValue;
+}
+
+export function buildSafeSuccessRow(row) {
+  return {
+    target: "022-review-staging-conflict-canary",
+    status: row.status,
+    attempt_count: row.attempt_count,
+    capture_ready: row.capture_ready,
+    failure_code: row.failure_code,
+    expected_identity_matches: true,
+    expected_hashes_match: true,
+    prerequisite_markers_present: true,
+    staging_conflict_marker_present: false,
+  };
+}
+
+async function fetchCanaryRow() {
+  try {
+    loadLocalEnvironment();
+    const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) fail("Supabase service-role environment is not configured.");
+    const supabase = createClient(url, key, { auth: { persistSession: false } });
+    return await supabase
+      .from("knowledge_jobs")
+      .select("id,user_id,status,attempt_count,capture_ready,failure_code,failure_message,notebook_id,notebook_source_id,source_hash,transcript_hash,metadata")
+      .eq("id", expected.id)
+      .single();
+  } catch {
+    fail("Canary preflight setup or query failed.");
+  }
+}
+
 async function main() {
-  loadLocalEnvironment();
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) fail("Supabase service-role environment is not configured.");
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
-  const { data: row, error } = await supabase
-    .from("knowledge_jobs")
-    .select("id,user_id,status,attempt_count,capture_ready,failure_code,failure_message,notebook_id,notebook_source_id,source_hash,transcript_hash,metadata")
-    .eq("id", expected.id)
-    .single();
-  if (error) fail(`Canary preflight query failed: ${String(error.message).slice(0, 300)}`);
+  const { data: row, error } = await fetchCanaryRow();
+  if (error) fail("Canary preflight query failed.");
   for (const [field, value] of Object.entries(expected)) {
-    if (String(row?.[field] ?? "").toLowerCase() !== value.toLowerCase()) fail(`Canary does not match ${field}.`);
+    if (!matchesExpectedField(field, row?.[field], value)) fail(`Canary does not match ${field}.`);
   }
   if (row.status !== "action_required" || row.attempt_count !== 3 || row.capture_ready !== true) {
     fail("Canary is not in the exhausted action-required state.");
@@ -76,20 +107,7 @@ async function main() {
     ok: true,
     readOnly: true,
     eligible: true,
-    row: {
-      id: row.id,
-      user_id: row.user_id,
-      status: row.status,
-      attempt_count: row.attempt_count,
-      capture_ready: row.capture_ready,
-      failure_code: row.failure_code,
-      notebook_id: row.notebook_id,
-      notebook_source_id: row.notebook_source_id,
-      source_hash: row.source_hash,
-      transcript_hash: row.transcript_hash,
-      prerequisite_markers_present: true,
-      staging_conflict_marker_present: false,
-    },
+    row: buildSafeSuccessRow(row),
   }, null, 2));
 }
 

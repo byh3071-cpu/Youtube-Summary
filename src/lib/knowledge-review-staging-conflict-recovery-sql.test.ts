@@ -100,4 +100,44 @@ describe("review staging conflict canary recovery SQL contract", () => {
     expect(hasPriorStagingConflictRecoveryMarker({ _review_staging_conflict_recovery_v1: false })).toBe(true);
     expect(hasPriorStagingConflictRecoveryMarker({ _review_staging_conflict_recovery_v1: 0 })).toBe(true);
   });
+
+  it("uses the same exact and case-insensitive comparisons as the SQL", async () => {
+    const { matchesExpectedField } = await import(preflightModuleUrl);
+    expect(matchesExpectedField("failure_code", "nlm_processing_failed", "NLM_PROCESSING_FAILED")).toBe(false);
+    expect(matchesExpectedField("failure_code", "NLM_PROCESSING_FAILED", "NLM_PROCESSING_FAILED")).toBe(true);
+    expect(matchesExpectedField("notebook_id", "ABC", "abc")).toBe(false);
+    expect(matchesExpectedField("source_hash", "ABCDEF", "abcdef")).toBe(true);
+    expect(matchesExpectedField("transcript_hash", "ABCDEF", "abcdef")).toBe(true);
+    expect(matchesExpectedField("id", "ABCDEF00-0000-0000-0000-000000000000", "abcdef00-0000-0000-0000-000000000000")).toBe(true);
+  });
+
+  it("redacts production identifiers and hashes from routine success output", async () => {
+    const { buildSafeSuccessRow } = await import(preflightModuleUrl);
+    const sensitiveValues = ["owner-raw", "notebook-raw", "source-raw", "source-hash-raw", "transcript-hash-raw"];
+    const safe = buildSafeSuccessRow({
+      id: "job-raw",
+      user_id: sensitiveValues[0],
+      notebook_id: sensitiveValues[1],
+      notebook_source_id: sensitiveValues[2],
+      source_hash: sensitiveValues[3],
+      transcript_hash: sensitiveValues[4],
+      status: "action_required",
+      attempt_count: 3,
+      capture_ready: true,
+      failure_code: "NLM_PROCESSING_FAILED",
+    });
+    const output = JSON.stringify(safe);
+    for (const value of ["job-raw", ...sensitiveValues]) expect(output).not.toContain(value);
+    expect(safe).toMatchObject({
+      target: "022-review-staging-conflict-canary",
+      expected_identity_matches: true,
+      expected_hashes_match: true,
+    });
+  });
+
+  it("routes setup and rejected query exceptions through structured failure", () => {
+    expect(preflight).toMatch(/async function fetchCanaryRow\(\)\s*{\s*try\s*{/);
+    expect(preflight).toMatch(/catch\s*{\s*fail\("Canary preflight setup or query failed\."\);/);
+    expect(preflight).not.toMatch(/console\.(?:log|error)\([^\n]*(?:user_id|source_hash|transcript_hash)/);
+  });
 });
