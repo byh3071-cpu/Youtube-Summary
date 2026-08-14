@@ -143,6 +143,7 @@ tags: [focus-feed, roadmap, milestones]
 - [ ] iPhone 단축어 1개를 실제 기기에서 YouTube 공유 입력으로 검증.
 - [x] `/knowledge` 대기열·데스크톱/모바일 탐색 진입점과 지식 CTA 상태 표시를 준비.
 - [x] `/knowledge` 목록/상세 API를 분리하고 검토 항목에 요약·주장 유형·검증된 짧은 원문 발췌·타임스탬프·전 구간 커버리지·불확실성·집 Codex용 승인/보류 요청을 노출한다. 내부 경로·hash·NotebookLM ID·원문 전체를 제외하는 API 허용 목록을 검증.
+- [x] owner·feature flag로 제한한 `POST /api/knowledge/canary-capture`가 1~7건을 영상별 멱등 접수하고 신규 작업만 held/no-retry clean 표본으로 표시하며, 기존 작업 불변·부분 실패 보존·16KiB 입력 상한을 검증.
 - [ ] `013_knowledge_process_requests.sql`: P1로 연기했으며 현재 저장소·운영 이력에 없다. stale worker가 같은 `worker_id`로 새 claim을 완료 처리하지 못하도록 claim fencing token을 추가한 뒤 별도 P1 계약과 UI를 구현.
 
 ## 변경 이력
