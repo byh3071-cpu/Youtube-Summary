@@ -137,7 +137,9 @@ describe("review staging conflict canary recovery SQL contract", () => {
 
   it("routes setup and rejected query exceptions through structured failure", () => {
     expect(preflight).toMatch(/async function fetchCanaryRow\(\)\s*{\s*try\s*{/);
+    expect(preflight).toContain("db: { timeout: 30_000 }");
     expect(preflight).toMatch(/catch\s*{\s*fail\("Canary preflight setup or query failed\."\);/);
+    expect(preflight).toMatch(/function fail\(message\)[\s\S]*?console\.error\(JSON\.stringify\([\s\S]*?process\.exit\(1\);/);
     expect(preflight).not.toMatch(/console\.(?:log|error)\([^\n]*(?:user_id|source_hash|transcript_hash)/);
   });
 });
