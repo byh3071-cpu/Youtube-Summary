@@ -3,14 +3,12 @@ import { cookies } from "next/headers";
 
 import { normalizeYouTubeUrl } from "@/lib/knowledge-capture";
 import {
-  enqueueAndEnrichKnowledgeCapture,
+  enqueueKnowledgeCanaryCapture,
   type KnowledgeCaptureFailureCode,
 } from "@/lib/knowledge-capture-server";
 import { takeToken } from "@/lib/rate-limit";
-import {
-  createServerSupabaseFromCookies,
-  getCurrentUserFromCookies,
-} from "@/lib/supabase-server-cookies";
+import { getServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentUserFromCookies } from "@/lib/supabase-server-cookies";
 
 export const dynamic = "force-dynamic";
 
@@ -172,7 +170,7 @@ export async function POST(request: Request) {
   const normalizedUrls = normalized.map((item) => item.url);
   const runId = createHash("sha256").update(JSON.stringify(normalizedUrls), "utf8").digest("hex");
 
-  const supabase = createServerSupabaseFromCookies(cookieStore);
+  const supabase = getServerSupabaseClient();
   if (!supabase) return json({ error: "지식 대기열 서버 설정이 준비되지 않았습니다." }, { status: 503 });
   const rateLimit = takeToken(`knowledge-canary-capture:${user.id}`, 2, 60_000);
   if (!rateLimit.ok) {
@@ -184,19 +182,12 @@ export async function POST(request: Request) {
 
   const results = [];
   for (const item of normalized) {
-    const result = await enqueueAndEnrichKnowledgeCapture(supabase, {
+    const result = await enqueueKnowledgeCanaryCapture(supabase, {
+      userId: user.id,
+      runId,
       sourceUrl: item.url,
       title: item.title,
       channelName: item.channelName,
-      enrichExisting: false,
-      metadata: {
-        capture_version: 1,
-        received_via: "canary-helper",
-        description_guide: "filtered",
-        _canary_run_id: runId,
-        _canary_hold: true,
-        _canary_no_retry: true,
-      },
     });
     if (!result.ok && result.logMessage) {
       console.error(`[POST /api/knowledge/canary-capture ${result.code}]`, result.logMessage);

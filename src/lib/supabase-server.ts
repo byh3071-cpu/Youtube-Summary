@@ -345,6 +345,28 @@ export type Database = {
           created: boolean;
         }>;
       };
+      enqueue_knowledge_canary_job: {
+        Args: {
+          p_user_id: string;
+          p_run_id: string;
+          p_source_type: string;
+          p_source_key: string;
+          p_source_url: string;
+          p_video_id: string;
+          p_title: string;
+          p_channel_name?: string | null;
+          p_source_guide?: string;
+        };
+        Returns: Array<{
+          id: string;
+          video_id: string;
+          status: KnowledgeJobStatus;
+          created_at: string;
+          updated_at: string;
+          capture_ready: boolean;
+          created: boolean;
+        }>;
+      };
       enrich_knowledge_job: {
         Args: {
           p_job_id: string;

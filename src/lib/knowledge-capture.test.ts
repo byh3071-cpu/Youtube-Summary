@@ -77,6 +77,10 @@ describe("지식 상태 배치 조회 계약", () => {
       code: "PGRST202",
       message: "enrich_knowledge_job is not available in the schema cache",
     })).toBe(true);
+    expect(isKnowledgeJobsUnavailableError({
+      code: "PGRST202",
+      message: "enqueue_knowledge_canary_job is not available in the schema cache",
+    })).toBe(true);
   });
 
   it("최대 개수를 넘기거나 잘못된 video ID가 섞이면 거부한다", () => {
