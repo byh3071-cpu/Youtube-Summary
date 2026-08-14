@@ -135,9 +135,10 @@ tags: [focus-feed, roadmap, milestones]
 - [x] `016_knowledge_job_approval_cas_hardening.sql`: 운영 DB의 worker 완료 RPC가 `review_required`/`action_required`만 허용하고 사람 승인 CAS를 우회하지 못함을 2026-08-10 read-only preflight로 재검증했다.
 - [x] `017_knowledge_jobs_browser_read_hardening.sql`: 사람 승인 후 운영 DB에 적용하고 `anon`·`authenticated` 직접 SELECT 차단, 레거시 select policy 제거, service-role 전용 접근을 postflight로 확인했다.
 - [x] `018_knowledge_review_invalidation.sql`: 운영 DB에서 invalidation/retry RPC의 정확한 시그니처와 service-role 전용 권한을 read-only preflight로 확인했다. 실데이터 invalidation·재처리는 이번 출시에서 실행하지 않았다.
-- [ ] `019_knowledge_semantic_json_fence_canary_recovery.sql`: PR #67 이전 코드펜스 호환성 결함으로 attempt 3에 도달한 고정 canary 3건만 exact NotebookLM source identity/hash까지 묶어 복구하는 service-role 전용 단회 RPC를 작성·정적 검증했다. 운영 DB 적용과 호출은 별도 사람 승인 전까지 보류한다.
-- [ ] 운영 적용 게이트에서 실제 처리 worker가 PR #67 head `8c4e08d` 또는 그 descendant인지 read-only로 확인하고 semantic JSON fence 회귀 테스트를 통과시킨 뒤, `node scripts/preflight-semantic-canary-recovery.mjs`로 세 행의 failure·identity/hash·marker를 다시 대조한다.
-- [ ] P0 canary는 2026-08-12 기준 `completed 3 + review_required 4 = 7/10`이다. `019` 승인·적용 후 고정 3건을 마지막으로 처리해 10건을 확정한다.
+- [ ] 019~022 레거시 복구 migration은 Git blob SHA-256으로 고정하고 clean 성공률에서 제외한다. 이후 knowledge migration에는 job UUID literal을 금지한다.
+- [ ] `023_knowledge_exact_claim_and_no_retry_guard.sql`: owner+job ID exact claim, held canary의 표준 claim 제외, no-retry lease 만료·attempt 소진의 fail-closed 전이, recovery marker retry 차단을 공용 계약과 rollback으로 검증한다. 운영 적용은 별도 사람 승인 전까지 보류한다.
+- [ ] 레거시 대상은 운영 read-only 진단을 딱 한 번 수행하고 모든 조건이 맞을 때만 별도 승인으로 exact 처리한다. 결과와 무관하게 clean 통계에서 제외하고 추가 migration·retry·Brain 승인을 하지 않는다.
+- [ ] clean 카나리는 신규 콘텐츠 통과 10건(파일럿 3 + 확장 7)과 Control Tower 사람 승인 1건의 Brain RESOURCE·SUMMARY write-once를 완료 조건으로 삼는다.
 - [ ] P0 canary 10건 뒤 outbound Realtime 연속 구독·Windows 로그인 시작을 별도 승인으로 구현하고, PC offline 요청 및 다음 시작 시 15분 stale claim 회수를 실측.
 - [ ] iPhone 단축어 1개를 실제 기기에서 YouTube 공유 입력으로 검증.
 - [x] `/knowledge` 대기열·데스크톱/모바일 탐색 진입점과 지식 CTA 상태 표시를 준비.

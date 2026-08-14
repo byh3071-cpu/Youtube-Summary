@@ -26,6 +26,7 @@
     "vhk:policy": "node scripts/vhk-guard.mjs check",
     "security:secrets": "node scripts/scan-secrets.mjs",
     "security:history": "node scripts/scan-secrets.mjs --history",
+    "security:knowledge-migrations": "node scripts/verify-knowledge-migration-guard.mjs",
     "vhk:evidence": "npm run vhk -- verify",
     "verify:focus-feed": "node scripts/verify-focus-feed.mjs",
     "verify:release": "node scripts/verify-focus-feed.mjs --release",
