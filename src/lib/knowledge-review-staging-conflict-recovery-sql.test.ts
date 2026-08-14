@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
@@ -10,6 +11,9 @@ const preflight = readFileSync(
   join(process.cwd(), "scripts", "preflight-review-staging-conflict-canary-recovery.mjs"),
   "utf8",
 );
+const preflightModuleUrl = pathToFileURL(
+  join(process.cwd(), "scripts", "preflight-review-staging-conflict-canary-recovery.mjs"),
+).href;
 const mutationBlock = migration.match(/update public\.knowledge_jobs as job\s+set([\s\S]*?)\s+where job\.id/i)?.[1] ?? "";
 
 describe("review staging conflict canary recovery SQL contract", () => {
@@ -63,5 +67,37 @@ describe("review staging conflict canary recovery SQL contract", () => {
     expect(preflight).toContain('.from("knowledge_jobs")');
     expect(preflight).toContain("readOnly: true");
     expect(preflight).not.toMatch(/\.(?:insert|update|upsert|delete)\s*\(/);
+  });
+
+  it("mirrors the SQL prerequisite marker types", async () => {
+    const { hasPrerequisiteRecoveryMarkers } = await import(preflightModuleUrl);
+    const prerequisites = {
+      _semantic_json_fence_recovery_v1: {},
+      _public_caption_config_recovery_v1: {},
+      _candidate_selection_format_recovery_v1: {},
+    };
+    expect(hasPrerequisiteRecoveryMarkers({ _legacy_review_recovery_v1: true, ...prerequisites })).toBe(true);
+    expect(hasPrerequisiteRecoveryMarkers({ _legacy_review_recovery_v1: "true", ...prerequisites })).toBe(true);
+    expect(hasPrerequisiteRecoveryMarkers({ _legacy_review_recovery_v1: false, ...prerequisites })).toBe(false);
+    expect(hasPrerequisiteRecoveryMarkers({ _legacy_review_recovery_v1: 0, ...prerequisites })).toBe(false);
+    expect(hasPrerequisiteRecoveryMarkers({
+      _legacy_review_recovery_v1: true,
+      ...prerequisites,
+      _semantic_json_fence_recovery_v1: [],
+    })).toBe(false);
+    expect(hasPrerequisiteRecoveryMarkers({
+      _legacy_review_recovery_v1: true,
+      ...prerequisites,
+      _public_caption_config_recovery_v1: "true",
+    })).toBe(false);
+  });
+
+  it("mirrors the SQL prior-recovery marker predicate", async () => {
+    const { hasPriorStagingConflictRecoveryMarker } = await import(preflightModuleUrl);
+    expect(hasPriorStagingConflictRecoveryMarker({})).toBe(false);
+    expect(hasPriorStagingConflictRecoveryMarker({ _review_staging_conflict_recovery_v1: null })).toBe(false);
+    expect(hasPriorStagingConflictRecoveryMarker({ _review_staging_conflict_recovery_v1: "" })).toBe(false);
+    expect(hasPriorStagingConflictRecoveryMarker({ _review_staging_conflict_recovery_v1: false })).toBe(true);
+    expect(hasPriorStagingConflictRecoveryMarker({ _review_staging_conflict_recovery_v1: 0 })).toBe(true);
   });
 });

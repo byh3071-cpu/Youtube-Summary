@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const expected = {
   id: "e8264ecd-269d-42a8-b1ec-65998d87dd62",
@@ -32,46 +33,66 @@ function fail(message) {
   process.exit(1);
 }
 
-loadLocalEnvironment();
-const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) fail("Supabase service-role environment is not configured.");
-const supabase = createClient(url, key, { auth: { persistSession: false } });
-const { data: row, error } = await supabase
-  .from("knowledge_jobs")
-  .select("id,user_id,status,attempt_count,capture_ready,failure_code,failure_message,notebook_id,notebook_source_id,source_hash,transcript_hash,metadata")
-  .eq("id", expected.id)
-  .single();
-if (error) fail(`Canary preflight query failed: ${String(error.message).slice(0, 300)}`);
-for (const [field, value] of Object.entries(expected)) {
-  if (String(row?.[field] ?? "").toLowerCase() !== value.toLowerCase()) fail(`Canary does not match ${field}.`);
+function isJsonObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
-if (row.status !== "action_required" || row.attempt_count !== 3 || row.capture_ready !== true) {
-  fail("Canary is not in the exhausted action-required state.");
+
+export function hasPrerequisiteRecoveryMarkers(metadata) {
+  if (!isJsonObject(metadata)) return false;
+  const legacy = metadata._legacy_review_recovery_v1;
+  return (legacy === true || legacy === "true")
+    && isJsonObject(metadata._semantic_json_fence_recovery_v1)
+    && isJsonObject(metadata._public_caption_config_recovery_v1)
+    && isJsonObject(metadata._candidate_selection_format_recovery_v1);
 }
-if (
-  row.metadata?._legacy_review_recovery_v1 !== true
-  || !row.metadata?._semantic_json_fence_recovery_v1
-  || !row.metadata?._public_caption_config_recovery_v1
-  || !row.metadata?._candidate_selection_format_recovery_v1
-) fail("Canary is missing a prerequisite recovery marker.");
-if (row.metadata?._review_staging_conflict_recovery_v1) fail("Canary was already recovered by 022.");
-console.log(JSON.stringify({
-  ok: true,
-  readOnly: true,
-  eligible: true,
-  row: {
-    id: row.id,
-    user_id: row.user_id,
-    status: row.status,
-    attempt_count: row.attempt_count,
-    capture_ready: row.capture_ready,
-    failure_code: row.failure_code,
-    notebook_id: row.notebook_id,
-    notebook_source_id: row.notebook_source_id,
-    source_hash: row.source_hash,
-    transcript_hash: row.transcript_hash,
-    prerequisite_markers_present: true,
-    staging_conflict_marker_present: false,
-  },
-}, null, 2));
+
+export function hasPriorStagingConflictRecoveryMarker(metadata) {
+  if (!isJsonObject(metadata)) return false;
+  const marker = metadata._review_staging_conflict_recovery_v1;
+  return marker !== undefined && marker !== null && marker !== "";
+}
+
+async function main() {
+  loadLocalEnvironment();
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) fail("Supabase service-role environment is not configured.");
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const { data: row, error } = await supabase
+    .from("knowledge_jobs")
+    .select("id,user_id,status,attempt_count,capture_ready,failure_code,failure_message,notebook_id,notebook_source_id,source_hash,transcript_hash,metadata")
+    .eq("id", expected.id)
+    .single();
+  if (error) fail(`Canary preflight query failed: ${String(error.message).slice(0, 300)}`);
+  for (const [field, value] of Object.entries(expected)) {
+    if (String(row?.[field] ?? "").toLowerCase() !== value.toLowerCase()) fail(`Canary does not match ${field}.`);
+  }
+  if (row.status !== "action_required" || row.attempt_count !== 3 || row.capture_ready !== true) {
+    fail("Canary is not in the exhausted action-required state.");
+  }
+  if (!hasPrerequisiteRecoveryMarkers(row.metadata)) fail("Canary is missing a prerequisite recovery marker.");
+  if (hasPriorStagingConflictRecoveryMarker(row.metadata)) fail("Canary was already recovered by 022.");
+  console.log(JSON.stringify({
+    ok: true,
+    readOnly: true,
+    eligible: true,
+    row: {
+      id: row.id,
+      user_id: row.user_id,
+      status: row.status,
+      attempt_count: row.attempt_count,
+      capture_ready: row.capture_ready,
+      failure_code: row.failure_code,
+      notebook_id: row.notebook_id,
+      notebook_source_id: row.notebook_source_id,
+      source_hash: row.source_hash,
+      transcript_hash: row.transcript_hash,
+      prerequisite_markers_present: true,
+      staging_conflict_marker_present: false,
+    },
+  }, null, 2));
+}
+
+const invokedAsScript = process.argv[1]
+  && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+if (invokedAsScript) await main();
