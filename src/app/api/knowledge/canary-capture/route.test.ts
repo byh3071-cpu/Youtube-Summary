@@ -4,18 +4,18 @@ const OWNER_ID = "8a805f4a-ab4c-475b-8b62-728df86f5ae7";
 const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   getCurrentUserFromCookies: vi.fn(),
-  createServerSupabaseFromCookies: vi.fn(),
-  enqueueAndEnrichKnowledgeCapture: vi.fn(),
+  getServerSupabaseClient: vi.fn(),
+  enqueueKnowledgeCanaryCapture: vi.fn(),
   takeToken: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("@/lib/supabase-server-cookies", () => ({
   getCurrentUserFromCookies: mocks.getCurrentUserFromCookies,
-  createServerSupabaseFromCookies: mocks.createServerSupabaseFromCookies,
 }));
+vi.mock("@/lib/supabase-server", () => ({ getServerSupabaseClient: mocks.getServerSupabaseClient }));
 vi.mock("@/lib/knowledge-capture-server", () => ({
-  enqueueAndEnrichKnowledgeCapture: mocks.enqueueAndEnrichKnowledgeCapture,
+  enqueueKnowledgeCanaryCapture: mocks.enqueueKnowledgeCanaryCapture,
 }));
 vi.mock("@/lib/rate-limit", () => ({ takeToken: mocks.takeToken }));
 
@@ -35,9 +35,9 @@ beforeEach(() => {
   vi.stubEnv("KNOWLEDGE_CANARY_OWNER_USER_ID", OWNER_ID);
   mocks.cookies.mockResolvedValue({ getAll: () => [] });
   mocks.getCurrentUserFromCookies.mockResolvedValue({ id: OWNER_ID });
-  mocks.createServerSupabaseFromCookies.mockReturnValue({ rpc: vi.fn() });
+  mocks.getServerSupabaseClient.mockReturnValue({ rpc: vi.fn() });
   mocks.takeToken.mockReturnValue({ ok: true });
-  mocks.enqueueAndEnrichKnowledgeCapture.mockResolvedValue({
+  mocks.enqueueKnowledgeCanaryCapture.mockResolvedValue({
     ok: true,
     created: true,
     job: {
@@ -65,7 +65,7 @@ describe("POST /api/knowledge/canary-capture", () => {
       items: [{ url: "https://youtu.be/abc_DEF-123", title: "Canary" }],
     }));
     expect(response.status).toBe(403);
-    expect(mocks.enqueueAndEnrichKnowledgeCapture).not.toHaveBeenCalled();
+    expect(mocks.enqueueKnowledgeCanaryCapture).not.toHaveBeenCalled();
   });
 
   it("브라우저의 cross-origin 요청은 인증 조회 전에 거부한다", async () => {
@@ -87,6 +87,15 @@ describe("POST /api/knowledge/canary-capture", () => {
     expect(mocks.getCurrentUserFromCookies).toHaveBeenCalledTimes(1);
   });
 
+  it("service-role client가 없으면 어떤 작업도 생성하지 않고 fail-closed한다", async () => {
+    mocks.getServerSupabaseClient.mockReturnValue(null);
+    const response = await POST(request({
+      items: [{ url: "https://youtu.be/abc_DEF-123", title: "Canary" }],
+    }));
+    expect(response.status).toBe(503);
+    expect(mocks.enqueueKnowledgeCanaryCapture).not.toHaveBeenCalled();
+  });
+
   it("Content-Length와 실제 stream 모두 16KiB 상한을 적용한다", async () => {
     const declared = await POST(request(
       { items: [{ url: "https://youtu.be/abc_DEF-123", title: "Canary" }] },
@@ -98,7 +107,7 @@ describe("POST /api/knowledge/canary-capture", () => {
       body: JSON.stringify({ items: [{ url: "https://youtu.be/abc_DEF-123", title: "x".repeat(17_000) }] }),
     }));
     expect([declared.status, streamed.status]).toEqual([413, 413]);
-    expect(mocks.enqueueAndEnrichKnowledgeCapture).not.toHaveBeenCalled();
+    expect(mocks.enqueueKnowledgeCanaryCapture).not.toHaveBeenCalled();
   });
 
   it("HTTPS YouTube·중복 video ID·입력 길이를 fail-closed 검증한다", async () => {
@@ -109,7 +118,7 @@ describe("POST /api/knowledge/canary-capture", () => {
     ] }));
     const overlong = await POST(request({ items: [{ url: "https://youtu.be/abc_DEF-123", title: "x".repeat(301) }] }));
     expect([insecure.status, duplicate.status, overlong.status]).toEqual([400, 400, 400]);
-    expect(mocks.enqueueAndEnrichKnowledgeCapture).not.toHaveBeenCalled();
+    expect(mocks.enqueueKnowledgeCanaryCapture).not.toHaveBeenCalled();
   });
 
   it("묶음 크기는 1~7개만 허용한다", async () => {
@@ -121,7 +130,7 @@ describe("POST /api/knowledge/canary-capture", () => {
       })),
     }));
     expect([empty.status, tooMany.status]).toEqual([400, 400]);
-    expect(mocks.enqueueAndEnrichKnowledgeCapture).not.toHaveBeenCalled();
+    expect(mocks.enqueueKnowledgeCanaryCapture).not.toHaveBeenCalled();
   });
 
   it("정규 URL 목록으로 deterministic held/no-retry run과 exact job ID를 반환한다", async () => {
@@ -129,7 +138,7 @@ describe("POST /api/knowledge/canary-capture", () => {
       { url: "https://youtu.be/abc_DEF-123", title: "First", channelName: "Channel" },
       { url: "https://www.youtube.com/watch?v=xyz_ABC-789", title: "Second" },
     ] };
-    mocks.enqueueAndEnrichKnowledgeCapture
+    mocks.enqueueKnowledgeCanaryCapture
       .mockResolvedValueOnce({
         ok: true,
         created: true,
@@ -157,19 +166,15 @@ describe("POST /api/knowledge/canary-capture", () => {
       expect.objectContaining({ videoId: "abc_DEF-123", created: true, cleanEligible: true }),
       expect.objectContaining({ videoId: "xyz_ABC-789", created: false, cleanEligible: false }),
     ]);
-    expect(mocks.enqueueAndEnrichKnowledgeCapture).toHaveBeenNthCalledWith(1, expect.anything(), expect.objectContaining({
+    expect(mocks.enqueueKnowledgeCanaryCapture).toHaveBeenNthCalledWith(1, expect.anything(), expect.objectContaining({
+      userId: OWNER_ID,
+      runId: payload.runId,
       sourceUrl: "https://www.youtube.com/watch?v=abc_DEF-123",
-      enrichExisting: false,
-      metadata: expect.objectContaining({
-        _canary_run_id: payload.runId,
-        _canary_hold: true,
-        _canary_no_retry: true,
-      }),
     }));
   });
 
   it("뒤 항목이 실패해도 앞에서 생성된 개별 작업은 보존하고 raw 오류는 숨긴다", async () => {
-    mocks.enqueueAndEnrichKnowledgeCapture
+    mocks.enqueueKnowledgeCanaryCapture
       .mockResolvedValueOnce({
         ok: true,
         created: true,
@@ -203,7 +208,7 @@ describe("POST /api/knowledge/canary-capture", () => {
 
   it("같은 정규 URL 목록을 다시 호출하면 같은 run ID와 기존 job을 반환한다", async () => {
     const body = { items: [{ url: "https://youtu.be/abc_DEF-123", title: "Canary" }] };
-    mocks.enqueueAndEnrichKnowledgeCapture
+    mocks.enqueueKnowledgeCanaryCapture
       .mockResolvedValueOnce({
         ok: true,
         created: true,

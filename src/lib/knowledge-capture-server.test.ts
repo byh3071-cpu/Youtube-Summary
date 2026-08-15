@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ getVideoSnippet: vi.fn() }));
 vi.mock("@/lib/youtube", () => ({ getVideoSnippet: mocks.getVideoSnippet }));
 
-import { enqueueAndEnrichKnowledgeCapture } from "./knowledge-capture-server";
+import {
+  enqueueAndEnrichKnowledgeCapture,
+  enqueueKnowledgeCanaryCapture,
+} from "./knowledge-capture-server";
 
 const PENDING_JOB = {
   id: "job-1",
@@ -100,6 +103,71 @@ describe("enqueueAndEnrichKnowledgeCapture", () => {
       created: true,
       job: { id: "job-1", captureReady: false },
       logMessage: "network detail",
+    });
+  });
+});
+
+describe("enqueueKnowledgeCanaryCapture", () => {
+  it("uses the dedicated service-role RPC with explicit owner and run identity", async () => {
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: [{ ...READY_JOB, created: true }], error: null }),
+    };
+
+    const result = await enqueueKnowledgeCanaryCapture(supabase as never, {
+      userId: "8a805f4a-ab4c-475b-8b62-728df86f5ae7",
+      runId: "a".repeat(64),
+      sourceUrl: "https://www.youtube.com/watch?v=abc_DEF-123",
+      title: "Canary",
+      channelName: "Channel",
+    });
+
+    expect(result).toMatchObject({ ok: true, created: true, job: { captureReady: true } });
+    expect(supabase.rpc).toHaveBeenCalledWith("enqueue_knowledge_canary_job", expect.objectContaining({
+      p_user_id: "8a805f4a-ab4c-475b-8b62-728df86f5ae7",
+      p_run_id: "a".repeat(64),
+      p_source_key: "abc_DEF-123",
+      p_source_url: "https://www.youtube.com/watch?v=abc_DEF-123",
+    }));
+    expect(supabase.rpc.mock.calls[0]?.[1]).not.toHaveProperty("p_metadata");
+    expect(mocks.getVideoSnippet).not.toHaveBeenCalled();
+  });
+
+  it("returns an existing job unchanged even when it is not capture-ready", async () => {
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: [{ ...PENDING_JOB, created: false }], error: null }),
+    };
+
+    const result = await enqueueKnowledgeCanaryCapture(supabase as never, {
+      userId: "8a805f4a-ab4c-475b-8b62-728df86f5ae7",
+      runId: "b".repeat(64),
+      sourceUrl: "https://youtu.be/abc_DEF-123",
+      title: "Canary",
+      channelName: null,
+    });
+
+    expect(result).toMatchObject({ ok: true, created: false, job: { captureReady: false } });
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed if a newly created canary is not atomically capture-ready", async () => {
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: [{ ...PENDING_JOB, created: true }], error: null }),
+    };
+
+    const result = await enqueueKnowledgeCanaryCapture(supabase as never, {
+      userId: "8a805f4a-ab4c-475b-8b62-728df86f5ae7",
+      runId: "c".repeat(64),
+      sourceUrl: "https://youtu.be/abc_DEF-123",
+      title: "Canary",
+      channelName: null,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "ENRICH_EMPTY",
+      status: 409,
+      created: true,
+      job: { captureReady: false },
     });
   });
 });

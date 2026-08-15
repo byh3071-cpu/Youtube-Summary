@@ -180,3 +180,80 @@ export async function enqueueAndEnrichKnowledgeCapture(
 
   return { ok: true, job: serializeKnowledgeJob(responseJob), created: job.created };
 }
+
+/**
+ * Clean canaries use a dedicated service-role RPC so capture readiness and
+ * reserved hold/no-retry metadata are committed atomically. Existing jobs are
+ * returned byte-for-byte by the database and are never promoted into a run.
+ */
+export async function enqueueKnowledgeCanaryCapture(
+  supabase: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    runId: string;
+    sourceUrl: string;
+    title: string;
+    channelName: string | null;
+  },
+): Promise<KnowledgeCaptureResult> {
+  const requested = buildKnowledgeCaptureMetadata(input);
+  if (!requested) {
+    return { ok: false, code: "NORMALIZATION_FAILED", status: 500 };
+  }
+
+  let enqueueResponse;
+  try {
+    enqueueResponse = await supabase.rpc("enqueue_knowledge_canary_job", {
+      p_user_id: input.userId,
+      p_run_id: input.runId,
+      p_source_type: "youtube",
+      p_source_key: requested.videoId,
+      p_source_url: requested.sourceUrl,
+      p_video_id: requested.videoId,
+      p_title: requested.title,
+      p_channel_name: requested.channelName,
+      p_source_guide: requested.sourceGuide,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      code: "ENQUEUE_FAILED",
+      status: 500,
+      logMessage: error instanceof Error ? error.message : "canary enqueue request failed",
+    };
+  }
+  const { data, error } = enqueueResponse;
+
+  if (error) {
+    if (isKnowledgeJobsUnavailableError(error)) {
+      return {
+        ok: false,
+        code: "QUEUE_UNAVAILABLE",
+        status: 503,
+        logMessage: error.message,
+      };
+    }
+    if (error.code === "P0001" && error.message.includes("knowledge_queue_")) {
+      return { ok: false, code: "QUEUE_LIMIT", status: 429 };
+    }
+    return {
+      ok: false,
+      code: "ENQUEUE_FAILED",
+      status: 500,
+      logMessage: error.message,
+    };
+  }
+
+  const job = data?.[0];
+  if (!job) return { ok: false, code: "EMPTY_RESPONSE", status: 500 };
+  if (job.created && !job.capture_ready) {
+    return {
+      ok: false,
+      code: "ENRICH_EMPTY",
+      status: 409,
+      job: serializeKnowledgeJob(job),
+      created: true,
+    };
+  }
+  return { ok: true, job: serializeKnowledgeJob(job), created: job.created };
+}

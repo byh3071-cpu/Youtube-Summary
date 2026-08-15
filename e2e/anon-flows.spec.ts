@@ -1,10 +1,45 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// 홈 피드는 항목이 많아 hydration이 늦다 — 그 전 클릭은 유실되므로
-// hydration 이후에만 렌더되는 My Focus 편집/닫기 버튼을 마커로 기다린다.
+async function waitForStableHydratedHome(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const stableForMs = 500;
+          const sampleEveryMs = 50;
+          let stableSince = 0;
+          let stableToolbar: Element | null = null;
+
+          for (let elapsed = 0; elapsed <= 1500; elapsed += sampleEveryMs) {
+            const toolbars = document.querySelectorAll('[data-testid="discovery-toolbar"]');
+            const triggers = document.querySelectorAll('[data-testid="discovery-filter-trigger"]');
+            const toolbar = toolbars.length === 1 ? toolbars.item(0) : null;
+            const ready =
+              toolbar !== null &&
+              toolbar.getAttribute("data-hydrated") === "true" &&
+              triggers.length === 1 &&
+              toolbar.contains(triggers.item(0));
+
+            if (!ready || toolbar !== stableToolbar) {
+              stableSince = ready ? performance.now() : 0;
+              stableToolbar = ready ? toolbar : null;
+            } else if (performance.now() - stableSince >= stableForMs) {
+              return true;
+            }
+
+            await new Promise((resolve) => window.setTimeout(resolve, sampleEveryMs));
+          }
+
+          return false;
+        }),
+      { timeout: 30000 },
+    )
+    .toBe(true);
+}
+
 async function gotoHydratedHome(page: Page) {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /^(편집|닫기|접기)$/ })).toBeVisible({ timeout: 30000 });
+  await waitForStableHydratedHome(page);
 }
 
 test.describe("anonymous flows", () => {
@@ -39,7 +74,7 @@ test.describe("anonymous flows", () => {
 
     // 새로고침 후에도 localStorage로 유지
     await page.reload({ waitUntil: "commit" });
-    await expect(page.getByRole("button", { name: /^(편집|닫기|접기)$/ })).toBeVisible({ timeout: 30000 });
+    await waitForStableHydratedHome(page);
     await page.getByTestId("discovery-filter-trigger").click();
     await expect(page.getByText(`# ${keyword}`)).toBeVisible();
 

@@ -380,6 +380,7 @@ export function isKnowledgeJobsUnavailableError(error: {
   const message = (error.message ?? "").toLowerCase();
   const mentionsKnowledgeContract = message.includes("knowledge_jobs")
     || message.includes("enqueue_knowledge_job")
+    || message.includes("enqueue_knowledge_canary_job")
     || message.includes("enrich_knowledge_job");
   if (error.code === "PGRST202" && mentionsKnowledgeContract) return true;
   return message.includes("schema cache") && mentionsKnowledgeContract;
