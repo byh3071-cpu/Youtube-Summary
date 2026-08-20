@@ -153,6 +153,7 @@ const KNOWLEDGE_ACTION_MESSAGES: Record<string, string> = {
   NOTEBOOKLM_SOURCE_NOT_READY: "최근 추가된 영상이 아직 처리 중입니다. 잠시 뒤 다시 처리해 주세요.",
   NLM_QUERY_NOT_STRUCTURED: "NotebookLM 요약 형식을 확인해야 합니다. Codex에서 이 작업을 다시 점검해 주세요.",
   NLM_EVIDENCE_NOT_GROUNDED: "NotebookLM 근거가 원문·공개 자막과 일치하지 않아 멈췄습니다. Codex에서 다시 점검해 주세요.",
+  NLM_EVIDENCE_NOT_SUPPORTED: "근거 구절이 요약 주장을 충분히 뒷받침하지 못해 저장을 멈췄습니다. Codex에서 다시 점검해 주세요.",
   NLM_DRAFT_CONTRACT_INVALID: "NotebookLM 응답에 허용되지 않은 필드가 있어 저장하지 않았습니다. 처리기 업데이트가 필요합니다.",
   NLM_PROCESSING_FAILED: "NotebookLM 처리 중 오류가 발생했습니다. 집에서 Codex에 이 작업을 다시 처리해 달라고 요청해 주세요.",
   QUALITY_GATE_FAILED: "원문 커버리지나 타임스탬프가 부족해 자동 승인을 멈췄습니다.",
