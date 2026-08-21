@@ -197,6 +197,7 @@ describe("조치 필요 안내", () => {
     expect(knowledgeJobActionMessage({ ...base, failureCode: "YTDLP_CAPTION_UNAVAILABLE" })).toContain("공개 자막");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "YTDLP_CAPTION_FETCH_FAILED" })).toContain("다시 처리");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_EVIDENCE_NOT_GROUNDED" })).toContain("원문·공개 자막");
+    expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_EVIDENCE_NOT_SUPPORTED" })).toContain("뒷받침하지 못해");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_DRAFT_CONTRACT_INVALID" })).toContain("저장하지 않았습니다");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_PROCESSING_FAILED" })).toContain("다시 처리");
     expect(knowledgeJobActionMessage({ ...base, failureCode: "NLM_AUTH_EXPIRED" })).toContain("만료");
