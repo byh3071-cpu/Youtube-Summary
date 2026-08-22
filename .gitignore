@@ -66,3 +66,6 @@ lint_output.txt
 
 # Serena MCP cache
 .serena/
+
+# 벤더 도구 로컬 설정 (ASSETS.md §2.1)
+.codex/
